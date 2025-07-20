@@ -144,51 +144,51 @@ export default function MyPage() {
 
         {/* 사용자 통계 요약 */}
         {!isLoading && userStatistics && (
-          <div className='mb-6 bg-theme-secondary rounded-lg p-6 shadow-sm'>
-            <h2 className='text-lg font-semibold text-theme-primary mb-4'>
+          <div className='mb-4 bg-theme-secondary rounded-lg p-4 shadow-sm'>
+            <h2 className='text-lg font-semibold text-theme-primary mb-3'>
               📊 독서 통계 요약
             </h2>
-            <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+            <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
-                  <BookOpen className='h-6 w-6 accent-theme-primary' />
+                  <BookOpen className='h-5 w-5 accent-theme-primary' />
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>
                   총 등록된 책
                 </p>
-                <p className='text-lg font-bold text-theme-primary'>
+                <p className='text-sm font-bold text-theme-primary'>
                   {getTotalBooks()}권
                 </p>
               </div>
 
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
-                  <Calendar className='h-6 w-6 text-green-500' />
+                  <Calendar className='h-5 w-5 text-green-500' />
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>완독한 책</p>
-                <p className='text-lg font-bold text-theme-primary'>
+                <p className='text-sm font-bold text-theme-primary'>
                   {getCompletedBooks()}권
                 </p>
               </div>
 
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
-                  <Star className='h-6 w-6 text-yellow-500' />
+                  <Star className='h-5 w-5 text-yellow-500' />
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>평균 평점</p>
-                <p className='text-lg font-bold text-theme-primary'>
+                <p className='text-sm font-bold text-theme-primary'>
                   {getAverageRating().toFixed(1)}
                 </p>
               </div>
 
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
-                  <Clock className='h-6 w-6 text-purple-500' />
+                  <Clock className='h-5 w-5 text-purple-500' />
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>
                   총 독서 시간
                 </p>
-                <p className='text-lg font-bold text-theme-primary'>
+                <p className='text-sm font-bold text-theme-primary'>
                   {userStatistics
                     ? `${Math.floor(
                         userStatistics.totalReadingTime / 3600
@@ -201,18 +201,18 @@ export default function MyPage() {
         )}
 
         {/* 메뉴 카드들 */}
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-3 mb-4'>
           <button
             onClick={() => router.push("/mypage/settings")}
-            className='bg-theme-secondary rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left'
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left'
           >
-            <div className='flex items-center gap-4'>
-              <div className='p-3 bg-accent-theme-tertiary rounded-lg'>
-                <Settings className='h-6 w-6 accent-theme-primary' />
+            <div className='flex items-center gap-3'>
+              <div className='p-2 bg-accent-theme-tertiary rounded-lg'>
+                <Settings className='h-5 w-5 accent-theme-primary' />
               </div>
               <div>
                 <h3 className='font-semibold text-theme-primary mb-1'>설정</h3>
-                <p className='text-sm text-theme-secondary'>
+                <p className='text-xs text-theme-secondary'>
                   다크모드, 폰트 설정
                 </p>
               </div>
@@ -221,17 +221,17 @@ export default function MyPage() {
 
           <button
             onClick={() => router.push("/mypage/statistics")}
-            className='bg-theme-secondary rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left'
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left'
           >
-            <div className='flex items-center gap-4'>
-              <div className='p-3 bg-green-100 dark:bg-green-900/20 rounded-lg'>
-                <BarChart3 className='h-6 w-6 text-green-600 dark:text-green-400' />
+            <div className='flex items-center gap-3'>
+              <div className='p-2 bg-green-100 dark:bg-green-900/20 rounded-lg'>
+                <BarChart3 className='h-5 w-5 text-green-600 dark:text-green-400' />
               </div>
               <div>
                 <h3 className='font-semibold text-theme-primary mb-1'>
                   상세 통계
                 </h3>
-                <p className='text-sm text-theme-secondary'>
+                <p className='text-xs text-theme-secondary'>
                   독서 패턴 분석 및 통계
                 </p>
               </div>
@@ -240,24 +240,24 @@ export default function MyPage() {
         </div>
 
         {/* 계정 관리 */}
-        <div className='bg-theme-secondary rounded-lg p-6 shadow-sm'>
-          <h2 className='text-lg font-semibold text-theme-primary mb-4'>
+        <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
+          <h2 className='text-lg font-semibold text-theme-primary mb-3'>
             계정 관리
           </h2>
-          <div className='space-y-3'>
+          <div className='space-y-2'>
             <button
               onClick={handleLogout}
-              className='flex items-center gap-3 w-full p-3 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors'
+              className='flex items-center gap-3 w-full p-2 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors'
             >
-              <LogOut className='h-5 w-5' />
-              <span>로그아웃</span>
+              <LogOut className='h-4 w-4' />
+              <span className='text-sm'>로그아웃</span>
             </button>
             <button
               onClick={handleDeleteAccount}
-              className='flex items-center gap-3 w-full p-3 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors'
+              className='flex items-center gap-3 w-full p-2 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors'
             >
-              <Trash2 className='h-5 w-5' />
-              <span>계정 삭제</span>
+              <Trash2 className='h-4 w-4' />
+              <span className='text-sm'>계정 삭제</span>
             </button>
           </div>
         </div>

@@ -508,10 +508,10 @@ export default function BookDetailPage({
           </div>
         </div>
 
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6'>
-          <div className='flex items-start gap-4'>
-            <div className='w-20 h-24 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-              <BookOpen className='h-10 w-10 text-gray-400' />
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
+          <div className='flex items-start gap-3'>
+            <div className='w-16 h-20 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
+              <BookOpen className='h-8 w-8 text-gray-400' />
             </div>
             <div className='flex-1'>
               <h2 className='text-lg font-semibold text-theme-primary mb-2'>
@@ -527,7 +527,7 @@ export default function BookDetailPage({
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`h-5 w-5 ${
+                      className={`h-4 w-4 ${
                         star <= book.rating
                           ? "text-yellow-400 fill-current"
                           : "text-gray-300"
@@ -558,8 +558,8 @@ export default function BookDetailPage({
           </div>
         </div>
 
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6'>
-          <div className='flex items-center justify-between mb-4'>
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
+          <div className='flex items-center justify-between mb-3'>
             <h3 className='text-lg font-semibold text-theme-primary'>
               독서 타이머
             </h3>
@@ -596,9 +596,9 @@ export default function BookDetailPage({
             )}
           </div>
 
-          <div className='text-center mb-4'>
+          <div className='text-center mb-3'>
             {isTimerRunning ? (
-              <div className='text-3xl font-mono text-accent-theme mb-4'>
+              <div className='text-3xl font-mono text-accent-theme mb-3'>
                 {Math.floor(getElapsedTime() / 3600)
                   .toString()
                   .padStart(2, "0")}
@@ -609,7 +609,7 @@ export default function BookDetailPage({
                 :{(getElapsedTime() % 60).toString().padStart(2, "0")}
               </div>
             ) : (
-              <div className='text-3xl font-mono text-theme-tertiary mb-4'>
+              <div className='text-3xl font-mono text-theme-tertiary mb-3'>
                 00:00:00
               </div>
             )}
@@ -644,18 +644,18 @@ export default function BookDetailPage({
           </div>
         </div>
 
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-6'>
-          <h3 className='text-lg font-semibold text-theme-primary mb-4'>
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <h3 className='text-lg font-semibold text-theme-primary mb-3'>
             독서 기록
           </h3>
 
           {readingSessions.length === 0 ? (
-            <p className='text-theme-secondary text-center py-8'>
+            <p className='text-theme-secondary text-center py-6'>
               아직 독서 기록이 없습니다. 타이머를 시작해보세요!
             </p>
           ) : (
             <div
-              className={`space-y-3 ${
+              className={`space-y-2 ${
                 readingSessions.length > 10 ? "max-h-80 overflow-y-auto" : ""
               }`}
             >
@@ -667,18 +667,18 @@ export default function BookDetailPage({
                 .map((session: ReadingSession) => (
                   <div
                     key={session.id}
-                    className='flex items-center justify-between p-3 bg-theme-tertiary rounded-lg'
+                    className='flex items-center justify-between p-2 bg-theme-tertiary rounded-lg'
                   >
                     <div>
-                      <div className='text-sm font-medium text-theme-primary'>
+                      <div className='text-xs font-medium text-theme-primary'>
                         {session.date}
                       </div>
                       <div className='text-xs text-theme-secondary'>
                         {session.startTime} - {session.endTime}
                       </div>
                     </div>
-                    <div className='flex items-center gap-3'>
-                      <div className='text-sm font-medium text-accent-theme'>
+                    <div className='flex items-center gap-2'>
+                      <div className='text-xs font-medium text-accent-theme'>
                         {Math.floor(session.duration / 60)}분{" "}
                         {session.duration % 60}초
                       </div>
@@ -690,7 +690,7 @@ export default function BookDetailPage({
                         className='p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
                         title='독서 기록 삭제'
                       >
-                        <Trash2 className='h-4 w-4' />
+                        <Trash2 className='h-3 w-3' />
                       </button>
                     </div>
                   </div>
@@ -700,18 +700,18 @@ export default function BookDetailPage({
         </div>
 
         {book.review && (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mt-6'>
-            <h3 className='text-lg font-semibold text-theme-primary mb-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-4'>
+            <h3 className='text-lg font-semibold text-theme-primary mb-3'>
               독서 리뷰
             </h3>
-            <div className='bg-theme-tertiary rounded-lg p-4'>
-              <div className='flex items-center gap-2 mb-3'>
-                <span className='text-sm text-theme-secondary'>평점:</span>
+            <div className='bg-theme-tertiary rounded-lg p-3'>
+              <div className='flex items-center gap-2 mb-2'>
+                <span className='text-xs text-theme-secondary'>평점:</span>
                 <div className='flex gap-1'>
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`h-4 w-4 ${
+                      className={`h-3 w-3 ${
                         star <= book.rating
                           ? "text-yellow-400 fill-current"
                           : "text-gray-300"
@@ -719,11 +719,11 @@ export default function BookDetailPage({
                     />
                   ))}
                 </div>
-                <span className='text-sm text-theme-secondary'>
+                <span className='text-xs text-theme-secondary'>
                   {book.rating}점
                 </span>
               </div>
-              <div className='text-theme-primary whitespace-pre-wrap'>
+              <div className='text-theme-primary whitespace-pre-wrap text-sm'>
                 {book.review}
               </div>
             </div>

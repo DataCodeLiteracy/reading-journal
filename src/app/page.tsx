@@ -390,71 +390,71 @@ export default function Home() {
           </div>
         )}
 
-        <div className='grid grid-cols-2 gap-3 mb-6'>
-          <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
+        <div className='grid grid-cols-2 gap-2 mb-4'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
             <div className='flex items-center'>
-              <BookOpen className='h-6 w-6 accent-theme-primary' />
-              <div className='ml-3'>
+              <BookOpen className='h-5 w-5 accent-theme-primary' />
+              <div className='ml-2'>
                 <p className='text-xs font-medium text-theme-secondary'>
                   총 등록된 책
                 </p>
-                <p className='text-xl font-bold text-theme-primary'>
+                <p className='text-lg font-bold text-theme-primary'>
                   {getTotalBooks()}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
             <div className='flex items-center'>
-              <Bookmark className='h-6 w-6 text-green-500' />
-              <div className='ml-3'>
+              <Bookmark className='h-5 w-5 text-green-500' />
+              <div className='ml-2'>
                 <p className='text-xs font-medium text-theme-secondary'>
                   읽는 중
                 </p>
-                <p className='text-xl font-bold text-theme-primary'>
+                <p className='text-lg font-bold text-theme-primary'>
                   {getReadingBooks()}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
             <div className='flex items-center'>
-              <CheckCircle className='h-6 w-6 text-green-600' />
-              <div className='ml-3'>
+              <CheckCircle className='h-5 w-5 text-green-600' />
+              <div className='ml-2'>
                 <p className='text-xs font-medium text-theme-secondary'>
                   완독한 책
                 </p>
-                <p className='text-xl font-bold text-theme-primary'>
+                <p className='text-lg font-bold text-theme-primary'>
                   {getCompletedBooks()}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
             <div className='flex items-center'>
-              <Calendar className='h-6 w-6 text-purple-500' />
-              <div className='ml-3'>
+              <Calendar className='h-5 w-5 text-purple-500' />
+              <div className='ml-2'>
                 <p className='text-xs font-medium text-theme-secondary'>
                   읽고 싶은 책
                 </p>
-                <p className='text-xl font-bold text-theme-primary'>
+                <p className='text-lg font-bold text-theme-primary'>
                   {getWantToReadBooks()}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
             <div className='flex items-center'>
-              <Star className='h-6 w-6 text-yellow-500' />
-              <div className='ml-3'>
+              <Star className='h-5 w-5 text-yellow-500' />
+              <div className='ml-2'>
                 <p className='text-xs font-medium text-theme-secondary'>
                   평균 평점
                 </p>
-                <p className='text-xl font-bold text-theme-primary'>
+                <p className='text-lg font-bold text-theme-primary'>
                   {getAverageRating().toFixed(1)}
                 </p>
               </div>
@@ -544,16 +544,16 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className='grid grid-cols-1 gap-4'>
+          <div className='grid grid-cols-1 gap-3'>
             {books.map((book: Book) => (
               <div
                 key={book.id}
                 onClick={() => handleBookClick(book.id)}
-                className='bg-theme-secondary rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer relative group'
+                className='bg-theme-secondary rounded-lg shadow-sm hover:shadow-md transition-shadow p-3 cursor-pointer relative group'
               >
-                <div className='flex items-start gap-4'>
-                  <div className='w-16 h-20 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                    <BookOpen className='h-8 w-8 text-gray-400' />
+                <div className='flex items-start gap-3'>
+                  <div className='w-14 h-18 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
+                    <BookOpen className='h-7 w-7 text-gray-400' />
                   </div>
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-start justify-between mb-2'>
@@ -569,7 +569,7 @@ export default function Home() {
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`h-4 w-4 ${
+                            className={`h-3 w-3 ${
                               i < book.rating
                                 ? "text-yellow-400 fill-current"
                                 : "text-gray-300"
@@ -579,8 +579,10 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className='flex items-center justify-between text-sm text-theme-tertiary'>
-                      <span>{book.publishedDate || book.startDate}</span>
+                    <div className='flex items-center justify-between text-xs text-theme-tertiary'>
+                      <span className='text-xs'>
+                        {book.publishedDate || book.startDate}
+                      </span>
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
                           book.status === "reading"
