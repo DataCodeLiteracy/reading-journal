@@ -1,3 +1,7 @@
+// DEPRECATED: This file is no longer used since we migrated to Firebase
+// All storage operations are now handled by ApiClient in src/lib/apiClient.ts
+
+/*
 import { Book } from "@/types/book"
 
 const BOOKS_STORAGE_KEY = "reading_journal_books"
@@ -74,3 +78,4 @@ export class LocalStorageService implements StorageService {
     deleteBookFromStorage(id)
   }
 }
+*/

@@ -1,25 +1,17 @@
-export interface ReadingSession {
-  id: string
-  startTime: string
-  endTime: string
-  duration: number
-  date: string
-}
+import { AppDate } from "./firebase"
 
 export interface Book {
   id: string
+  user_id: string
   title: string
   author?: string
-  cover: string
-  rating: number
-  status: "want-to-read" | "reading" | "completed"
-  startDate: string
   publishedDate?: string
-  completedDate?: string
-  notes: string[]
-  readingSessions: ReadingSession[]
-  hasStartedReading: boolean
-  isEdited: boolean
-  originalData?: Partial<Book>
+  startDate?: string
+  status: "reading" | "completed" | "want-to-read"
+  rating: number
   review?: string
+  hasStartedReading: boolean
+  completedDate?: string
+  created_at?: Date
+  updated_at?: Date
 }

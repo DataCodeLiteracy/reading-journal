@@ -38,16 +38,9 @@ export default function EditBookModal({
     const updatedBook: Book = {
       ...book,
       title: title.trim(),
-      author: author.trim() || undefined,
+      author: author.trim() || "",
       rating,
-      publishedDate: publishedDate.trim() || undefined,
-      isEdited: true,
-      originalData: book.originalData || {
-        title: book.title,
-        author: book.author,
-        rating: book.rating,
-        publishedDate: book.publishedDate,
-      },
+      publishedDate: publishedDate.trim() || "",
     }
 
     onSave(updatedBook)
@@ -57,62 +50,62 @@ export default function EditBookModal({
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-      <div className='bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
+    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
+      <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto shadow-lg'>
         <div className='flex items-center justify-between mb-4'>
-          <h2 className='text-lg font-semibold text-gray-900 dark:text-white'>
+          <h2 className='text-lg font-semibold text-theme-primary'>
             책 정보 편집
           </h2>
           <button
             onClick={onClose}
-            className='p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700'
+            className='p-1 rounded-full hover:bg-theme-tertiary transition-colors'
           >
-            <X className='h-5 w-5 text-gray-500' />
+            <X className='h-5 w-5 text-theme-secondary' />
           </button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className='mb-4'>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
               책 제목 *
             </label>
             <input
               type='text'
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white'
+              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary'
               placeholder='책 제목을 입력하세요'
               required
             />
           </div>
 
           <div className='mb-4'>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
               저자 (선택사항)
             </label>
             <input
               type='text'
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white'
+              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary'
               placeholder='저자를 입력하세요'
             />
           </div>
 
           <div className='mb-4'>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
               출판일 (선택사항)
             </label>
             <input
               type='date'
               value={publishedDate}
               onChange={(e) => setPublishedDate(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white'
+              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
             />
           </div>
 
           <div className='mb-6'>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
               평점
             </label>
             <div className='flex gap-1'>
@@ -127,29 +120,27 @@ export default function EditBookModal({
                     className={`h-6 w-6 ${
                       star <= rating
                         ? "text-yellow-400 fill-current"
-                        : "text-gray-300"
+                        : "text-theme-tertiary"
                     }`}
                   />
                 </button>
               ))}
             </div>
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-              {rating}점
-            </p>
+            <p className='text-xs text-theme-tertiary mt-1'>{rating}점</p>
           </div>
 
           <div className='flex gap-3'>
             <button
               type='button'
               onClick={onClose}
-              className='flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
+              className='flex-1 px-4 py-2 border border-theme-tertiary text-theme-primary rounded-md hover:bg-theme-tertiary transition-colors'
             >
               취소
             </button>
             <button
               type='submit'
               disabled={!title.trim()}
-              className='flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+              className='flex-1 px-4 py-2 bg-accent-theme text-white rounded-md hover:bg-accent-theme-secondary disabled:bg-theme-tertiary disabled:cursor-not-allowed transition-colors'
             >
               저장하기
             </button>
