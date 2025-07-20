@@ -18,14 +18,13 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
-import { UserSummary, UserStatistics } from "@/types/user"
+import { UserStatistics } from "@/types/user"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { BookService } from "@/services/bookService"
-import { UserService } from "@/services/userService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ApiError } from "@/lib/apiClient"
 
@@ -34,7 +33,7 @@ export default function Home() {
   const { user, loading, isLoggedIn, userUid } = useAuth()
   const { settings } = useSettings()
   const [books, setBooks] = useState<Book[]>([])
-  const [userSummary, setUserSummary] = useState<UserSummary | null>(null)
+  const [allBooks, setAllBooks] = useState<Book[]>([])
   const [userStatistics, setUserStatistics] = useState<UserStatistics | null>(
     null
   )
@@ -52,6 +51,19 @@ export default function Home() {
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false)
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null)
+
+  const getTotalBooks = () => allBooks.length
+  const getReadingBooks = () =>
+    allBooks.filter((book) => book.status === "reading").length
+  const getCompletedBooks = () =>
+    allBooks.filter((book) => book.status === "completed").length
+  const getWantToReadBooks = () =>
+    allBooks.filter((book) => book.status === "want-to-read").length
+  const getAverageRating = () => {
+    if (allBooks.length === 0) return 0
+    const totalRating = allBooks.reduce((acc, book) => acc + book.rating, 0)
+    return totalRating / allBooks.length
+  }
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -74,27 +86,27 @@ export default function Home() {
 
         console.log("Loading books and user data for user_id:", userUid)
 
-        const [booksData, summaryData, statisticsData] = await Promise.all([
+        const [booksData, allBooksData, statisticsData] = await Promise.all([
           BookService.getUserBooksByStatusPaginated(
             userUid,
             activeTab,
             currentPage,
             itemsPerPage
           ),
-          UserService.getUserSummary(userUid),
+          BookService.getUserBooks(userUid),
           UserStatisticsService.getUserStatistics(userUid),
         ])
 
         console.log("Loaded data:", {
           booksCount: booksData.books.length,
           totalItems: booksData.total,
-          summary: summaryData,
+          allBooksCount: allBooksData.length,
           statistics: statisticsData,
         })
 
         setBooks(booksData.books)
+        setAllBooks(allBooksData)
         setTotalItems(booksData.total)
-        setUserSummary(summaryData)
         setUserStatistics(statisticsData)
       } catch (error) {
         console.error("Error loading data:", error)
@@ -137,19 +149,19 @@ export default function Home() {
           setIsLoading(true)
           setError(null)
 
-          const [booksData, summaryData] = await Promise.all([
+          const [booksData, allBooksData] = await Promise.all([
             BookService.getUserBooksByStatusPaginated(
               userUid,
               tab,
               1,
               itemsPerPage
             ),
-            UserService.getUserSummary(userUid),
+            BookService.getUserBooks(userUid),
           ])
 
           setBooks(booksData.books)
+          setAllBooks(allBooksData)
           setTotalItems(booksData.total)
-          setUserSummary(summaryData)
         } catch (error) {
           console.error("Error loading tab data:", error)
           if (error instanceof ApiError) {
@@ -202,13 +214,7 @@ export default function Home() {
       }
 
       setBooks((prev) => [createdBook, ...prev])
-
-      try {
-        const updatedSummary = await UserService.getUserSummary(userUid)
-        setUserSummary(updatedSummary)
-      } catch (summaryError) {
-        console.error("Error updating user summary:", summaryError)
-      }
+      setAllBooks((prev) => [createdBook, ...prev])
 
       setTotalItems((prev) => prev + 1)
       setCurrentPage(1)
@@ -233,13 +239,7 @@ export default function Home() {
       await BookService.updateBookStatus(bookId, newStatus, userUid)
 
       setBooks((prev) => prev.filter((book) => book.id !== bookId))
-
-      try {
-        const updatedSummary = await UserService.getUserSummary(userUid)
-        setUserSummary(updatedSummary)
-      } catch (summaryError) {
-        console.error("Error updating user summary:", summaryError)
-      }
+      setAllBooks((prev) => prev.filter((book) => book.id !== bookId))
 
       if (books.length === 1 && currentPage > 1) {
         setCurrentPage((prev) => prev - 1)
@@ -269,13 +269,7 @@ export default function Home() {
       await BookService.deleteBook(bookToDelete.id)
 
       setBooks((prev) => prev.filter((book) => book.id !== bookToDelete.id))
-
-      try {
-        const updatedSummary = await UserService.getUserSummary(userUid)
-        setUserSummary(updatedSummary)
-      } catch (summaryError) {
-        console.error("Error updating user summary:", summaryError)
-      }
+      setAllBooks((prev) => prev.filter((book) => book.id !== bookToDelete.id))
 
       setTotalItems((prev) => prev - 1)
 
@@ -405,7 +399,7 @@ export default function Home() {
                   총 등록된 책
                 </p>
                 <p className='text-xl font-bold text-theme-primary'>
-                  {userSummary?.totalBooks || books.length}
+                  {getTotalBooks()}
                 </p>
               </div>
             </div>
@@ -419,8 +413,7 @@ export default function Home() {
                   읽는 중
                 </p>
                 <p className='text-xl font-bold text-theme-primary'>
-                  {userSummary?.readingBooks ||
-                    books.filter((b: Book) => b.status === "reading").length}
+                  {getReadingBooks()}
                 </p>
               </div>
             </div>
@@ -434,8 +427,7 @@ export default function Home() {
                   완독한 책
                 </p>
                 <p className='text-xl font-bold text-theme-primary'>
-                  {userSummary?.completedBooks ||
-                    books.filter((b: Book) => b.status === "completed").length}
+                  {getCompletedBooks()}
                 </p>
               </div>
             </div>
@@ -449,9 +441,7 @@ export default function Home() {
                   읽고 싶은 책
                 </p>
                 <p className='text-xl font-bold text-theme-primary'>
-                  {userSummary?.wantToReadBooks ||
-                    books.filter((b: Book) => b.status === "want-to-read")
-                      .length}
+                  {getWantToReadBooks()}
                 </p>
               </div>
             </div>
@@ -465,16 +455,7 @@ export default function Home() {
                   평균 평점
                 </p>
                 <p className='text-xl font-bold text-theme-primary'>
-                  {userSummary?.averageRating
-                    ? userSummary.averageRating.toFixed(1)
-                    : books.length > 0
-                    ? (
-                        books.reduce(
-                          (acc: number, book: Book) => acc + book.rating,
-                          0
-                        ) / books.length
-                      ).toFixed(1)
-                    : "0.0"}
+                  {getAverageRating().toFixed(1)}
                 </p>
               </div>
             </div>
@@ -486,17 +467,17 @@ export default function Home() {
             {
               key: "reading",
               label: "읽는 중",
-              count: userSummary?.readingBooks || 0,
+              count: getReadingBooks(),
             },
             {
               key: "completed",
               label: "완독",
-              count: userSummary?.completedBooks || 0,
+              count: getCompletedBooks(),
             },
             {
               key: "want-to-read",
               label: "읽고 싶은 책",
-              count: userSummary?.wantToReadBooks || 0,
+              count: getWantToReadBooks(),
             },
           ].map((tab) => (
             <button
@@ -535,7 +516,7 @@ export default function Home() {
           <div className='text-center py-12'>
             <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
             <h3 className='text-lg font-medium text-theme-primary mb-2'>
-              {userSummary?.totalBooks === 0
+              {getTotalBooks() === 0
                 ? "아직 등록된 책이 없습니다"
                 : activeTab === "reading"
                 ? "읽고 있는 책이 없습니다"
@@ -544,7 +525,7 @@ export default function Home() {
                 : "읽고 싶은 책이 없습니다"}
             </h3>
             <p className='text-theme-secondary mb-4'>
-              {userSummary?.totalBooks === 0
+              {getTotalBooks() === 0
                 ? "새로운 책을 추가해보세요!"
                 : activeTab === "reading"
                 ? "책을 읽기 시작하면 여기에 표시됩니다"
@@ -552,16 +533,13 @@ export default function Home() {
                 ? "책을 완독하면 여기에 표시됩니다"
                 : "새로운 책을 추가해보세요!"}
             </p>
-            {(userSummary?.totalBooks === 0 ||
-              activeTab === "want-to-read") && (
+            {(getTotalBooks() === 0 || activeTab === "want-to-read") && (
               <button
                 onClick={() => setIsAddBookModalOpen(true)}
                 className='inline-flex items-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white px-4 py-2 rounded-lg transition-colors'
               >
                 <Plus className='h-4 w-4' />
-                {userSummary?.totalBooks === 0
-                  ? "첫 번째 책 추가하기"
-                  : "책 추가하기"}
+                {getTotalBooks() === 0 ? "첫 번째 책 추가하기" : "책 추가하기"}
               </button>
             )}
           </div>

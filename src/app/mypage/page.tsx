@@ -16,15 +16,16 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
-import { UserService } from "@/services/userService"
+import { BookService } from "@/services/bookService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
-import { UserSummary, UserStatistics } from "@/types/user"
+import { Book } from "@/types/book"
+import { UserStatistics } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
 
 export default function MyPage() {
   const router = useRouter()
   const { user, loading, isLoggedIn, userUid, signOut } = useAuth()
-  const [userSummary, setUserSummary] = useState<UserSummary | null>(null)
+  const [allBooks, setAllBooks] = useState<Book[]>([])
   const [userStatistics, setUserStatistics] = useState<UserStatistics | null>(
     null
   )
@@ -32,6 +33,20 @@ export default function MyPage() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false)
+
+  // 실시간으로 계산하는 함수들
+  const getTotalBooks = () => allBooks.length
+  const getReadingBooks = () =>
+    allBooks.filter((book) => book.status === "reading").length
+  const getCompletedBooks = () =>
+    allBooks.filter((book) => book.status === "completed").length
+  const getWantToReadBooks = () =>
+    allBooks.filter((book) => book.status === "want-to-read").length
+  const getAverageRating = () => {
+    if (allBooks.length === 0) return 0
+    const totalRating = allBooks.reduce((acc, book) => acc + book.rating, 0)
+    return totalRating / allBooks.length
+  }
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -46,12 +61,12 @@ export default function MyPage() {
     const loadUserData = async () => {
       try {
         setIsLoading(true)
-        const [summaryData, statisticsData] = await Promise.all([
-          UserService.getUserSummary(userUid),
+        const [allBooksData, statisticsData] = await Promise.all([
+          BookService.getUserBooks(userUid),
           UserStatisticsService.getUserStatistics(userUid),
         ])
 
-        setUserSummary(summaryData)
+        setAllBooks(allBooksData)
         setUserStatistics(statisticsData)
       } catch (error) {
         console.error("Error loading user data:", error)
@@ -82,9 +97,9 @@ export default function MyPage() {
     setIsDeleteAccountModalOpen(true)
   }
 
-  const confirmDeleteAccount = () => {
-    // TODO: 계정 삭제 로직 구현
-    console.log("Delete account")
+  const confirmDeleteAccount = async () => {
+    // 계정 삭제 로직 구현 예정
+    console.log("Delete account functionality to be implemented")
     setIsDeleteAccountModalOpen(false)
   }
 
@@ -128,7 +143,7 @@ export default function MyPage() {
         </header>
 
         {/* 사용자 통계 요약 */}
-        {!isLoading && userSummary && (
+        {!isLoading && userStatistics && (
           <div className='mb-6 bg-theme-secondary rounded-lg p-6 shadow-sm'>
             <h2 className='text-lg font-semibold text-theme-primary mb-4'>
               📊 독서 통계 요약
@@ -142,7 +157,7 @@ export default function MyPage() {
                   총 등록된 책
                 </p>
                 <p className='text-lg font-bold text-theme-primary'>
-                  {userSummary.totalBooks}권
+                  {getTotalBooks()}권
                 </p>
               </div>
 
@@ -152,7 +167,7 @@ export default function MyPage() {
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>완독한 책</p>
                 <p className='text-lg font-bold text-theme-primary'>
-                  {userSummary.completedBooks}권
+                  {getCompletedBooks()}권
                 </p>
               </div>
 
@@ -162,7 +177,7 @@ export default function MyPage() {
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>평균 평점</p>
                 <p className='text-lg font-bold text-theme-primary'>
-                  {userSummary.averageRating.toFixed(1)}
+                  {getAverageRating().toFixed(1)}
                 </p>
               </div>
 

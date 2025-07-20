@@ -1,15 +1,10 @@
 import { ApiClient } from "@/lib/apiClient"
 import { Book } from "@/types/book"
-import { UserService } from "./userService"
-import { UserSummary } from "@/types/user"
 
 export class BookService {
   static async createBook(bookData: Omit<Book, "id">): Promise<string> {
     try {
       const bookId = await ApiClient.createDocumentWithAutoId("books", bookData)
-
-      await this.updateUserSummaryAfterBookChange(bookData.user_id)
-
       return bookId
     } catch (error) {
       throw error
@@ -43,8 +38,6 @@ export class BookService {
     }
 
     await ApiClient.updateDocument("books", bookId, updateData)
-
-    await this.updateUserSummaryAfterBookChange(user_id)
   }
 
   static async getUserBooks(user_id: string): Promise<Book[]> {
@@ -106,6 +99,11 @@ export class BookService {
 
   static async deleteBook(bookId: string): Promise<void> {
     try {
+      const book = await this.getBook(bookId)
+      if (!book) {
+        throw new Error("Book not found")
+      }
+
       const { ReadingSessionService } = await import("./readingSessionService")
       const sessions = await ReadingSessionService.getBookReadingSessions(
         bookId
@@ -120,54 +118,6 @@ export class BookService {
       await ApiClient.deleteDocument("books", bookId)
     } catch (error) {
       throw error
-    }
-  }
-
-  private static async updateUserSummaryAfterBookChange(
-    user_id: string
-  ): Promise<void> {
-    try {
-      console.log(
-        "BookService.updateUserSummaryAfterBookChange called for user_id:",
-        user_id
-      )
-
-      const books = await this.getUserBooks(user_id)
-      console.log("Retrieved books for summary update:", books.length)
-
-      const totalBooks = books.length
-      const readingBooks = books.filter(
-        (book) => book.status === "reading"
-      ).length
-      const wantToReadBooks = books.filter(
-        (book) => book.status === "want-to-read"
-      ).length
-      const completedBooks = books.filter(
-        (book) => book.status === "completed"
-      ).length
-      const averageRating =
-        books.length > 0
-          ? books.reduce((acc, book) => acc + book.rating, 0) / books.length
-          : 0
-
-      const summary: UserSummary = {
-        user_id,
-        totalBooks,
-        readingBooks,
-        wantToReadBooks,
-        completedBooks,
-        averageRating,
-        updated_at: new Date(),
-      }
-
-      console.log("Calculated user summary:", summary)
-      await UserService.createOrUpdateUserSummary(user_id, summary)
-      console.log("User summary updated successfully")
-    } catch (error) {
-      console.error(
-        "BookService.updateUserSummaryAfterBookChange error:",
-        error
-      )
     }
   }
 }

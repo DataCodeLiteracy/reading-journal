@@ -13,16 +13,6 @@ export interface User {
   updated_at?: Date
 }
 
-export interface UserSummary {
-  user_id: string
-  totalBooks: number
-  readingBooks: number
-  wantToReadBooks: number
-  completedBooks: number
-  averageRating: number
-  updated_at?: Date
-}
-
 export interface ReadingSession {
   id: string
   user_id: string
