@@ -1,0 +1,73 @@
+"use client"
+
+import { X, RotateCcw } from "lucide-react"
+
+interface RereadModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: () => void
+  bookTitle: string
+}
+
+export default function RereadModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  bookTitle,
+}: RereadModalProps) {
+  const handleConfirm = () => {
+    onConfirm()
+    onClose()
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+      <div className='bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4'>
+        <div className='flex items-center justify-between mb-4'>
+          <h2 className='text-lg font-semibold text-gray-900 dark:text-white'>
+            다시 읽기
+          </h2>
+          <button
+            onClick={onClose}
+            className='p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700'
+          >
+            <X className='h-5 w-5 text-gray-500' />
+          </button>
+        </div>
+
+        <div className='mb-6'>
+          <div className='flex items-center gap-2 mb-3'>
+            <RotateCcw className='h-6 w-6 text-blue-500' />
+            <span className='text-gray-900 dark:text-white font-medium'>
+              다시 읽기를 시작하시겠습니까?
+            </span>
+          </div>
+          <p className='text-gray-600 dark:text-gray-300'>
+            <span className='font-medium'>{bookTitle}</span>을(를) 다시 읽기로
+            설정합니다.
+          </p>
+          <p className='text-sm text-gray-500 dark:text-gray-400 mt-2'>
+            기존 독서 기록은 보존되며, 새로운 독서 세션이 추가로 기록됩니다.
+          </p>
+        </div>
+
+        <div className='flex gap-3'>
+          <button
+            onClick={onClose}
+            className='flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
+          >
+            취소
+          </button>
+          <button
+            onClick={handleConfirm}
+            className='flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors'
+          >
+            다시 읽기 시작
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
