@@ -19,7 +19,7 @@ export default function SettingsPage() {
     }
   }, [isLoggedIn, loading, router])
 
-  const handleSettingChange = (key: keyof typeof settings, value: any) => {
+  const handleSettingChange = (key: keyof typeof settings, value: string) => {
     updateSettings({ [key]: value })
     setIsSaved(false)
   }
