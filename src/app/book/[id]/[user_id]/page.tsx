@@ -347,6 +347,7 @@ export default function BookDetailPage({
       setError(null)
       await ReadingSessionService.deleteReadingSession(sessionToDelete)
 
+      // 독서 기록 목록을 다시 가져와서 UI 업데이트
       const updatedSessions =
         await ReadingSessionService.getBookReadingSessions(
           resolvedParams?.id || ""
@@ -502,15 +503,16 @@ export default function BookDetailPage({
             >
               <Edit className='h-5 w-5 text-theme-secondary' />
             </button>
-            {!isCompleted && book.hasStartedReading && (
-              <button
-                onClick={() => setIsCompleteModalOpen(true)}
-                disabled={isTimerProcessing}
-                className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-              >
-                <CheckCircle className='h-5 w-5 text-theme-secondary' />
-              </button>
-            )}
+            {!isCompleted &&
+              book.hasStartedReading &&
+              readingSessions.length > 0 && (
+                <button
+                  onClick={() => setIsCompleteModalOpen(true)}
+                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+                >
+                  <CheckCircle className='h-5 w-5 text-theme-secondary' />
+                </button>
+              )}
             {isCompleted && (
               <button
                 onClick={() => setIsRereadModalOpen(true)}
@@ -583,16 +585,18 @@ export default function BookDetailPage({
             <h3 className='text-lg font-semibold text-theme-primary'>
               독서 타이머
             </h3>
-            {!isCompleted && book.hasStartedReading && (
-              <button
-                onClick={() => setIsCompleteModalOpen(true)}
-                disabled={isTimerProcessing}
-                className='flex items-center gap-2 px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <CheckCircle className='h-4 w-4' />
-                완독하기
-              </button>
-            )}
+            {!isCompleted &&
+              book.hasStartedReading &&
+              readingSessions.length > 0 && (
+                <button
+                  onClick={() => setIsCompleteModalOpen(true)}
+                  disabled={isTimerProcessing}
+                  className='flex items-center gap-2 px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  <CheckCircle className='h-4 w-4' />
+                  완독하기
+                </button>
+              )}
             {isCompleted && (
               <div className='flex gap-2'>
                 <button
