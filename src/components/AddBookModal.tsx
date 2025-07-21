@@ -96,6 +96,23 @@ export default function AddBookModal({
             />
           </div>
 
+          <div className='mb-6'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
+              출판일 (선택사항)
+            </label>
+            <input
+              type='date'
+              value={publishedDate}
+              onChange={(e) => setPublishedDate(e.target.value)}
+              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary cursor-pointer'
+              style={{
+                WebkitAppearance: "none",
+                MozAppearance: "none",
+                colorScheme: "dark",
+              }}
+            />
+          </div>
+
           <div className='flex gap-3'>
             <button
               type='button'
