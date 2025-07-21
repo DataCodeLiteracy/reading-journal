@@ -352,7 +352,8 @@ export default function Home() {
                 </p>
                 <p className='text-lg font-bold text-theme-primary'>
                   {Math.floor(userStatistics.totalReadingTime / 3600)}시간{" "}
-                  {Math.floor((userStatistics.totalReadingTime % 3600) / 60)}분
+                  {Math.floor((userStatistics.totalReadingTime % 3600) / 60)}분{" "}
+                  {userStatistics.totalReadingTime % 60}초
                 </p>
               </div>
 

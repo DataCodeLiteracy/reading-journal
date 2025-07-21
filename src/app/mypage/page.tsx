@@ -192,8 +192,10 @@ export default function MyPage() {
                   {userStatistics
                     ? `${Math.floor(
                         userStatistics.totalReadingTime / 3600
-                      )}시간`
-                    : "0시간"}
+                      )}시간 ${Math.floor(
+                        (userStatistics.totalReadingTime % 3600) / 60
+                      )}분 ${userStatistics.totalReadingTime % 60}초`
+                    : "0시간 0분 0초"}
                 </p>
               </div>
             </div>
