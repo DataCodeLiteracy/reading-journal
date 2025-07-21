@@ -108,7 +108,6 @@ export default function AddBookModal({
               style={{
                 WebkitAppearance: "none",
                 MozAppearance: "none",
-                colorScheme: "dark",
               }}
             />
           </div>

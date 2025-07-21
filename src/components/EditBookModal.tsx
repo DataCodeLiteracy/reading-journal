@@ -104,7 +104,6 @@ export default function EditBookModal({
               style={{
                 WebkitAppearance: "none",
                 MozAppearance: "none",
-                colorScheme: "dark",
               }}
             />
           </div>
