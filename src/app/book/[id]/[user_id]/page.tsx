@@ -48,6 +48,7 @@ export default function BookDetailPage({
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [timerStartTime, setTimerStartTime] = useState<Date | null>(null)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
+  const [isTimerProcessing, setIsTimerProcessing] = useState(false)
   const [isRereadModalOpen, setIsRereadModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false)
@@ -121,87 +122,105 @@ export default function BookDetailPage({
   }, [isTimerRunning, timerStartTime])
 
   const startTimer = async () => {
-    const now = new Date()
-    setTimerStartTime(now)
-    setCurrentTime(now)
-    setIsTimerRunning(true)
+    if (isTimerProcessing) return // 이미 처리 중이면 무시
 
-    if (book && !book.hasStartedReading) {
-      try {
-        await BookService.updateBookStatus(
-          resolvedParams?.id || "",
-          "reading",
-          resolvedParams?.user_id || ""
-        )
-        setBook((prev: Book | null) => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            status: "reading",
-            hasStartedReading: true,
-          }
-        })
-      } catch (error) {
-        setError("책 상태를 업데이트하는 중 오류가 발생했습니다.")
+    try {
+      setIsTimerProcessing(true)
+      const now = new Date()
+      setTimerStartTime(now)
+      setCurrentTime(now)
+      setIsTimerRunning(true)
+
+      if (book && !book.hasStartedReading) {
+        try {
+          await BookService.updateBookStatus(
+            resolvedParams?.id || "",
+            "reading",
+            resolvedParams?.user_id || ""
+          )
+          setBook((prev: Book | null) => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              status: "reading",
+              hasStartedReading: true,
+            }
+          })
+        } catch (error) {
+          setError("책 상태를 업데이트하는 중 오류가 발생했습니다.")
+        }
       }
+    } catch (error) {
+      setError("타이머를 시작하는 중 오류가 발생했습니다.")
+    } finally {
+      setIsTimerProcessing(false)
     }
   }
 
   const stopTimer = async () => {
+    if (isTimerProcessing) return // 이미 처리 중이면 무시
+
     if (timerStartTime && book) {
-      const endTime = new Date()
-      const duration = Math.floor(
-        (endTime.getTime() - timerStartTime.getTime()) / 1000
-      )
-
-      const newSession: Omit<
-        ReadingSession,
-        "id" | "created_at" | "updated_at"
-      > = {
-        user_id: resolvedParams?.user_id || "",
-        bookId: resolvedParams?.id || "",
-        startTime: timerStartTime.toLocaleTimeString("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-        endTime: endTime.toLocaleTimeString("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-        duration,
-        date: new Date().toISOString().split("T")[0],
-      }
-
       try {
-        const sessionId = await ReadingSessionService.createReadingSession(
-          newSession
+        setIsTimerProcessing(true)
+        const endTime = new Date()
+        const duration = Math.floor(
+          (endTime.getTime() - timerStartTime.getTime()) / 1000
         )
 
-        const createdSession =
-          await ReadingSessionService.getBookReadingSessions(
-            resolvedParams?.id || ""
-          )
-        setReadingSessions(createdSession)
+        const newSession: Omit<
+          ReadingSession,
+          "id" | "created_at" | "updated_at"
+        > = {
+          user_id: resolvedParams?.user_id || "",
+          bookId: resolvedParams?.id || "",
+          startTime: timerStartTime.toLocaleTimeString("ko-KR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          endTime: endTime.toLocaleTimeString("ko-KR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          duration,
+          date: new Date().toISOString().split("T")[0],
+        }
 
         try {
-          const { UserStatisticsService } = await import(
-            "@/services/userStatisticsService"
+          const sessionId = await ReadingSessionService.createReadingSession(
+            newSession
           )
-          const sessionWithId = {
-            ...newSession,
-            id: sessionId,
-          } as ReadingSession
-          await UserStatisticsService.updateStatisticsFromReadingSession(
-            resolvedParams?.user_id || "",
-            sessionWithId
-          )
-        } catch (statsError) {
-          console.error("Error updating user statistics:", statsError)
+
+          const createdSession =
+            await ReadingSessionService.getBookReadingSessions(
+              resolvedParams?.id || ""
+            )
+          setReadingSessions(createdSession)
+
+          try {
+            const { UserStatisticsService } = await import(
+              "@/services/userStatisticsService"
+            )
+            const sessionWithId = {
+              ...newSession,
+              id: sessionId,
+            } as ReadingSession
+            await UserStatisticsService.updateStatisticsFromReadingSession(
+              resolvedParams?.user_id || "",
+              sessionWithId
+            )
+          } catch (statsError) {
+            console.error("Error updating user statistics:", statsError)
+          }
+        } catch (error) {
+          setError("독서 세션을 저장하는 중 오류가 발생했습니다.")
         }
       } catch (error) {
-        setError("독서 세션을 저장하는 중 오류가 발생했습니다.")
+        setError("타이머를 정지하는 중 오류가 발생했습니다.")
+      } finally {
+        setIsTimerProcessing(false)
       }
     }
     setIsTimerRunning(false)
@@ -486,6 +505,7 @@ export default function BookDetailPage({
             {!isCompleted && book.hasStartedReading && (
               <button
                 onClick={() => setIsCompleteModalOpen(true)}
+                disabled={isTimerProcessing}
                 className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
               >
                 <CheckCircle className='h-5 w-5 text-theme-secondary' />
@@ -566,7 +586,8 @@ export default function BookDetailPage({
             {!isCompleted && book.hasStartedReading && (
               <button
                 onClick={() => setIsCompleteModalOpen(true)}
-                className='flex items-center gap-2 px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded-md transition-colors'
+                disabled={isTimerProcessing}
+                className='flex items-center gap-2 px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <CheckCircle className='h-4 w-4' />
                 완독하기
@@ -576,7 +597,8 @@ export default function BookDetailPage({
               <div className='flex gap-2'>
                 <button
                   onClick={handleCancelCompletion}
-                  className='flex items-center gap-2 px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-sm rounded-md transition-colors'
+                  disabled={isTimerProcessing}
+                  className='flex items-center gap-2 px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   <RotateCcw className='h-4 w-4' />
                   완독 취소
@@ -587,7 +609,8 @@ export default function BookDetailPage({
                       `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
                     )
                   }
-                  className='flex items-center gap-2 px-3 py-1 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm rounded-md transition-colors'
+                  disabled={isTimerProcessing}
+                  className='flex items-center gap-2 px-3 py-1 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   <MessageSquare className='h-4 w-4' />
                   리뷰 작성
@@ -619,7 +642,8 @@ export default function BookDetailPage({
             {isCompleted ? (
               <button
                 onClick={() => setIsRereadModalOpen(true)}
-                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors'
+                disabled={isTimerProcessing}
+                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <RotateCcw className='h-5 w-5' />
                 계속 읽기
@@ -627,18 +651,20 @@ export default function BookDetailPage({
             ) : !isTimerRunning ? (
               <button
                 onClick={startTimer}
-                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors'
+                disabled={isTimerProcessing}
+                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <Play className='h-5 w-5' />
-                타이머 시작
+                {isTimerProcessing ? "시작 중..." : "타이머 시작"}
               </button>
             ) : (
               <button
                 onClick={stopTimer}
-                className='flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg transition-colors'
+                disabled={isTimerProcessing}
+                className='flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <Pause className='h-5 w-5' />
-                타이머 정지
+                {isTimerProcessing ? "정지 중..." : "타이머 정지"}
               </button>
             )}
           </div>
