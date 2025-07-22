@@ -16,8 +16,7 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
-import { BookService } from "@/services/bookService"
-import { UserStatisticsService } from "@/services/userStatisticsService"
+import { useData } from "@/contexts/DataContext"
 import { Book } from "@/types/book"
 import { UserStatistics } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -25,11 +24,7 @@ import ConfirmModal from "@/components/ConfirmModal"
 export default function MyPage() {
   const router = useRouter()
   const { user, loading, isLoggedIn, userUid, signOut } = useAuth()
-  const [allBooks, setAllBooks] = useState<Book[]>([])
-  const [userStatistics, setUserStatistics] = useState<UserStatistics | null>(
-    null
-  )
-  const [isLoading, setIsLoading] = useState(true)
+  const { allBooks, userStatistics, isLoading } = useData()
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false)
@@ -54,29 +49,6 @@ export default function MyPage() {
       return
     }
   }, [isLoggedIn, loading, router])
-
-  useEffect(() => {
-    if (!isLoggedIn || !userUid) return
-
-    const loadUserData = async () => {
-      try {
-        setIsLoading(true)
-        const [allBooksData, statisticsData] = await Promise.all([
-          BookService.getUserBooks(userUid),
-          UserStatisticsService.getUserStatistics(userUid),
-        ])
-
-        setAllBooks(allBooksData)
-        setUserStatistics(statisticsData)
-      } catch (error) {
-        console.error("Error loading user data:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadUserData()
-  }, [isLoggedIn, userUid])
 
   const handleLogout = () => {
     setIsLogoutModalOpen(true)

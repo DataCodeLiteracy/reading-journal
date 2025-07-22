@@ -24,20 +24,24 @@ import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
+import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
-import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ApiError } from "@/lib/apiClient"
 
 export default function Home() {
   const router = useRouter()
   const { user, loading, isLoggedIn, userUid } = useAuth()
   const { settings } = useSettings()
+  const {
+    allBooks,
+    userStatistics,
+    isLoading,
+    addBook,
+    removeBook,
+    updateStatistics,
+  } = useData()
+
   const [books, setBooks] = useState<Book[]>([])
-  const [allBooks, setAllBooks] = useState<Book[]>([])
-  const [userStatistics, setUserStatistics] = useState<UserStatistics | null>(
-    null
-  )
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
@@ -76,7 +80,6 @@ export default function Home() {
 
     const loadBooks = async () => {
       try {
-        setIsLoading(true)
         setError(null)
 
         if (!userUid) {
@@ -84,30 +87,22 @@ export default function Home() {
           return
         }
 
-        console.log("Loading books and user data for user_id:", userUid)
+        console.log("Loading books for user_id:", userUid)
 
-        const [booksData, allBooksData, statisticsData] = await Promise.all([
-          BookService.getUserBooksByStatusPaginated(
-            userUid,
-            activeTab,
-            currentPage,
-            itemsPerPage
-          ),
-          BookService.getUserBooks(userUid),
-          UserStatisticsService.getUserStatistics(userUid),
-        ])
+        const booksData = await BookService.getUserBooksByStatusPaginated(
+          userUid,
+          activeTab,
+          currentPage,
+          itemsPerPage
+        )
 
-        console.log("Loaded data:", {
+        console.log("Loaded books data:", {
           booksCount: booksData.books.length,
           totalItems: booksData.total,
-          allBooksCount: allBooksData.length,
-          statistics: statisticsData,
         })
 
         setBooks(booksData.books)
-        setAllBooks(allBooksData)
         setTotalItems(booksData.total)
-        setUserStatistics(statisticsData)
       } catch (error) {
         console.error("Error loading data:", error)
         if (error instanceof ApiError) {
@@ -127,8 +122,6 @@ export default function Home() {
         } else {
           setError("데이터를 불러오는 중 오류가 발생했습니다.")
         }
-      } finally {
-        setIsLoading(false)
       }
     }
 
@@ -146,21 +139,16 @@ export default function Home() {
     if (userUid) {
       const loadTabData = async () => {
         try {
-          setIsLoading(true)
           setError(null)
 
-          const [booksData, allBooksData] = await Promise.all([
-            BookService.getUserBooksByStatusPaginated(
-              userUid,
-              tab,
-              1,
-              itemsPerPage
-            ),
-            BookService.getUserBooks(userUid),
-          ])
+          const booksData = await BookService.getUserBooksByStatusPaginated(
+            userUid,
+            tab,
+            1,
+            itemsPerPage
+          )
 
           setBooks(booksData.books)
-          setAllBooks(allBooksData)
           setTotalItems(booksData.total)
         } catch (error) {
           console.error("Error loading tab data:", error)
@@ -169,8 +157,6 @@ export default function Home() {
           } else {
             setError("데이터를 불러오는 중 오류가 발생했습니다.")
           }
-        } finally {
-          setIsLoading(false)
         }
       }
 
@@ -214,7 +200,7 @@ export default function Home() {
       }
 
       setBooks((prev) => [createdBook, ...prev])
-      setAllBooks((prev) => [createdBook, ...prev])
+      addBook(createdBook)
 
       setTotalItems((prev) => prev + 1)
       setCurrentPage(1)
@@ -239,7 +225,7 @@ export default function Home() {
       await BookService.updateBookStatus(bookId, newStatus, userUid)
 
       setBooks((prev) => prev.filter((book) => book.id !== bookId))
-      setAllBooks((prev) => prev.filter((book) => book.id !== bookId))
+      removeBook(bookId)
 
       if (books.length === 1 && currentPage > 1) {
         setCurrentPage((prev) => prev - 1)
@@ -269,7 +255,7 @@ export default function Home() {
       await BookService.deleteBook(bookToDelete.id)
 
       setBooks((prev) => prev.filter((book) => book.id !== bookToDelete.id))
-      setAllBooks((prev) => prev.filter((book) => book.id !== bookToDelete.id))
+      removeBook(bookToDelete.id)
 
       setTotalItems((prev) => prev - 1)
 

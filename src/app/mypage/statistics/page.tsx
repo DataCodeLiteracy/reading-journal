@@ -13,16 +13,15 @@ import {
   Activity,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useData } from "@/contexts/DataContext"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { UserStatistics } from "@/types/user"
 
 export default function StatisticsPage() {
   const router = useRouter()
   const { loading, isLoggedIn, userUid } = useAuth()
-  const [userStatistics, setUserStatistics] = useState<UserStatistics | null>(
-    null
-  )
-  const [isLoading, setIsLoading] = useState(true)
+  const { userStatistics, isLoading, updateStatistics } = useData()
+  const [isRecalculating, setIsRecalculating] = useState(false)
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -31,25 +30,18 @@ export default function StatisticsPage() {
     }
   }, [isLoggedIn, loading, router])
 
-  useEffect(() => {
-    if (!isLoggedIn || !userUid) return
-
-    const loadStatistics = async () => {
-      try {
-        setIsLoading(true)
-        const statisticsData = await UserStatisticsService.getUserStatistics(
-          userUid
-        )
-        setUserStatistics(statisticsData)
-      } catch (error) {
-        console.error("Error loading statistics:", error)
-      } finally {
-        setIsLoading(false)
-      }
+  const handleRecalculateStatistics = async () => {
+    if (!userUid) return
+    try {
+      setIsRecalculating(true)
+      await UserStatisticsService.recalculateUserStatistics(userUid)
+      await updateStatistics()
+    } catch (error) {
+      console.error("Error recalculating statistics:", error)
+    } finally {
+      setIsRecalculating(false)
     }
-
-    loadStatistics()
-  }, [isLoggedIn, userUid])
+  }
 
   if (loading) {
     return (
@@ -87,23 +79,11 @@ export default function StatisticsPage() {
               </p>
             </div>
             <button
-              onClick={async () => {
-                if (!userUid) return
-                try {
-                  setIsLoading(true)
-                  await UserStatisticsService.recalculateUserStatistics(userUid)
-                  const statisticsData =
-                    await UserStatisticsService.getUserStatistics(userUid)
-                  setUserStatistics(statisticsData)
-                } catch (error) {
-                  console.error("Error recalculating statistics:", error)
-                } finally {
-                  setIsLoading(false)
-                }
-              }}
+              onClick={handleRecalculateStatistics}
               className='px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors text-sm'
+              disabled={isRecalculating}
             >
-              통계 새로고침
+              {isRecalculating ? "통계 재계산 중..." : "통계 새로고침"}
             </button>
           </div>
         </header>

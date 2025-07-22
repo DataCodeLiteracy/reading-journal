@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Clock, Calendar, BarChart3, TrendingUp } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
-import { ReadingSessionService } from "@/services/readingSessionService"
+import { useData } from "@/contexts/DataContext"
 import { ReadingSession } from "@/types/user"
 import Pagination from "@/components/Pagination"
 
@@ -18,8 +18,8 @@ interface DailyReadingData {
 export default function DailyStatisticsPage() {
   const router = useRouter()
   const { loading, isLoggedIn, userUid } = useAuth()
+  const { allReadingSessions, isLoading } = useData()
   const [dailyData, setDailyData] = useState<DailyReadingData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
@@ -31,54 +31,37 @@ export default function DailyStatisticsPage() {
   }, [isLoggedIn, loading, router])
 
   useEffect(() => {
-    if (!isLoggedIn || !userUid) return
+    if (!isLoggedIn || !userUid || !allReadingSessions) return
 
-    const loadDailyData = async () => {
-      try {
-        setIsLoading(true)
-        const sessions = await ReadingSessionService.getUserReadingSessions(
-          userUid
-        )
-
-        // 날짜별로 그룹화
-        const dailyMap: { [date: string]: ReadingSession[] } = {}
-        sessions.forEach((session) => {
-          const date = session.date
-          if (!dailyMap[date]) {
-            dailyMap[date] = []
-          }
-          dailyMap[date].push(session)
-        })
-
-        // 날짜별 데이터 생성
-        const dailyDataArray: DailyReadingData[] = Object.keys(dailyMap)
-          .map((date) => {
-            const daySessions = dailyMap[date]
-            const totalTime = daySessions.reduce(
-              (acc, session) => acc + session.duration,
-              0
-            )
-            return {
-              date,
-              totalTime,
-              sessions: daySessions,
-              sessionCount: daySessions.length,
-            }
-          })
-          .sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          )
-
-        setDailyData(dailyDataArray)
-      } catch (error) {
-        console.error("Error loading daily data:", error)
-      } finally {
-        setIsLoading(false)
+    // 날짜별로 그룹화
+    const dailyMap: { [date: string]: ReadingSession[] } = {}
+    allReadingSessions.forEach((session) => {
+      const date = session.date
+      if (!dailyMap[date]) {
+        dailyMap[date] = []
       }
-    }
+      dailyMap[date].push(session)
+    })
 
-    loadDailyData()
-  }, [isLoggedIn, userUid])
+    // 날짜별 데이터 생성
+    const dailyDataArray: DailyReadingData[] = Object.keys(dailyMap)
+      .map((date) => {
+        const daySessions = dailyMap[date]
+        const totalTime = daySessions.reduce(
+          (acc, session) => acc + session.duration,
+          0
+        )
+        return {
+          date,
+          totalTime,
+          sessions: daySessions,
+          sessionCount: daySessions.length,
+        }
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    setDailyData(dailyDataArray)
+  }, [isLoggedIn, userUid, allReadingSessions])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
