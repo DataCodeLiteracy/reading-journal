@@ -25,8 +25,10 @@ import EditBookModal from "@/components/EditBookModal"
 import CompleteBookModal from "@/components/CompleteBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import { useAuth } from "@/contexts/AuthContext"
+import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ReadingSessionService } from "@/services/readingSessionService"
+import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ApiError } from "@/lib/apiClient"
 
 export default function BookDetailPage({
@@ -36,6 +38,15 @@ export default function BookDetailPage({
 }) {
   const router = useRouter()
   const { userUid } = useAuth()
+  const {
+    allBooks,
+    updateBook,
+    removeBook,
+    addReadingSession,
+    removeReadingSession,
+    updateStatistics,
+  } = useData()
+
   const [book, setBook] = useState<Book | null>(null)
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -138,14 +149,15 @@ export default function BookDetailPage({
             "reading",
             resolvedParams?.user_id || ""
           )
-          setBook((prev: Book | null) => {
-            if (!prev) return prev
-            return {
-              ...prev,
-              status: "reading",
-              hasStartedReading: true,
-            }
-          })
+
+          // DataContext의 책 상태 업데이트
+          const updatedBook = {
+            ...book,
+            status: "reading" as const,
+            hasStartedReading: true,
+          }
+          setBook(updatedBook)
+          updateBook(resolvedParams?.id || "", updatedBook)
         } catch (error) {
           setError("책 상태를 업데이트하는 중 오류가 발생했습니다.")
         }
@@ -199,33 +211,28 @@ export default function BookDetailPage({
             )
           setReadingSessions(createdSession)
 
-          try {
-            const { UserStatisticsService } = await import(
-              "@/services/userStatisticsService"
-            )
-            const sessionWithId = {
-              ...newSession,
-              id: sessionId,
-            } as ReadingSession
-            await UserStatisticsService.updateStatisticsFromReadingSession(
-              resolvedParams?.user_id || "",
-              sessionWithId
-            )
-          } catch (statsError) {
-            console.error("Error updating user statistics:", statsError)
-          }
+          // DataContext에 새 세션 추가
+          const sessionWithId = {
+            ...newSession,
+            id: sessionId,
+          } as ReadingSession
+          await addReadingSession(sessionWithId)
+
+          // 통계 업데이트는 addReadingSession에서 자동으로 처리됨
         } catch (error) {
+          console.error("Error creating reading session:", error)
           setError("독서 세션을 저장하는 중 오류가 발생했습니다.")
         }
+
+        setIsTimerRunning(false)
+        setTimerStartTime(null)
+        setCurrentTime(null)
       } catch (error) {
         setError("타이머를 정지하는 중 오류가 발생했습니다.")
       } finally {
         setIsTimerProcessing(false)
       }
     }
-    setIsTimerRunning(false)
-    setTimerStartTime(null)
-    setCurrentTime(null)
   }
 
   const getElapsedTime = () => {
@@ -238,6 +245,10 @@ export default function BookDetailPage({
       setError(null)
       await BookService.updateBook(resolvedParams?.id || "", updatedBook)
       setBook(updatedBook)
+
+      // DataContext의 책 정보 업데이트
+      updateBook(resolvedParams?.id || "", updatedBook)
+
       setHasUnsavedChanges(true)
     } catch (error) {
       if (error instanceof ApiError) {
@@ -268,14 +279,16 @@ export default function BookDetailPage({
         "completed",
         resolvedParams?.user_id || ""
       )
-      setBook((prev: Book | null) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          status: "completed",
-          completedDate: new Date().toISOString().split("T")[0],
-        }
-      })
+
+      const updatedBook = {
+        ...book!,
+        status: "completed" as const,
+        completedDate: new Date().toISOString().split("T")[0],
+      }
+      setBook(updatedBook)
+
+      // DataContext의 책 상태 업데이트
+      updateBook(resolvedParams?.id || "", updatedBook)
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -293,14 +306,16 @@ export default function BookDetailPage({
         "reading",
         resolvedParams?.user_id || ""
       )
-      setBook((prev: Book | null) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          status: "reading",
-          hasStartedReading: true,
-        }
-      })
+
+      const updatedBook = {
+        ...book!,
+        status: "reading" as const,
+        hasStartedReading: true,
+      }
+      setBook(updatedBook)
+
+      // DataContext의 책 상태 업데이트
+      updateBook(resolvedParams?.id || "", updatedBook)
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -318,14 +333,16 @@ export default function BookDetailPage({
         "reading",
         resolvedParams?.user_id || ""
       )
-      setBook((prev: Book | null) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          status: "reading",
-          completedDate: undefined,
-        }
-      })
+
+      const updatedBook = {
+        ...book!,
+        status: "reading" as const,
+        completedDate: undefined,
+      }
+      setBook(updatedBook)
+
+      // DataContext의 책 상태 업데이트
+      updateBook(resolvedParams?.id || "", updatedBook)
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -354,28 +371,10 @@ export default function BookDetailPage({
         )
       setReadingSessions(updatedSessions)
 
-      try {
-        const { UserStatisticsService } = await import(
-          "@/services/userStatisticsService"
-        )
-        const { ReadingSessionService: RS } = await import(
-          "@/services/readingSessionService"
-        )
-        const allSessions = await RS.getUserReadingSessions(
-          resolvedParams?.user_id || ""
-        )
-        const updatedStatistics =
-          await UserStatisticsService.calculateUserStatistics(
-            resolvedParams?.user_id || "",
-            allSessions
-          )
-        await UserStatisticsService.createOrUpdateUserStatistics(
-          resolvedParams?.user_id || "",
-          updatedStatistics
-        )
-      } catch (statsError) {
-        console.error("Error updating user statistics:", statsError)
-      }
+      // DataContext에서 세션 제거
+      await removeReadingSession(sessionToDelete)
+
+      // 통계 업데이트는 removeReadingSession에서 자동으로 처리됨
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -391,6 +390,9 @@ export default function BookDetailPage({
     try {
       setError(null)
       await BookService.deleteBook(resolvedParams?.id || "")
+
+      // DataContext에서 책 제거
+      removeBook(resolvedParams?.id || "")
 
       router.push("/")
     } catch (error) {
@@ -483,7 +485,7 @@ export default function BookDetailPage({
 
         <div className='flex items-center gap-4 mb-6'>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push("/")}
             className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
           >
             <ArrowLeft className='h-5 w-5 text-theme-secondary' />
@@ -759,73 +761,73 @@ export default function BookDetailPage({
             </div>
           </div>
         )}
-      </div>
 
-      {hasUnsavedChanges && (
-        <div className='fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme-tertiary p-4'>
-          <div className='container mx-auto flex items-center justify-between'>
-            <span className='text-sm text-theme-secondary'>
-              변경사항이 저장되지 않았습니다
-            </span>
-            <button
-              onClick={handleSaveChanges}
-              className='flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-md transition-colors'
-            >
-              <Save className='h-4 w-4' />
-              변경사항 저장
-            </button>
+        {hasUnsavedChanges && (
+          <div className='fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme-tertiary p-4'>
+            <div className='container mx-auto flex items-center justify-between'>
+              <span className='text-sm text-theme-secondary'>
+                변경사항이 저장되지 않았습니다
+              </span>
+              <button
+                onClick={handleSaveChanges}
+                className='flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-md transition-colors'
+              >
+                <Save className='h-4 w-4' />
+                변경사항 저장
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <RereadModal
-        isOpen={isRereadModalOpen}
-        onClose={() => setIsRereadModalOpen(false)}
-        onConfirm={handleReread}
-        bookTitle={book.title}
-      />
+        <RereadModal
+          isOpen={isRereadModalOpen}
+          onClose={() => setIsRereadModalOpen(false)}
+          onConfirm={handleReread}
+          bookTitle={book.title}
+        />
 
-      <EditBookModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSave={handleEditBook}
-        book={book}
-      />
+        <EditBookModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleEditBook}
+          book={book}
+        />
 
-      <CompleteBookModal
-        isOpen={isCompleteModalOpen}
-        onClose={() => setIsCompleteModalOpen(false)}
-        onConfirm={markAsCompleted}
-        bookTitle={book.title}
-      />
+        <CompleteBookModal
+          isOpen={isCompleteModalOpen}
+          onClose={() => setIsCompleteModalOpen(false)}
+          onConfirm={markAsCompleted}
+          bookTitle={book.title}
+        />
 
-      {/* 책 삭제 확인 모달 */}
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteBook}
-        title='책 삭제'
-        message={`"${book?.title}" 책과 관련된 모든 독서 기록을 삭제하시겠습니까?`}
-        confirmText='삭제'
-        cancelText='취소'
-        icon={Trash2}
-      />
-
-      {/* 독서 기록 삭제 확인 모달 */}
-      {isDeleteSessionModalOpen && sessionToDelete && (
+        {/* 책 삭제 확인 모달 */}
         <ConfirmModal
-          isOpen={isDeleteSessionModalOpen}
-          onClose={() => setIsDeleteSessionModalOpen(false)}
-          onConfirm={confirmDeleteReadingSession}
-          title='독서 기록 삭제'
-          message={`"${
-            readingSessions.find((s) => s.id === sessionToDelete)?.date
-          }" 독서 기록을 삭제하시겠습니까?`}
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleDeleteBook}
+          title='책 삭제'
+          message={`"${book?.title}" 책과 관련된 모든 독서 기록을 삭제하시겠습니까?`}
           confirmText='삭제'
           cancelText='취소'
           icon={Trash2}
         />
-      )}
+
+        {/* 독서 기록 삭제 확인 모달 */}
+        {isDeleteSessionModalOpen && sessionToDelete && (
+          <ConfirmModal
+            isOpen={isDeleteSessionModalOpen}
+            onClose={() => setIsDeleteSessionModalOpen(false)}
+            onConfirm={confirmDeleteReadingSession}
+            title='독서 기록 삭제'
+            message={`"${
+              readingSessions.find((s) => s.id === sessionToDelete)?.date
+            }" 독서 기록을 삭제하시겠습니까?`}
+            confirmText='삭제'
+            cancelText='취소'
+            icon={Trash2}
+          />
+        )}
+      </div>
     </div>
   )
 }

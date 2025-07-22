@@ -18,7 +18,7 @@ interface DailyReadingData {
 export default function DailyStatisticsPage() {
   const router = useRouter()
   const { loading, isLoggedIn, userUid } = useAuth()
-  const { allReadingSessions, isLoading } = useData()
+  const { allReadingSessions, allBooks, isLoading } = useData()
   const [dailyData, setDailyData] = useState<DailyReadingData[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -63,6 +63,12 @@ export default function DailyStatisticsPage() {
     setDailyData(dailyDataArray)
   }, [isLoggedIn, userUid, allReadingSessions])
 
+  // 책 제목을 가져오는 함수
+  const getBookTitle = (bookId: string) => {
+    const book = allBooks.find((book) => book.id === bookId)
+    return book ? book.title : "알 수 없는 책"
+  }
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -79,25 +85,14 @@ export default function DailyStatisticsPage() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const dayBeforeYesterday = new Date(today)
-    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2)
 
-    if (dateString === today.toISOString().split("T")[0]) {
-      return "오늘"
-    } else if (dateString === yesterday.toISOString().split("T")[0]) {
-      return "어제"
-    } else if (dateString === dayBeforeYesterday.toISOString().split("T")[0]) {
-      return "그제"
-    } else {
-      return date.toLocaleDateString("ko-KR", {
-        month: "short",
-        day: "numeric",
-        weekday: "short",
-      })
-    }
+    // 모든 날짜를 일관된 형식으로 표시
+    return date.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      weekday: "short",
+    })
   }
 
   // 페이지네이션을 위한 데이터 계산
@@ -198,8 +193,20 @@ export default function DailyStatisticsPage() {
                           key={session.id}
                           className='flex items-center justify-between text-xs text-theme-tertiary bg-theme-primary rounded p-2'
                         >
-                          <span>세션 {index + 1}</span>
-                          <span>{formatTime(session.duration)}</span>
+                          <div className='flex-1 min-w-0'>
+                            <div className='flex items-center gap-2'>
+                              <span className='font-medium'>
+                                세션 {index + 1}
+                              </span>
+                              <span className='text-theme-secondary'>-</span>
+                              <span className='truncate'>
+                                {getBookTitle(session.bookId)}
+                              </span>
+                            </div>
+                          </div>
+                          <span className='ml-2 flex-shrink-0'>
+                            {formatTime(session.duration)}
+                          </span>
                         </div>
                       ))}
                     </div>

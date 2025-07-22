@@ -55,48 +55,40 @@ export class UserStatisticsService {
         readingSessions.length
       )
 
+      // 세션이 제공되면 항상 새로 계산
+      console.log("Calculating statistics with provided sessions")
+      const calculatedStats = await this.calculateUserStatistics(
+        user_id,
+        readingSessions
+      )
+
       const result = await ApiClient.getDocument<UserStatistics>(
         "userStatistics",
         user_id
       )
 
-      if (result) {
-        // 누락된 필드들이 있는지 확인
-        if (
-          result.longestSessionTime === undefined ||
-          result.averageDailyTime === undefined ||
-          result.daysWithSessions === undefined ||
-          result.longestStreak === undefined ||
-          result.monthlyReadingTime === undefined
-        ) {
-          console.log("Recalculating missing statistics fields")
-          const calculatedStats = await this.calculateUserStatistics(
-            user_id,
-            readingSessions
-          )
-
-          // 기존 데이터와 새로 계산한 데이터를 병합
-          const updatedStats = {
-            ...result,
-            ...calculatedStats,
-            updated_at: new Date(),
-          }
-
-          // 직접 ApiClient를 사용하여 업데이트 (무한 루프 방지)
-          await ApiClient.updateDocument(
-            "userStatistics",
-            user_id,
-            updatedStats
-          )
-          return updatedStats
-        }
+      // 기존 데이터와 새로 계산한 데이터를 병합
+      const updatedStats: UserStatistics = {
+        user_id,
+        totalReadingTime: 0,
+        totalSessions: 0,
+        averageSessionTime: 0,
+        longestSessionTime: 0,
+        averageDailyTime: 0,
+        daysWithSessions: 0,
+        longestStreak: 0,
+        monthlyReadingTime: 0,
+        readingStreak: 0,
+        ...result,
+        ...calculatedStats,
+        updated_at: new Date(),
       }
 
-      console.log(
-        "UserStatisticsService.getUserStatisticsWithSessions result:",
-        result
-      )
-      return result
+      // 직접 ApiClient를 사용하여 업데이트
+      await ApiClient.updateDocument("userStatistics", user_id, updatedStats)
+
+      console.log("Updated statistics:", updatedStats)
+      return updatedStats
     } catch (error) {
       console.error(
         "UserStatisticsService.getUserStatisticsWithSessions error:",

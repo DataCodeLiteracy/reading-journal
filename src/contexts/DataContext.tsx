@@ -119,14 +119,57 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   // 독서 세션 관련 함수들
-  const addReadingSession = (session: ReadingSession) => {
-    setAllReadingSessions((prev) => [session, ...prev])
+  const addReadingSession = async (session: ReadingSession) => {
+    console.log("Adding reading session:", session)
+    console.log("Current sessions count:", allReadingSessions.length)
+
+    const updatedSessions = [session, ...allReadingSessions]
+    setAllReadingSessions(updatedSessions)
+
+    console.log("Updated sessions count:", updatedSessions.length)
+
+    // 세션 추가 후 통계 자동 업데이트
+    if (userUid) {
+      try {
+        console.log(
+          "Updating statistics with sessions:",
+          updatedSessions.length
+        )
+        const updatedStats =
+          await UserStatisticsService.getUserStatisticsWithSessions(
+            userUid,
+            updatedSessions
+          )
+        console.log("Updated statistics:", updatedStats)
+        setUserStatistics(updatedStats)
+      } catch (error) {
+        console.error("Error updating statistics after adding session:", error)
+      }
+    }
   }
 
-  const removeReadingSession = (sessionId: string) => {
-    setAllReadingSessions((prev) =>
-      prev.filter((session) => session.id !== sessionId)
+  const removeReadingSession = async (sessionId: string) => {
+    const updatedSessions = allReadingSessions.filter(
+      (session) => session.id !== sessionId
     )
+    setAllReadingSessions(updatedSessions)
+
+    // 세션 제거 후 통계 자동 업데이트
+    if (userUid) {
+      try {
+        const updatedStats =
+          await UserStatisticsService.getUserStatisticsWithSessions(
+            userUid,
+            updatedSessions
+          )
+        setUserStatistics(updatedStats)
+      } catch (error) {
+        console.error(
+          "Error updating statistics after removing session:",
+          error
+        )
+      }
+    }
   }
 
   // 사용자가 로그인하면 데이터 로드
