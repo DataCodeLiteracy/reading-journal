@@ -93,9 +93,6 @@ export class UserStatisticsService {
       )
       const totalSessions = readingSessions.length
       const averageSessionTime = Math.round(totalReadingTime / totalSessions)
-      const longestSessionTime = Math.max(
-        ...readingSessions.map((s) => s.duration)
-      )
 
       // 일일 독서 시간 계산
       const dailyReadingTime: { [date: string]: number } = {}
@@ -110,6 +107,9 @@ export class UserStatisticsService {
         daysWithSessions > 0
           ? Math.round(totalReadingTime / daysWithSessions)
           : 0
+
+      // 가장 긴 독서일 계산 (특정 날짜의 총 독서 시간이 가장 긴 날)
+      const longestDayTime = Math.max(...Object.values(dailyReadingTime))
 
       // 이번 달 독서 시간 계산
       const now = new Date()
@@ -127,22 +127,15 @@ export class UserStatisticsService {
         0
       )
 
-      // 연속 독서일 계산
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-      const recentSessions = readingSessions.filter((session) => {
-        const sessionDate = new Date(session.date)
-        return sessionDate >= thirtyDaysAgo
-      })
-
-      const uniqueDates = [...new Set(recentSessions.map((s) => s.date))].sort()
-      let readingStreak = 0
-      let currentStreak = 0
+      // 연속 독서일 계산 (전체 기간에서)
+      const allUniqueDates = [
+        ...new Set(readingSessions.map((s) => s.date)),
+      ].sort()
       let longestStreak = 0
+      let currentStreak = 0
       let lastDate: string | null = null
 
-      for (const date of uniqueDates) {
+      for (const date of allUniqueDates) {
         if (lastDate === null) {
           currentStreak = 1
         } else {
@@ -169,14 +162,10 @@ export class UserStatisticsService {
 
       // 현재 연속 독서일 계산
       const today = new Date().toISOString().split("T")[0]
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0]
-
       let currentReadingStreak = 0
       let checkDate = today
 
-      while (uniqueDates.includes(checkDate)) {
+      while (allUniqueDates.includes(checkDate)) {
         currentReadingStreak++
         const checkDateObj = new Date(checkDate)
         checkDateObj.setDate(checkDateObj.getDate() - 1)
@@ -188,7 +177,7 @@ export class UserStatisticsService {
         totalReadingTime,
         totalSessions,
         averageSessionTime,
-        longestSessionTime,
+        longestSessionTime: longestDayTime, // 가장 긴 독서일로 수정
         averageDailyTime,
         daysWithSessions,
         longestStreak,

@@ -185,7 +185,7 @@ export default function BookDetailPage({
             second: "2-digit",
           }),
           duration,
-          date: new Date().toISOString().split("T")[0],
+          date: timerStartTime.toISOString().split("T")[0], // 타이머 시작 시간 기준으로 날짜 설정
         }
 
         try {

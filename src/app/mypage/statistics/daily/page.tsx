@@ -96,11 +96,15 @@ export default function DailyStatisticsPage() {
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
+    const dayBeforeYesterday = new Date(today)
+    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2)
 
     if (dateString === today.toISOString().split("T")[0]) {
       return "오늘"
     } else if (dateString === yesterday.toISOString().split("T")[0]) {
       return "어제"
+    } else if (dateString === dayBeforeYesterday.toISOString().split("T")[0]) {
+      return "그제"
     } else {
       return date.toLocaleDateString("ko-KR", {
         month: "short",
