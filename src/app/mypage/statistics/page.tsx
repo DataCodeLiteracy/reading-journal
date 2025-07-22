@@ -77,12 +77,35 @@ export default function StatisticsPage() {
             <ArrowLeft className='h-5 w-5' />
             뒤로가기
           </button>
-          <h1 className='text-3xl font-bold text-theme-primary mb-2'>
-            📊 독서 통계
-          </h1>
-          <p className='text-theme-secondary text-sm'>
-            나의 독서 패턴을 분석해보세요
-          </p>
+          <div className='flex items-center justify-between'>
+            <div>
+              <h1 className='text-3xl font-bold text-theme-primary mb-2'>
+                📊 독서 통계
+              </h1>
+              <p className='text-theme-secondary text-sm'>
+                나의 독서 패턴을 분석해보세요
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!userUid) return
+                try {
+                  setIsLoading(true)
+                  await UserStatisticsService.recalculateUserStatistics(userUid)
+                  const statisticsData =
+                    await UserStatisticsService.getUserStatistics(userUid)
+                  setUserStatistics(statisticsData)
+                } catch (error) {
+                  console.error("Error recalculating statistics:", error)
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
+              className='px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors text-sm'
+            >
+              통계 새로고침
+            </button>
+          </div>
         </header>
 
         {isLoading ? (

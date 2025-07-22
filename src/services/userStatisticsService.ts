@@ -54,6 +54,43 @@ export class UserStatisticsService {
         "userStatistics",
         user_id
       )
+
+      if (result) {
+        // 누락된 필드들이 있는지 확인하고 계산해서 채워넣기
+        const { ReadingSessionService } = await import(
+          "./readingSessionService"
+        )
+        const allSessions = await ReadingSessionService.getUserReadingSessions(
+          user_id
+        )
+
+        // 기존 통계에 누락된 필드들이 있으면 새로 계산
+        if (
+          result.longestSessionTime === undefined ||
+          result.averageDailyTime === undefined ||
+          result.daysWithSessions === undefined ||
+          result.longestStreak === undefined ||
+          result.monthlyReadingTime === undefined
+        ) {
+          console.log("Recalculating missing statistics fields")
+          const calculatedStats = await this.calculateUserStatistics(
+            user_id,
+            allSessions
+          )
+
+          // 기존 데이터와 새로 계산한 데이터를 병합
+          const updatedStats = {
+            ...result,
+            ...calculatedStats,
+            updated_at: new Date(),
+          }
+
+          // 업데이트된 통계를 저장
+          await this.createOrUpdateUserStatistics(user_id, updatedStats)
+          return updatedStats
+        }
+      }
+
       console.log("UserStatisticsService.getUserStatistics result:", result)
       return result
     } catch (error) {
@@ -225,6 +262,34 @@ export class UserStatisticsService {
     } catch (error) {
       console.error(
         "UserStatisticsService.updateStatisticsFromReadingSession error:",
+        error
+      )
+      throw error
+    }
+  }
+
+  static async recalculateUserStatistics(user_id: string): Promise<void> {
+    try {
+      console.log(
+        "UserStatisticsService.recalculateUserStatistics called:",
+        user_id
+      )
+
+      const { ReadingSessionService } = await import("./readingSessionService")
+      const allSessions = await ReadingSessionService.getUserReadingSessions(
+        user_id
+      )
+
+      const updatedStatistics = await this.calculateUserStatistics(
+        user_id,
+        allSessions
+      )
+
+      await this.createOrUpdateUserStatistics(user_id, updatedStatistics)
+      console.log("User statistics recalculated successfully")
+    } catch (error) {
+      console.error(
+        "UserStatisticsService.recalculateUserStatistics error:",
         error
       )
       throw error
