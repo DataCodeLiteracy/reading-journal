@@ -20,7 +20,8 @@ import { UserStatistics } from "@/types/user"
 export default function StatisticsPage() {
   const router = useRouter()
   const { loading, isLoggedIn, userUid } = useAuth()
-  const { userStatistics, isLoading, updateStatistics } = useData()
+  const { userStatistics, isLoading, updateStatistics, allReadingSessions } =
+    useData()
   const [isRecalculating, setIsRecalculating] = useState(false)
 
   useEffect(() => {
@@ -34,7 +35,11 @@ export default function StatisticsPage() {
     if (!userUid) return
     try {
       setIsRecalculating(true)
-      await UserStatisticsService.recalculateUserStatistics(userUid)
+      // 이미 로드된 세션 데이터를 사용하여 통계 재계산
+      await UserStatisticsService.recalculateUserStatisticsWithSessions(
+        userUid,
+        allReadingSessions
+      )
       await updateStatistics()
     } catch (error) {
       console.error("Error recalculating statistics:", error)

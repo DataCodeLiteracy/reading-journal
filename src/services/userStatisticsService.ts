@@ -42,6 +42,70 @@ export class UserStatisticsService {
     }
   }
 
+  // 이미 로드된 세션 데이터를 사용하는 새로운 메서드
+  static async getUserStatisticsWithSessions(
+    user_id: string,
+    readingSessions: ReadingSession[]
+  ): Promise<UserStatistics | null> {
+    try {
+      console.log(
+        "UserStatisticsService.getUserStatisticsWithSessions called with user_id:",
+        user_id,
+        "sessions count:",
+        readingSessions.length
+      )
+
+      const result = await ApiClient.getDocument<UserStatistics>(
+        "userStatistics",
+        user_id
+      )
+
+      if (result) {
+        // 누락된 필드들이 있는지 확인
+        if (
+          result.longestSessionTime === undefined ||
+          result.averageDailyTime === undefined ||
+          result.daysWithSessions === undefined ||
+          result.longestStreak === undefined ||
+          result.monthlyReadingTime === undefined
+        ) {
+          console.log("Recalculating missing statistics fields")
+          const calculatedStats = await this.calculateUserStatistics(
+            user_id,
+            readingSessions
+          )
+
+          // 기존 데이터와 새로 계산한 데이터를 병합
+          const updatedStats = {
+            ...result,
+            ...calculatedStats,
+            updated_at: new Date(),
+          }
+
+          // 직접 ApiClient를 사용하여 업데이트 (무한 루프 방지)
+          await ApiClient.updateDocument(
+            "userStatistics",
+            user_id,
+            updatedStats
+          )
+          return updatedStats
+        }
+      }
+
+      console.log(
+        "UserStatisticsService.getUserStatisticsWithSessions result:",
+        result
+      )
+      return result
+    } catch (error) {
+      console.error(
+        "UserStatisticsService.getUserStatisticsWithSessions error:",
+        error
+      )
+      throw error
+    }
+  }
+
   static async getUserStatistics(
     user_id: string
   ): Promise<UserStatistics | null> {
@@ -294,6 +358,37 @@ export class UserStatisticsService {
     } catch (error) {
       console.error(
         "UserStatisticsService.recalculateUserStatistics error:",
+        error
+      )
+      throw error
+    }
+  }
+
+  // 이미 로드된 세션 데이터를 사용하는 버전
+  static async recalculateUserStatisticsWithSessions(
+    user_id: string,
+    readingSessions: ReadingSession[]
+  ): Promise<void> {
+    try {
+      console.log(
+        "UserStatisticsService.recalculateUserStatisticsWithSessions called:",
+        user_id,
+        "sessions count:",
+        readingSessions.length
+      )
+
+      const updatedStatistics = await this.calculateUserStatistics(
+        user_id,
+        readingSessions
+      )
+
+      await this.createOrUpdateUserStatistics(user_id, updatedStatistics)
+      console.log(
+        "User statistics recalculated successfully with provided sessions"
+      )
+    } catch (error) {
+      console.error(
+        "UserStatisticsService.recalculateUserStatisticsWithSessions error:",
         error
       )
       throw error

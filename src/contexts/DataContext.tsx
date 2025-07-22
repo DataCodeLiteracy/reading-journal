@@ -62,15 +62,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true)
 
-      const [booksData, statisticsData, sessionsData] = await Promise.all([
+      // 먼저 책과 세션 데이터를 로드
+      const [booksData, sessionsData] = await Promise.all([
         BookService.getUserBooks(userUid),
-        UserStatisticsService.getUserStatistics(userUid),
         ReadingSessionService.getUserReadingSessions(userUid),
       ])
 
       setAllBooks(booksData)
-      setUserStatistics(statisticsData)
       setAllReadingSessions(sessionsData)
+
+      // 세션 데이터를 사용하여 통계 계산 (중복 로딩 방지)
+      const statisticsData =
+        await UserStatisticsService.getUserStatisticsWithSessions(
+          userUid,
+          sessionsData
+        )
+
+      setUserStatistics(statisticsData)
     } catch (error) {
       console.error("Error refreshing data:", error)
     } finally {
@@ -83,9 +91,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!userUid) return
 
     try {
-      const updatedStats = await UserStatisticsService.getUserStatistics(
-        userUid
-      )
+      // 이미 로드된 세션 데이터를 사용
+      const updatedStats =
+        await UserStatisticsService.getUserStatisticsWithSessions(
+          userUid,
+          allReadingSessions
+        )
       setUserStatistics(updatedStats)
     } catch (error) {
       console.error("Error updating statistics:", error)
