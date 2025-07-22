@@ -85,8 +85,12 @@ export class UserStatisticsService {
             updated_at: new Date(),
           }
 
-          // 업데이트된 통계를 저장
-          await this.createOrUpdateUserStatistics(user_id, updatedStats)
+          // 직접 ApiClient를 사용하여 업데이트 (무한 루프 방지)
+          await ApiClient.updateDocument(
+            "userStatistics",
+            user_id,
+            updatedStats
+          )
           return updatedStats
         }
       }

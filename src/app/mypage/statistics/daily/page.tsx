@@ -6,6 +6,7 @@ import { ArrowLeft, Clock, Calendar, BarChart3, TrendingUp } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { ReadingSession } from "@/types/user"
+import Pagination from "@/components/Pagination"
 
 interface DailyReadingData {
   date: string
@@ -19,6 +20,8 @@ export default function DailyStatisticsPage() {
   const { loading, isLoggedIn, userUid } = useAuth()
   const [dailyData, setDailyData] = useState<DailyReadingData[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -114,6 +117,17 @@ export default function DailyStatisticsPage() {
     }
   }
 
+  // 페이지네이션을 위한 데이터 계산
+  const totalItems = dailyData.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentPageData = dailyData.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
   if (loading) {
     return (
       <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
@@ -164,51 +178,66 @@ export default function DailyStatisticsPage() {
             </p>
           </div>
         ) : (
-          <div className='space-y-4'>
-            {dailyData.map((day) => (
-              <div
-                key={day.date}
-                className='bg-theme-secondary rounded-lg p-4 shadow-sm'
-              >
-                <div className='flex items-center justify-between mb-3'>
-                  <div className='flex items-center gap-3'>
-                    <Calendar className='h-5 w-5 text-accent-theme' />
-                    <h3 className='font-semibold text-theme-primary'>
-                      {formatDate(day.date)}
-                    </h3>
+          <>
+            <div className='space-y-4 mb-6'>
+              {currentPageData.map((day) => (
+                <div
+                  key={day.date}
+                  className='bg-theme-secondary rounded-lg p-4 shadow-sm'
+                >
+                  <div className='flex items-center justify-between mb-3'>
+                    <div className='flex items-center gap-3'>
+                      <Calendar className='h-5 w-5 text-accent-theme' />
+                      <h3 className='font-semibold text-theme-primary'>
+                        {formatDate(day.date)}
+                      </h3>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <Clock className='h-4 w-4 text-theme-tertiary' />
+                      <span className='text-sm font-medium text-theme-primary'>
+                        {formatTime(day.totalTime)}
+                      </span>
+                    </div>
                   </div>
-                  <div className='flex items-center gap-2'>
-                    <Clock className='h-4 w-4 text-theme-tertiary' />
-                    <span className='text-sm font-medium text-theme-primary'>
-                      {formatTime(day.totalTime)}
+
+                  <div className='flex items-center justify-between text-sm text-theme-secondary mb-3'>
+                    <span>독서 세션 {day.sessionCount}회</span>
+                    <span>
+                      평균{" "}
+                      {formatTime(Math.round(day.totalTime / day.sessionCount))}
                     </span>
                   </div>
-                </div>
 
-                <div className='flex items-center justify-between text-sm text-theme-secondary mb-3'>
-                  <span>독서 세션 {day.sessionCount}회</span>
-                  <span>
-                    평균{" "}
-                    {formatTime(Math.round(day.totalTime / day.sessionCount))}
-                  </span>
+                  {day.sessions.length > 0 && (
+                    <div className='space-y-2'>
+                      {day.sessions.map((session, index) => (
+                        <div
+                          key={session.id}
+                          className='flex items-center justify-between text-xs text-theme-tertiary bg-theme-primary rounded p-2'
+                        >
+                          <span>세션 {index + 1}</span>
+                          <span>{formatTime(session.duration)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              ))}
+            </div>
 
-                {day.sessions.length > 0 && (
-                  <div className='space-y-2'>
-                    {day.sessions.map((session, index) => (
-                      <div
-                        key={session.id}
-                        className='flex items-center justify-between text-xs text-theme-tertiary bg-theme-primary rounded p-2'
-                      >
-                        <span>세션 {index + 1}</span>
-                        <span>{formatTime(session.duration)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className='mt-8 mb-8 pb-8'>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  totalItems={totalItems}
+                  itemsPerPage={itemsPerPage}
+                />
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
