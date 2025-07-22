@@ -78,6 +78,11 @@ export class UserStatisticsService {
           totalReadingTime: 0,
           totalSessions: 0,
           averageSessionTime: 0,
+          longestSessionTime: 0,
+          averageDailyTime: 0,
+          daysWithSessions: 0,
+          longestStreak: 0,
+          monthlyReadingTime: 0,
           readingStreak: 0,
         }
       }
@@ -88,7 +93,41 @@ export class UserStatisticsService {
       )
       const totalSessions = readingSessions.length
       const averageSessionTime = Math.round(totalReadingTime / totalSessions)
+      const longestSessionTime = Math.max(
+        ...readingSessions.map((s) => s.duration)
+      )
 
+      // 일일 독서 시간 계산
+      const dailyReadingTime: { [date: string]: number } = {}
+      readingSessions.forEach((session) => {
+        const date = session.date
+        dailyReadingTime[date] =
+          (dailyReadingTime[date] || 0) + session.duration
+      })
+
+      const daysWithSessions = Object.keys(dailyReadingTime).length
+      const averageDailyTime =
+        daysWithSessions > 0
+          ? Math.round(totalReadingTime / daysWithSessions)
+          : 0
+
+      // 이번 달 독서 시간 계산
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
+      const monthlySessions = readingSessions.filter((session) => {
+        const sessionDate = new Date(session.date)
+        return (
+          sessionDate.getMonth() === currentMonth &&
+          sessionDate.getFullYear() === currentYear
+        )
+      })
+      const monthlyReadingTime = monthlySessions.reduce(
+        (acc, session) => acc + session.duration,
+        0
+      )
+
+      // 연속 독서일 계산
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
@@ -100,6 +139,7 @@ export class UserStatisticsService {
       const uniqueDates = [...new Set(recentSessions.map((s) => s.date))].sort()
       let readingStreak = 0
       let currentStreak = 0
+      let longestStreak = 0
       let lastDate: string | null = null
 
       for (const date of uniqueDates) {
@@ -120,11 +160,27 @@ export class UserStatisticsService {
           }
         }
 
-        if (currentStreak > readingStreak) {
-          readingStreak = currentStreak
+        if (currentStreak > longestStreak) {
+          longestStreak = currentStreak
         }
 
         lastDate = date
+      }
+
+      // 현재 연속 독서일 계산
+      const today = new Date().toISOString().split("T")[0]
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0]
+
+      let currentReadingStreak = 0
+      let checkDate = today
+
+      while (uniqueDates.includes(checkDate)) {
+        currentReadingStreak++
+        const checkDateObj = new Date(checkDate)
+        checkDateObj.setDate(checkDateObj.getDate() - 1)
+        checkDate = checkDateObj.toISOString().split("T")[0]
       }
 
       const statistics: Partial<UserStatistics> = {
@@ -132,7 +188,12 @@ export class UserStatisticsService {
         totalReadingTime,
         totalSessions,
         averageSessionTime,
-        readingStreak,
+        longestSessionTime,
+        averageDailyTime,
+        daysWithSessions,
+        longestStreak,
+        monthlyReadingTime,
+        readingStreak: currentReadingStreak,
         updated_at: new Date(),
       }
 

@@ -151,20 +151,30 @@ export default function StatisticsPage() {
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               {/* 일일 독서 시간 분포 */}
               <div className='bg-theme-secondary rounded-lg p-6 shadow-sm'>
-                <h3 className='text-lg font-semibold text-theme-primary mb-4'>
-                  📅 일일 독서 패턴
-                </h3>
+                <div className='flex items-center justify-between mb-4'>
+                  <h3 className='text-lg font-semibold text-theme-primary'>
+                    📅 일일 독서 패턴
+                  </h3>
+                  <button
+                    onClick={() => router.push("/mypage/statistics/daily")}
+                    className='text-sm text-accent-theme hover:text-accent-theme-secondary transition-colors'
+                  >
+                    상세보기 →
+                  </button>
+                </div>
                 <div className='space-y-3'>
                   <div className='flex items-center justify-between'>
                     <span className='text-sm text-theme-secondary'>
                       가장 긴 독서일
                     </span>
                     <span className='text-sm font-medium text-theme-primary'>
-                      {Math.floor(userStatistics.longestSessionTime / 3600)}시간{" "}
-                      {Math.floor(
-                        (userStatistics.longestSessionTime % 3600) / 60
-                      )}
-                      분
+                      {userStatistics.longestSessionTime
+                        ? `${Math.floor(
+                            userStatistics.longestSessionTime / 3600
+                          )}시간 ${Math.floor(
+                            (userStatistics.longestSessionTime % 3600) / 60
+                          )}분`
+                        : "0시간 0분"}
                     </span>
                   </div>
                   <div className='flex items-center justify-between'>
@@ -172,7 +182,11 @@ export default function StatisticsPage() {
                       평균 일일 독서 시간
                     </span>
                     <span className='text-sm font-medium text-theme-primary'>
-                      {Math.floor(userStatistics.averageDailyTime / 60)}분
+                      {userStatistics.averageDailyTime
+                        ? `${Math.floor(
+                            userStatistics.averageDailyTime / 60
+                          )}분 ${userStatistics.averageDailyTime % 60}초`
+                        : "0분 0초"}
                     </span>
                   </div>
                   <div className='flex items-center justify-between'>
@@ -180,7 +194,7 @@ export default function StatisticsPage() {
                       독서한 날 수
                     </span>
                     <span className='text-sm font-medium text-theme-primary'>
-                      {userStatistics.daysWithSessions}일
+                      {userStatistics.daysWithSessions || 0}일
                     </span>
                   </div>
                 </div>
@@ -197,7 +211,7 @@ export default function StatisticsPage() {
                       현재 연속 독서일
                     </span>
                     <span className='text-sm font-medium text-theme-primary'>
-                      {userStatistics.readingStreak}일
+                      {userStatistics.readingStreak || 0}일
                     </span>
                   </div>
                   <div className='flex items-center justify-between'>
@@ -205,7 +219,7 @@ export default function StatisticsPage() {
                       최고 연속 독서일
                     </span>
                     <span className='text-sm font-medium text-theme-primary'>
-                      {userStatistics.longestStreak}일
+                      {userStatistics.longestStreak || 0}일
                     </span>
                   </div>
                   <div className='flex items-center justify-between'>
@@ -213,7 +227,13 @@ export default function StatisticsPage() {
                       이번 달 독서 시간
                     </span>
                     <span className='text-sm font-medium text-theme-primary'>
-                      {Math.floor(userStatistics.monthlyReadingTime / 3600)}시간
+                      {userStatistics.monthlyReadingTime
+                        ? `${Math.floor(
+                            userStatistics.monthlyReadingTime / 3600
+                          )}시간 ${Math.floor(
+                            (userStatistics.monthlyReadingTime % 3600) / 60
+                          )}분`
+                        : "0시간 0분"}
                     </span>
                   </div>
                 </div>
