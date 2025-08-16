@@ -13,7 +13,7 @@ import {
   Star,
   Clock,
   TrendingUp,
-  ArrowLeft,
+  Home,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
@@ -95,11 +95,11 @@ export default function MyPage() {
       <div className='container mx-auto px-4 py-6'>
         <header className='mb-6'>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push("/")}
             className='flex items-center gap-2 text-theme-secondary hover:text-theme-primary mb-4 transition-colors'
           >
-            <ArrowLeft className='h-5 w-5' />
-            뒤로가기
+            <Home className='h-5 w-5' />
+            메인 페이지로 이동
           </button>
           <h1 className='text-3xl font-bold text-theme-primary mb-2'>
             👤 마이페이지

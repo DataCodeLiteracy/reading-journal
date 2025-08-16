@@ -186,16 +186,8 @@ export default function BookDetailPage({
         > = {
           user_id: resolvedParams?.user_id || "",
           bookId: resolvedParams?.id || "",
-          startTime: timerStartTime.toLocaleTimeString("ko-KR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
-          endTime: endTime.toLocaleTimeString("ko-KR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
+          startTime: timerStartTime.toISOString(), // UTC 시간으로 저장
+          endTime: endTime.toISOString(), // UTC 시간으로 저장
           duration,
           date: timerStartTime.toISOString().split("T")[0], // 타이머 시작 시간 기준으로 날짜 설정
         }
@@ -238,6 +230,29 @@ export default function BookDetailPage({
   const getElapsedTime = () => {
     if (!timerStartTime || !currentTime) return 0
     return Math.floor((currentTime.getTime() - timerStartTime.getTime()) / 1000)
+  }
+
+  // 시간 표시용 포맷 함수 (ISO 형식이면 한국 시간으로, 기존 형식이면 그대로)
+  const formatTimeForDisplay = (timeString: string) => {
+    if (timeString.includes("T") && timeString.includes("Z")) {
+      // ISO 형식인 경우 한국 시간으로 변환
+      const date = new Date(timeString)
+      const koreaHour = (date.getUTCHours() + 9) % 24
+      const koreaMinute = date.getUTCMinutes()
+      const koreaSecond = date.getUTCSeconds()
+
+      // 오전/오후 구분
+      const period = koreaHour < 12 ? "오전" : "오후"
+      const displayHour =
+        koreaHour === 0 ? 12 : koreaHour > 12 ? koreaHour - 12 : koreaHour
+
+      return `${period} ${displayHour.toString().padStart(2, "0")}:${koreaMinute
+        .toString()
+        .padStart(2, "0")}:${koreaSecond.toString().padStart(2, "0")}`
+    } else {
+      // 기존 형식인 경우 그대로 반환
+      return timeString
+    }
   }
 
   const handleEditBook = async (updatedBook: Book) => {
@@ -691,42 +706,38 @@ export default function BookDetailPage({
                 readingSessions.length > 10 ? "max-h-80 overflow-y-auto" : ""
               }`}
             >
-              {readingSessions
-                .sort(
-                  (a: ReadingSession, b: ReadingSession) =>
-                    new Date(b.date).getTime() - new Date(a.date).getTime()
-                )
-                .map((session: ReadingSession) => (
-                  <div
-                    key={session.id}
-                    className='flex items-center justify-between p-2 bg-theme-tertiary rounded-lg'
-                  >
-                    <div>
-                      <div className='text-xs font-medium text-theme-primary'>
-                        {session.date}
-                      </div>
-                      <div className='text-xs text-theme-secondary'>
-                        {session.startTime} - {session.endTime}
-                      </div>
+              {readingSessions.map((session: ReadingSession) => (
+                <div
+                  key={session.id}
+                  className='flex items-center justify-between p-2 bg-theme-tertiary rounded-lg'
+                >
+                  <div>
+                    <div className='text-xs font-medium text-theme-primary'>
+                      {session.date}
                     </div>
-                    <div className='flex items-center gap-2'>
-                      <div className='text-xs font-medium text-accent-theme'>
-                        {Math.floor(session.duration / 60)}분{" "}
-                        {session.duration % 60}초
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteReadingSession(session.id)
-                        }}
-                        className='p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
-                        title='독서 기록 삭제'
-                      >
-                        <Trash2 className='h-3 w-3' />
-                      </button>
+                    <div className='text-xs text-theme-secondary'>
+                      {formatTimeForDisplay(session.startTime)} -{" "}
+                      {formatTimeForDisplay(session.endTime)}
                     </div>
                   </div>
-                ))}
+                  <div className='flex items-center gap-2'>
+                    <div className='text-xs font-medium text-accent-theme'>
+                      {Math.floor(session.duration / 60)}분{" "}
+                      {session.duration % 60}초
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteReadingSession(session.id)
+                      }}
+                      className='p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
+                      title='독서 기록 삭제'
+                    >
+                      <Trash2 className='h-3 w-3' />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

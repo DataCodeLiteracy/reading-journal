@@ -16,12 +16,18 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { UserStatistics } from "@/types/user"
+import { ReadingPatternCharts } from "@/components/ReadingPatternCharts"
 
 export default function StatisticsPage() {
   const router = useRouter()
   const { loading, isLoggedIn, userUid } = useAuth()
-  const { userStatistics, isLoading, updateStatistics, allReadingSessions } =
-    useData()
+  const {
+    userStatistics,
+    isLoading,
+    updateStatistics,
+    allReadingSessions,
+    timePatterns,
+  } = useData()
   const [isRecalculating, setIsRecalculating] = useState(false)
 
   useEffect(() => {
@@ -68,11 +74,11 @@ export default function StatisticsPage() {
       <div className='container mx-auto px-4 py-6'>
         <header className='mb-6'>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push("/mypage")}
             className='flex items-center gap-2 text-theme-secondary hover:text-theme-primary mb-4 transition-colors'
           >
             <ArrowLeft className='h-5 w-5' />
-            뒤로가기
+            마이페이지로 이동
           </button>
           <div className='flex items-center justify-between'>
             <div>
@@ -156,7 +162,7 @@ export default function StatisticsPage() {
             </div>
 
             {/* 상세 통계 */}
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
               {/* 일일 독서 시간 분포 */}
               <div className='bg-theme-secondary rounded-lg p-6 shadow-sm'>
                 <div className='flex items-center justify-between mb-4'>
@@ -246,20 +252,63 @@ export default function StatisticsPage() {
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* 독서 추이 차트 (향후 구현) */}
-            <div className='bg-theme-secondary rounded-lg p-6 shadow-sm'>
-              <h3 className='text-lg font-semibold text-theme-primary mb-4'>
-                📊 독서 추이
-              </h3>
-              <div className='text-center py-8'>
-                <Activity className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-                <p className='text-theme-secondary'>
-                  차트 기능은 추후 업데이트 예정입니다
-                </p>
+              {/* 시간대별 독서 패턴 */}
+              <div className='bg-theme-secondary rounded-lg p-6 shadow-sm'>
+                <div className='flex items-center justify-between mb-4'>
+                  <h3 className='text-lg font-semibold text-theme-primary'>
+                    🕐 시간대별 패턴
+                  </h3>
+                  <button
+                    onClick={() =>
+                      router.push("/mypage/statistics/time-pattern")
+                    }
+                    className='text-sm text-accent-theme hover:text-accent-theme-secondary transition-colors'
+                  >
+                    상세보기 →
+                  </button>
+                </div>
+                <div className='space-y-3'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm text-theme-secondary'>
+                      가장 활발한 독서 시간대
+                    </span>
+                    <span className='text-sm font-medium text-theme-primary'>
+                      {timePatterns?.mostActiveTimeSlot?.label || "데이터 없음"}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm text-theme-secondary'>
+                      가장 활발한 독서 요일
+                    </span>
+                    <span className='text-sm font-medium text-theme-primary'>
+                      {timePatterns?.mostActiveDay?.dayName || "데이터 없음"}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm text-theme-secondary'>
+                      총 독서 세션
+                    </span>
+                    <span className='text-sm font-medium text-theme-primary'>
+                      {timePatterns ? `${allReadingSessions.length}회` : "0회"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* 독서 패턴 시각화 */}
+            {timePatterns && (
+              <div className='bg-theme-secondary rounded-lg p-6 shadow-sm'>
+                <h3 className='text-lg font-semibold text-theme-primary mb-4'>
+                  📊 독서 패턴 시각화
+                </h3>
+                <ReadingPatternCharts
+                  overallTimeSlots={timePatterns.overallTimeSlots}
+                  dayTimePatterns={timePatterns.dayTimePatterns}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className='text-center py-12'>

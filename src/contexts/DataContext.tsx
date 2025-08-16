@@ -13,6 +13,10 @@ import { ReadingSession } from "@/types/user"
 import { BookService } from "@/services/bookService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ReadingSessionService } from "@/services/readingSessionService"
+import {
+  TimePatternService,
+  TimePatternAnalysis,
+} from "@/services/timePatternService"
 import { useAuth } from "./AuthContext"
 
 interface DataContextType {
@@ -34,6 +38,10 @@ interface DataContextType {
   addReadingSession: (session: ReadingSession) => void
   removeReadingSession: (sessionId: string) => void
 
+  // Time Patterns
+  timePatterns: TimePatternAnalysis | null
+  updateTimePatterns: () => void
+
   // Loading states
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
@@ -53,6 +61,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [allReadingSessions, setAllReadingSessions] = useState<
     ReadingSession[]
   >([])
+  const [timePatterns, setTimePatterns] = useState<TimePatternAnalysis | null>(
+    null
+  )
   const [isLoading, setIsLoading] = useState(false)
 
   // 모든 데이터를 새로고침하는 함수
@@ -79,6 +90,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         )
 
       setUserStatistics(statisticsData)
+
+      // 시간대별 패턴 분석
+      if (sessionsData.length > 0) {
+        const patterns = TimePatternService.analyzeTimePatterns(sessionsData)
+        setTimePatterns(patterns)
+      }
     } catch (error) {
       console.error("Error refreshing data:", error)
     } finally {
@@ -116,6 +133,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeBook = (bookId: string) => {
     setAllBooks((prev) => prev.filter((book) => book.id !== bookId))
+  }
+
+  // 시간대별 패턴 업데이트 함수
+  const updateTimePatterns = () => {
+    if (allReadingSessions.length > 0) {
+      const patterns =
+        TimePatternService.analyzeTimePatterns(allReadingSessions)
+      setTimePatterns(patterns)
+    }
   }
 
   // 독서 세션 관련 함수들
@@ -197,6 +223,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setAllReadingSessions,
     addReadingSession,
     removeReadingSession,
+    timePatterns,
+    updateTimePatterns,
     isLoading,
     setIsLoading,
     refreshAllData,
