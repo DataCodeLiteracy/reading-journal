@@ -1,0 +1,44 @@
+{
+  "id": "long-term",
+  "type": "long-term",
+  "version": "1.0.0",
+  "items": [
+    {
+      "id": "long-1",
+      "title": "책 접근성 확보",
+      "description": "아이들이 어디서든 책에 접근할 수 있게 책을 미리 준비하고, 독서 환경을 조성하기.",
+      "category": "long-term"
+    },
+    {
+      "id": "long-2",
+      "title": "장기 선언 유지",
+      "description": "\"고등학생까지 매일 읽어줄게!\" 다짐 상기, 아이들 앞에서 재확인하며 동기 부여.",
+      "category": "long-term"
+    },
+    {
+      "id": "long-3",
+      "title": "부모 모델링",
+      "description": "부모가 책을 좋아하고 자주 읽는 모습을 보여주기 – 아이들이 자연스럽게 따라오게.",
+      "category": "long-term"
+    },
+    {
+      "id": "long-4",
+      "title": "마음가짐 변화",
+      "description": "좋은 환경 만들기 위해 부모 태도부터 바꾸기 – 피곤할 때도 긍정적으로 접근.",
+      "category": "long-term"
+    },
+    {
+      "id": "long-5",
+      "title": "기록과 회고",
+      "description": "소통 순간/교훈/모르는 단어 매일 기록, 블로그나 앱으로 객관적 반성하며 개선.",
+      "category": "long-term"
+    },
+    {
+      "id": "long-6",
+      "title": "꾸준함과 유연 균형",
+      "description": "매일 목표 지키되, 강박 피하고 상황(예: 가족 모임)에 유연 – 책이 행복한 기억으로 남기기.",
+      "category": "long-term"
+    }
+  ],
+  "updated_at": "2024-12-15T00:00:00.000Z"
+}

@@ -11,6 +11,7 @@ import {
   Home,
   ArrowLeft,
   TrendingUp,
+  ClipboardList,
 } from "lucide-react"
 import { adminService } from "@/services/adminService"
 import { ReadingRecord } from "@/types/admin"
@@ -362,6 +363,23 @@ export default function AdminPage() {
             </h3>
             <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
               월별 독서 활동 회고
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push("/admin/checklists")}
+            className='bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
+          >
+            <div className='flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3'>
+              <div className='p-1.5 sm:p-2 bg-white/20 rounded-lg'>
+                <ClipboardList className='h-4 w-4 sm:h-6 sm:w-6' />
+              </div>
+            </div>
+            <h3 className='font-semibold text-base sm:text-lg mb-1 sm:mb-2'>
+              체크리스트 관리
+            </h3>
+            <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
+              체크리스트 데이터 업로드 및 관리
             </p>
           </button>
         </div>

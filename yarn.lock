@@ -136,9 +136,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@firebase/ai@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@firebase/ai@npm:2.0.0"
+"@firebase/ai@npm:2.1.0":
+  version: 2.1.0
+  resolution: "@firebase/ai@npm:2.1.0"
   dependencies:
     "@firebase/app-check-interop-types": "npm:0.3.3"
     "@firebase/component": "npm:0.7.0"
@@ -148,7 +148,7 @@ __metadata:
   peerDependencies:
     "@firebase/app": 0.x
     "@firebase/app-types": 0.x
-  checksum: 10/a08a0217f528220df3670603ecd8795e30a1b594e736539e35463e89544dace92e3680e57506536a602832faf6e01faa5cdc7717e47e3ae44fef88a862d29ef2
+  checksum: 10/bd46f4b5c7c02409bc1ab57a21b76b2cc5bb33581bc96d649a3d735df69d92255d930695592964ac47246d5145ac0e7b26e5d6e85013717e26fa52fadb22e6e0
   languageName: node
   linkType: hard
 
@@ -233,16 +233,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@firebase/app-compat@npm:0.5.0":
-  version: 0.5.0
-  resolution: "@firebase/app-compat@npm:0.5.0"
+"@firebase/app-compat@npm:0.5.1":
+  version: 0.5.1
+  resolution: "@firebase/app-compat@npm:0.5.1"
   dependencies:
-    "@firebase/app": "npm:0.14.0"
+    "@firebase/app": "npm:0.14.1"
     "@firebase/component": "npm:0.7.0"
     "@firebase/logger": "npm:0.5.0"
     "@firebase/util": "npm:1.13.0"
     tslib: "npm:^2.1.0"
-  checksum: 10/5f4e48d43aceb4bc071d86a68be67f6dfd41acba1da5576b45c43224c335dc47b3c3af370b0b5e1aec439da300d48e76c050bccb991fae04820d6d8f5e9097ef
+  checksum: 10/b475bf0a737f71d9b0e4394dd9c7c233dde7eaf584c6910f9c0656532e0d9f4d931ceb0267c7f423f4f3108318eef7214d7afaee6d1f118ace5b855c3d04d2bd
   languageName: node
   linkType: hard
 
@@ -253,16 +253,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@firebase/app@npm:0.14.0":
-  version: 0.14.0
-  resolution: "@firebase/app@npm:0.14.0"
+"@firebase/app@npm:0.14.1":
+  version: 0.14.1
+  resolution: "@firebase/app@npm:0.14.1"
   dependencies:
     "@firebase/component": "npm:0.7.0"
     "@firebase/logger": "npm:0.5.0"
     "@firebase/util": "npm:1.13.0"
     idb: "npm:7.1.1"
     tslib: "npm:^2.1.0"
-  checksum: 10/4d7ada9fc4427c92c749fe1d6729e5d62b5844b6f2ba5159bf97089ff74a51ab3226a1458eeb5043dfce126bb36ce2d5932805efc759275988ca9156c1ec9b68
+  checksum: 10/7c5d1e287f2a9a25a7cc25e1d25cc4aacf5246b3711603da0b158aaab6f633aa5bffc5dd62f77a18549d3ca095b360af7367adea6ffcfeca42c3696eac41e5dc
   languageName: node
   linkType: hard
 
@@ -544,19 +544,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@firebase/performance-compat@npm:0.2.21":
-  version: 0.2.21
-  resolution: "@firebase/performance-compat@npm:0.2.21"
+"@firebase/performance-compat@npm:0.2.22":
+  version: 0.2.22
+  resolution: "@firebase/performance-compat@npm:0.2.22"
   dependencies:
     "@firebase/component": "npm:0.7.0"
     "@firebase/logger": "npm:0.5.0"
-    "@firebase/performance": "npm:0.7.8"
+    "@firebase/performance": "npm:0.7.9"
     "@firebase/performance-types": "npm:0.2.3"
     "@firebase/util": "npm:1.13.0"
     tslib: "npm:^2.1.0"
   peerDependencies:
     "@firebase/app-compat": 0.x
-  checksum: 10/7e0573c4a80cead4358a6ee4bca7e6370f87b55c4bd0472932cf87180e21c2d00cf4e465ab18a18b4046afcb42b706158bae75e5150a6619498d859e633c95c9
+  checksum: 10/2992c8896e9d4b7d825b77246d1f037216f8ad5126ec47de513c86fbd683565e11b45a357272e6808e976d36a7e6d2cba0b1f636ca2da213b805f08e20de185f
   languageName: node
   linkType: hard
 
@@ -567,9 +567,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@firebase/performance@npm:0.7.8":
-  version: 0.7.8
-  resolution: "@firebase/performance@npm:0.7.8"
+"@firebase/performance@npm:0.7.9":
+  version: 0.7.9
+  resolution: "@firebase/performance@npm:0.7.9"
   dependencies:
     "@firebase/component": "npm:0.7.0"
     "@firebase/installations": "npm:0.6.19"
@@ -579,7 +579,7 @@ __metadata:
     web-vitals: "npm:^4.2.4"
   peerDependencies:
     "@firebase/app": 0.x
-  checksum: 10/f3b19652322dc622cfb2949c2fdc47a4bb44d7f4db97f00329e477c37eff5cd0c8a11bc9cad51b9562d57d5969da359d51cb8cf4791812eb9718c71c07fee818
+  checksum: 10/419a86fec70da9ba11dfb598099d83d9bac744b698cf24fe54c68bcecf620467fcbb9f88c1fa3577300d87831bbf42bcfd5a888abf263f0c5475cc79cdb471e2
   languageName: node
   linkType: hard
 
@@ -2808,17 +2808,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"firebase@npm:^12.0.0":
-  version: 12.0.0
-  resolution: "firebase@npm:12.0.0"
+"firebase@npm:^12.1.0":
+  version: 12.1.0
+  resolution: "firebase@npm:12.1.0"
   dependencies:
-    "@firebase/ai": "npm:2.0.0"
+    "@firebase/ai": "npm:2.1.0"
     "@firebase/analytics": "npm:0.10.18"
     "@firebase/analytics-compat": "npm:0.2.24"
-    "@firebase/app": "npm:0.14.0"
+    "@firebase/app": "npm:0.14.1"
     "@firebase/app-check": "npm:0.11.0"
     "@firebase/app-check-compat": "npm:0.4.0"
-    "@firebase/app-compat": "npm:0.5.0"
+    "@firebase/app-compat": "npm:0.5.1"
     "@firebase/app-types": "npm:0.9.3"
     "@firebase/auth": "npm:1.11.0"
     "@firebase/auth-compat": "npm:0.6.0"
@@ -2833,14 +2833,14 @@ __metadata:
     "@firebase/installations-compat": "npm:0.2.19"
     "@firebase/messaging": "npm:0.12.23"
     "@firebase/messaging-compat": "npm:0.2.23"
-    "@firebase/performance": "npm:0.7.8"
-    "@firebase/performance-compat": "npm:0.2.21"
+    "@firebase/performance": "npm:0.7.9"
+    "@firebase/performance-compat": "npm:0.2.22"
     "@firebase/remote-config": "npm:0.6.6"
     "@firebase/remote-config-compat": "npm:0.2.19"
     "@firebase/storage": "npm:0.14.0"
     "@firebase/storage-compat": "npm:0.4.0"
     "@firebase/util": "npm:1.13.0"
-  checksum: 10/f9700de54aacb51b99222f4b8cf00aee9825ea0291e70d8a395d42ebd110edff085d8d3695266418befd5eee7bb082caedbda5ec2db2c0e9381494f17bcf9f0b
+  checksum: 10/476fbcb51939bfc6325f1c89d7cf2f8392f6c1bfe1087d0226ceb8fec92b2dd3d6fed60160099fd164505a495e9825e87be3258862ad6a31497130d6fada1538
   languageName: node
   linkType: hard
 
@@ -4156,7 +4156,7 @@ __metadata:
     chart.js: "npm:^4.5.0"
     eslint: "npm:^9"
     eslint-config-next: "npm:15.4.2"
-    firebase: "npm:^12.0.0"
+    firebase: "npm:^12.1.0"
     lucide-react: "npm:^0.525.0"
     next: "npm:15.4.2"
     react: "npm:19.1.0"

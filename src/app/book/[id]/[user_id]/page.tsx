@@ -32,7 +32,7 @@ import { BookService } from "@/services/bookService"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ChecklistService } from "@/services/checklistService"
-import { PRE_READING_CHECKLIST } from "@/utils/checklistData"
+
 import { ApiError } from "@/lib/apiClient"
 
 export default function BookDetailPage({
@@ -75,6 +75,7 @@ export default function BookDetailPage({
 
   // 체크리스트 관련 상태
   const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
+  const [preReadingChecklist, setPreReadingChecklist] = useState<any[]>([])
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false)
   const [showChecklistReminder, setShowChecklistReminder] = useState(false)
 
@@ -114,6 +115,28 @@ export default function BookDetailPage({
               userUid
             )
             setUserChecklist(checklistData)
+
+            // 시스템 체크리스트 로드 (실패 시 기본값 사용)
+            try {
+              const systemChecklist = await ChecklistService.getSystemChecklist(
+                "pre-reading"
+              )
+              if (systemChecklist) {
+                setPreReadingChecklist(systemChecklist.items)
+              } else {
+                setPreReadingChecklist(
+                  ChecklistService.getDefaultPreReadingChecklist()
+                )
+              }
+            } catch (error) {
+              console.error(
+                "Failed to load system checklist, using default:",
+                error
+              )
+              setPreReadingChecklist(
+                ChecklistService.getDefaultPreReadingChecklist()
+              )
+            }
           }
         } catch (error) {
           console.error("Error loading reading sessions:", error)
@@ -643,15 +666,20 @@ export default function BookDetailPage({
             </div>
             {userChecklist?.lastPreReadingCheck && (
               <span className='text-xs text-theme-secondary'>
-                {new Date(userChecklist.lastPreReadingCheck).toLocaleDateString(
-                  "ko-KR",
-                  {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
+                {(() => {
+                  const lastCheckDate = ChecklistService.convertTimestampToDate(
+                    userChecklist.lastPreReadingCheck
+                  )
+                  if (lastCheckDate) {
+                    return lastCheckDate.toLocaleDateString("ko-KR", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
                   }
-                )}
+                  return "시간 정보 없음"
+                })()}
               </span>
             )}
             <span className='text-xs text-theme-secondary text-center'>
@@ -909,7 +937,7 @@ export default function BookDetailPage({
           isOpen={isChecklistModalOpen}
           onClose={() => setIsChecklistModalOpen(false)}
           onComplete={handleChecklistComplete}
-          checklist={PRE_READING_CHECKLIST}
+          checklist={preReadingChecklist}
           title='독서 전 체크리스트'
           description='독서를 시작하기 전에 다음 항목들을 확인해주세요.'
         />

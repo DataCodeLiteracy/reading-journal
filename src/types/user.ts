@@ -94,3 +94,11 @@ export interface UserChecklist {
   }
   updated_at?: Date
 }
+
+export interface SystemChecklist {
+  id: string
+  type: "pre-reading" | "long-term"
+  items: ChecklistItem[]
+  version: string
+  updated_at?: Date
+}

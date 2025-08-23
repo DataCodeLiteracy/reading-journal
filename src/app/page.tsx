@@ -30,7 +30,7 @@ import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ChecklistService } from "@/services/checklistService"
-import { LONG_TERM_CHECKLIST } from "@/utils/checklistData"
+
 import { ApiError } from "@/lib/apiClient"
 
 export default function Home() {
@@ -63,8 +63,8 @@ export default function Home() {
 
   // 체크리스트 관련 상태
   const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
+  const [longTermChecklist, setLongTermChecklist] = useState<any[]>([])
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false)
-  const [showLongTermReminder, setShowLongTermReminder] = useState(false)
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -118,19 +118,25 @@ export default function Home() {
         const checklistData = await ChecklistService.getUserChecklist(userUid)
         setUserChecklist(checklistData)
 
-        // 장기 체크리스트 리마인더 표시 여부 확인
-        if (checklistData) {
-          const today = new Date().toISOString().split("T")[0]
-          const lastReminder =
-            checklistData.longTermReminders["long-1"]?.lastReminded
-          const lastReminderDate = lastReminder
-            ? new Date(lastReminder).toISOString().split("T")[0]
-            : null
-
-          if (lastReminderDate !== today) {
-            setShowLongTermReminder(true)
+        // 장기 체크리스트 로드 (실패 시 기본값 사용)
+        try {
+          const systemChecklist = await ChecklistService.getSystemChecklist(
+            "long-term"
+          )
+          if (systemChecklist) {
+            setLongTermChecklist(systemChecklist.items)
+          } else {
+            setLongTermChecklist(ChecklistService.getDefaultLongTermChecklist())
           }
+        } catch (error) {
+          console.error(
+            "Failed to load system checklist, using default:",
+            error
+          )
+          setLongTermChecklist(ChecklistService.getDefaultLongTermChecklist())
         }
+
+        // 장기 체크리스트는 사용자가 원할 때만 표시하므로 자동 표시 제거
       } catch (error) {
         console.error("Error loading books:", error)
         if (error instanceof ApiError) {
@@ -290,17 +296,11 @@ export default function Home() {
   }
 
   const handleChecklistComplete = async () => {
-    if (userUid) {
-      await ChecklistService.updateLongTermReminder(userUid, "long-1", "daily")
-      const updatedChecklist = await ChecklistService.getUserChecklist(userUid)
-      setUserChecklist(updatedChecklist)
-      setShowLongTermReminder(false)
-    }
+    // 장기 체크리스트는 단순히 확인용이므로 별도 처리 없음
   }
 
   const openChecklistModal = () => {
     setIsChecklistModalOpen(true)
-    setShowLongTermReminder(false)
   }
 
   if (loading) {
@@ -500,15 +500,15 @@ export default function Home() {
             부모로서의 마음가짐과 지속성을 위한 체크리스트입니다.
           </p>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-            {LONG_TERM_CHECKLIST.slice(0, 4).map((item, index) => (
+            {longTermChecklist.slice(0, 4).map((item: any, index: number) => (
               <div
                 key={item.id}
-                className='flex items-start gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg'
+                className='flex items-start gap-2 p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm'
               >
-                <span className='text-xs font-medium text-gray-500 mt-0.5'>
+                <span className='text-sm font-bold text-gray-600 dark:text-gray-400 mt-0.5 flex-shrink-0'>
                   {index + 1}.
                 </span>
-                <span className='text-xs text-theme-primary leading-relaxed'>
+                <span className='text-sm font-medium text-gray-900 dark:text-gray-100 leading-relaxed'>
                   {item.title}
                 </span>
               </div>
@@ -713,22 +713,11 @@ export default function Home() {
         isOpen={isChecklistModalOpen}
         onClose={() => setIsChecklistModalOpen(false)}
         onComplete={handleChecklistComplete}
-        checklist={LONG_TERM_CHECKLIST}
+        checklist={longTermChecklist}
         title='장기 체크리스트'
         description='부모로서의 마음가짐과 지속성을 위한 체크리스트입니다.'
+        isLongTerm={true}
       />
-
-      {/* 장기 체크리스트 리마인더 모달 */}
-      {showLongTermReminder && (
-        <ChecklistModal
-          isOpen={showLongTermReminder}
-          onClose={() => setShowLongTermReminder(false)}
-          onComplete={handleChecklistComplete}
-          checklist={LONG_TERM_CHECKLIST}
-          title='장기 체크리스트'
-          description='오늘 독서 기록을 완료했습니다! 장기 체크리스트를 확인해보세요.'
-        />
-      )}
     </div>
   )
 }

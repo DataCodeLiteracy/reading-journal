@@ -86,6 +86,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               phoneNumber: firebaseUser.phoneNumber,
               lastLoginAt: new Date(),
               updated_at: new Date(),
+              // isAdmin 필드가 없으면 기본값 false로 설정
+              isAdmin: existingData.isAdmin ?? false,
             } as User
             setUserData(updatedUserData)
           } else {

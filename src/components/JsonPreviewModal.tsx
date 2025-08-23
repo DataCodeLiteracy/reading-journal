@@ -8,6 +8,8 @@ interface JsonPreviewModalProps {
   onConfirm: () => void
   jsonData: string
   isUploading: boolean
+  title?: string
+  description?: string
 }
 
 export default function JsonPreviewModal({
@@ -16,6 +18,8 @@ export default function JsonPreviewModal({
   onConfirm,
   jsonData,
   isUploading,
+  title = "JSON 데이터 미리보기",
+  description = "다음 데이터를 업로드하시겠습니까?",
 }: JsonPreviewModalProps) {
   if (!isOpen) return null
 
@@ -28,7 +32,7 @@ export default function JsonPreviewModal({
               <Upload className='h-6 w-6 text-blue-600 dark:text-blue-400' />
             </div>
             <h3 className='text-lg font-semibold text-theme-primary'>
-              JSON 데이터 미리보기
+              {title}
             </h3>
           </div>
           <button
@@ -41,7 +45,7 @@ export default function JsonPreviewModal({
 
         <div className='space-y-4'>
           <p className='text-sm text-gray-600 dark:text-gray-400'>
-            다음 데이터를 업로드하시겠습니까?
+            {description}
           </p>
 
           <div className='bg-gray-100 dark:bg-gray-800 p-4 rounded-lg'>
