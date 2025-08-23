@@ -191,12 +191,28 @@ export class UserStatisticsService {
       const totalSessions = readingSessions.length
       const averageSessionTime = Math.round(totalReadingTime / totalSessions)
 
-      // 일일 독서 시간 계산
+      // 개선된 날짜 계산 함수: 새벽 시간대 처리
+      const getEffectiveDate = (session: ReadingSession): string => {
+        const startTime = new Date(session.startTime)
+        const hour = startTime.getHours()
+
+        // 새벽 0시~3시에 읽은 경우 전날로 계산
+        if (hour >= 0 && hour <= 3) {
+          const previousDay = new Date(startTime)
+          previousDay.setDate(previousDay.getDate() - 1)
+          return previousDay.toISOString().split("T")[0]
+        }
+
+        // 그 외의 시간은 원래 날짜 사용
+        return session.date
+      }
+
+      // 일일 독서 시간 계산 (개선된 날짜 기준)
       const dailyReadingTime: { [date: string]: number } = {}
       readingSessions.forEach((session) => {
-        const date = session.date
-        dailyReadingTime[date] =
-          (dailyReadingTime[date] || 0) + session.duration
+        const effectiveDate = getEffectiveDate(session)
+        dailyReadingTime[effectiveDate] =
+          (dailyReadingTime[effectiveDate] || 0) + session.duration
       })
 
       const daysWithSessions = Object.keys(dailyReadingTime).length
@@ -208,12 +224,13 @@ export class UserStatisticsService {
       // 가장 긴 독서일 계산 (특정 날짜의 총 독서 시간이 가장 긴 날)
       const longestDayTime = Math.max(...Object.values(dailyReadingTime))
 
-      // 이번 달 독서 시간 계산
+      // 이번 달 독서 시간 계산 (개선된 날짜 기준)
       const now = new Date()
       const currentMonth = now.getMonth()
       const currentYear = now.getFullYear()
       const monthlySessions = readingSessions.filter((session) => {
-        const sessionDate = new Date(session.date)
+        const effectiveDate = getEffectiveDate(session)
+        const sessionDate = new Date(effectiveDate)
         return (
           sessionDate.getMonth() === currentMonth &&
           sessionDate.getFullYear() === currentYear
@@ -224,9 +241,9 @@ export class UserStatisticsService {
         0
       )
 
-      // 연속 독서일 계산 (전체 기간에서)
+      // 연속 독서일 계산 (개선된 날짜 기준)
       const allUniqueDates = [
-        ...new Set(readingSessions.map((s) => s.date)),
+        ...new Set(readingSessions.map((s) => getEffectiveDate(s))),
       ].sort()
       let longestStreak = 0
       let currentStreak = 0
@@ -257,16 +274,35 @@ export class UserStatisticsService {
         lastDate = date
       }
 
-      // 현재 연속 독서일 계산
+      // 현재 연속 독서일 계산 (자정 기준)
       const today = new Date().toISOString().split("T")[0]
       let currentReadingStreak = 0
       let checkDate = today
 
+      // 연속 독서일 계산
       while (allUniqueDates.includes(checkDate)) {
         currentReadingStreak++
         const checkDateObj = new Date(checkDate)
         checkDateObj.setDate(checkDateObj.getDate() - 1)
         checkDate = checkDateObj.toISOString().split("T")[0]
+      }
+
+      // 자정 이후 체크: 오늘 자정이 지났고 아직 오늘 읽지 않았다면 연속이 끊어진 것으로 간주
+      const nowHour = new Date().getHours()
+      const isAfterMidnight = nowHour >= 0 && nowHour <= 3
+
+      if (isAfterMidnight && !allUniqueDates.includes(today)) {
+        // 자정 이후이고 오늘 읽지 않았다면 연속이 끊어진 것으로 간주
+        // 하지만 아직 그날이 끝나지 않았으므로 0으로 설정하지 않고 기존 연속일 유지
+        // 실제로는 다음날 자정이 지나야 연속이 끊어진 것으로 처리
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = yesterday.toISOString().split("T")[0]
+
+        // 어제 읽지 않았다면 연속이 끊어진 것
+        if (!allUniqueDates.includes(yesterdayStr)) {
+          currentReadingStreak = 0
+        }
       }
 
       const statistics: Partial<UserStatistics> = {

@@ -15,17 +15,22 @@ import {
   Trash2,
   CheckCircle,
   User,
+  ClipboardList,
+  Lightbulb,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
-import { UserStatistics } from "@/types/user"
+import { UserStatistics, UserChecklist } from "@/types/user"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
+import ChecklistModal from "@/components/ChecklistModal"
 import Pagination from "@/components/Pagination"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
+import { ChecklistService } from "@/services/checklistService"
+import { LONG_TERM_CHECKLIST } from "@/utils/checklistData"
 import { ApiError } from "@/lib/apiClient"
 
 export default function Home() {
@@ -55,6 +60,11 @@ export default function Home() {
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false)
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null)
+
+  // 체크리스트 관련 상태
+  const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
+  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false)
+  const [showLongTermReminder, setShowLongTermReminder] = useState(false)
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -103,24 +113,30 @@ export default function Home() {
 
         setBooks(booksData.books)
         setTotalItems(booksData.total)
-      } catch (error) {
-        console.error("Error loading data:", error)
-        if (error instanceof ApiError) {
-          if (error.code === "PERMISSION_DENIED") {
-            setError(
-              "데이터에 접근할 권한이 없습니다. 로그인을 다시 시도해주세요."
-            )
-          } else if (error.code === "NETWORK_ERROR") {
-            setError("네트워크 연결을 확인해주세요.")
-          } else if (error.code === "INDEX_ERROR") {
-            setError(
-              "데이터베이스 인덱스가 필요합니다. 잠시 후 다시 시도해주세요."
-            )
-          } else {
-            setError(error.message)
+
+        // 체크리스트 데이터 로드
+        const checklistData = await ChecklistService.getUserChecklist(userUid)
+        setUserChecklist(checklistData)
+
+        // 장기 체크리스트 리마인더 표시 여부 확인
+        if (checklistData) {
+          const today = new Date().toISOString().split("T")[0]
+          const lastReminder =
+            checklistData.longTermReminders["long-1"]?.lastReminded
+          const lastReminderDate = lastReminder
+            ? new Date(lastReminder).toISOString().split("T")[0]
+            : null
+
+          if (lastReminderDate !== today) {
+            setShowLongTermReminder(true)
           }
+        }
+      } catch (error) {
+        console.error("Error loading books:", error)
+        if (error instanceof ApiError) {
+          setError(error.message)
         } else {
-          setError("데이터를 불러오는 중 오류가 발생했습니다.")
+          setError("책 목록을 불러오는 중 오류가 발생했습니다.")
         }
       }
     }
@@ -271,6 +287,20 @@ export default function Home() {
     } finally {
       setBookToDelete(null)
     }
+  }
+
+  const handleChecklistComplete = async () => {
+    if (userUid) {
+      await ChecklistService.updateLongTermReminder(userUid, "long-1", "daily")
+      const updatedChecklist = await ChecklistService.getUserChecklist(userUid)
+      setUserChecklist(updatedChecklist)
+      setShowLongTermReminder(false)
+    }
+  }
+
+  const openChecklistModal = () => {
+    setIsChecklistModalOpen(true)
+    setShowLongTermReminder(false)
   }
 
   if (loading) {
@@ -446,6 +476,43 @@ export default function Home() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* 장기 체크리스트 섹션 */}
+        <div className='bg-theme-secondary rounded-lg p-4 mb-4 shadow-sm'>
+          <div className='flex items-center justify-between mb-3'>
+            <div className='flex items-center gap-2'>
+              <Lightbulb className='h-5 w-5 text-orange-500' />
+              <h3 className='text-lg font-semibold text-theme-primary'>
+                장기 체크리스트
+              </h3>
+            </div>
+            <button
+              onClick={openChecklistModal}
+              className='flex items-center gap-2 px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-md transition-colors'
+            >
+              <ClipboardList className='h-4 w-4' />
+              확인하기
+            </button>
+          </div>
+          <p className='text-sm text-theme-secondary mb-3'>
+            부모로서의 마음가짐과 지속성을 위한 체크리스트입니다.
+          </p>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+            {LONG_TERM_CHECKLIST.slice(0, 4).map((item, index) => (
+              <div
+                key={item.id}
+                className='flex items-start gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg'
+              >
+                <span className='text-xs font-medium text-gray-500 mt-0.5'>
+                  {index + 1}.
+                </span>
+                <span className='text-xs text-theme-primary leading-relaxed'>
+                  {item.title}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -640,6 +707,28 @@ export default function Home() {
         cancelText='취소'
         icon={Trash2}
       />
+
+      {/* 장기 체크리스트 모달 */}
+      <ChecklistModal
+        isOpen={isChecklistModalOpen}
+        onClose={() => setIsChecklistModalOpen(false)}
+        onComplete={handleChecklistComplete}
+        checklist={LONG_TERM_CHECKLIST}
+        title='장기 체크리스트'
+        description='부모로서의 마음가짐과 지속성을 위한 체크리스트입니다.'
+      />
+
+      {/* 장기 체크리스트 리마인더 모달 */}
+      {showLongTermReminder && (
+        <ChecklistModal
+          isOpen={showLongTermReminder}
+          onClose={() => setShowLongTermReminder(false)}
+          onComplete={handleChecklistComplete}
+          checklist={LONG_TERM_CHECKLIST}
+          title='장기 체크리스트'
+          description='오늘 독서 기록을 완료했습니다! 장기 체크리스트를 확인해보세요.'
+        />
+      )}
     </div>
   )
 }

@@ -14,9 +14,12 @@ import {
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { User } from "@/types/user"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 interface AuthContextType {
   user: FirebaseUser | null
+  userData: User | null
   loading: boolean
   isLoggedIn: boolean
   userUid: string | null
@@ -25,6 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  userData: null,
   loading: true,
   isLoggedIn: false,
   userUid: null,
@@ -45,6 +49,7 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<FirebaseUser | null>(null)
+  const [userData, setUserData] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userUid, setUserUid] = useState<string | null>(null)
@@ -56,7 +61,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoggedIn(storedIsLoggedIn)
     setUserUid(storedUserUid)
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
 
       if (firebaseUser) {
@@ -64,9 +69,50 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUserUid(firebaseUser.uid)
         localStorage.setItem("isLoggedIn", "true")
         localStorage.setItem("userUid", firebaseUser.uid)
+
+        // Firestore에서 사용자 데이터 가져오기
+        try {
+          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
+          if (userDoc.exists()) {
+            const existingData = userDoc.data()
+            // 기존 데이터를 유지하면서 Firebase 사용자 정보만 업데이트
+            const updatedUserData: User = {
+              ...existingData,
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+              phoneNumber: firebaseUser.phoneNumber,
+              lastLoginAt: new Date(),
+              updated_at: new Date(),
+            } as User
+            setUserData(updatedUserData)
+          } else {
+            // 사용자 문서가 없으면 기본값으로 생성
+            const defaultUserData: User = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+              phoneNumber: firebaseUser.phoneNumber,
+              lastLoginAt: new Date(),
+              isActive: true,
+              isAdmin: false, // 기본값은 false
+              created_at: new Date(),
+              updated_at: new Date(),
+            }
+            setUserData(defaultUserData)
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error)
+          setUserData(null)
+        }
       } else {
         setIsLoggedIn(false)
         setUserUid(null)
+        setUserData(null)
         localStorage.removeItem("isLoggedIn")
         localStorage.removeItem("userUid")
       }
@@ -87,7 +133,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, isLoggedIn, userUid, signOut }}
+      value={{ user, userData, loading, isLoggedIn, userUid, signOut }}
     >
       {children}
     </AuthContext.Provider>

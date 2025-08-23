@@ -16,19 +16,23 @@ import {
   MessageSquare,
   AlertCircle,
   Trash2,
+  ClipboardList,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
-import { ReadingSession } from "@/types/user"
+import { ReadingSession, UserChecklist } from "@/types/user"
 import RereadModal from "@/components/RereadModal"
 import EditBookModal from "@/components/EditBookModal"
 import CompleteBookModal from "@/components/CompleteBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
+import ChecklistModal from "@/components/ChecklistModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
+import { ChecklistService } from "@/services/checklistService"
+import { PRE_READING_CHECKLIST } from "@/utils/checklistData"
 import { ApiError } from "@/lib/apiClient"
 
 export default function BookDetailPage({
@@ -69,6 +73,11 @@ export default function BookDetailPage({
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
+  // 체크리스트 관련 상태
+  const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
+  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false)
+  const [showChecklistReminder, setShowChecklistReminder] = useState(false)
+
   useEffect(() => {
     params.then((resolved) => {
       setResolvedParams(resolved)
@@ -98,20 +107,21 @@ export default function BookDetailPage({
               resolvedParams.id
             )
           setReadingSessions(sessionsData)
-        } catch (sessionError) {
-          setReadingSessions([])
+
+          // 체크리스트 데이터 로드
+          if (userUid) {
+            const checklistData = await ChecklistService.getUserChecklist(
+              userUid
+            )
+            setUserChecklist(checklistData)
+          }
+        } catch (error) {
+          console.error("Error loading reading sessions:", error)
+          setError("독서 세션을 불러오는 중 오류가 발생했습니다.")
         }
       } catch (error) {
         if (error instanceof ApiError) {
-          if (error.code === "PERMISSION_DENIED") {
-            setError(
-              "데이터에 접근할 권한이 없습니다. 로그인을 다시 시도해주세요."
-            )
-          } else if (error.code === "NETWORK_ERROR") {
-            setError("네트워크 연결을 확인해주세요.")
-          } else {
-            setError(error.message)
-          }
+          setError(error.message)
         } else {
           setError("책 정보를 불러오는 중 오류가 발생했습니다.")
         }
@@ -121,8 +131,9 @@ export default function BookDetailPage({
     }
 
     loadBook()
-  }, [resolvedParams])
+  }, [resolvedParams, userUid])
 
+  // 타이머 업데이트
   useEffect(() => {
     if (isTimerRunning && timerStartTime) {
       const interval = setInterval(() => {
@@ -134,6 +145,15 @@ export default function BookDetailPage({
 
   const startTimer = async () => {
     if (isTimerProcessing) return // 이미 처리 중이면 무시
+
+    // 체크리스트 확인 여부 체크
+    const isChecklistValid =
+      ChecklistService.isPreReadingCheckValid(userChecklist)
+
+    if (!isChecklistValid) {
+      setShowChecklistReminder(true)
+      return
+    }
 
     try {
       setIsTimerProcessing(true)
@@ -419,6 +439,19 @@ export default function BookDetailPage({
     }
   }
 
+  const handleChecklistComplete = async () => {
+    if (userUid) {
+      await ChecklistService.markPreReadingCompleted(userUid)
+      const updatedChecklist = await ChecklistService.getUserChecklist(userUid)
+      setUserChecklist(updatedChecklist)
+    }
+  }
+
+  const openChecklistModal = () => {
+    setIsChecklistModalOpen(true)
+    setShowChecklistReminder(false)
+  }
+
   const totalReadingTime = readingSessions.reduce(
     (acc: number, session: ReadingSession) => acc + session.duration,
     0
@@ -505,14 +538,7 @@ export default function BookDetailPage({
           >
             <ArrowLeft className='h-5 w-5 text-theme-secondary' />
           </button>
-          <div className='flex-1'>
-            <h1 className='text-xl font-bold text-theme-primary'>
-              {book.title}
-            </h1>
-            <p className='text-sm text-theme-secondary'>
-              {book.author || "저자 미상"}
-            </p>
-          </div>
+          <div className='flex-1'></div>
           <div className='flex gap-2'>
             <button
               onClick={() => setIsEditModalOpen(true)}
@@ -597,47 +623,86 @@ export default function BookDetailPage({
           </div>
         </div>
 
+        {/* 체크리스트 및 완독 관련 버튼들 */}
+        <div className='flex gap-3 mb-4'>
+          <button
+            onClick={openChecklistModal}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-4 rounded-lg transition-colors ${
+              ChecklistService.isPreReadingCheckValid(userChecklist)
+                ? "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                : "bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300"
+            }`}
+          >
+            <div className='flex items-center gap-2'>
+              <ClipboardList className='h-4 w-4' />
+              <span className='text-sm font-medium'>
+                {ChecklistService.isPreReadingCheckValid(userChecklist)
+                  ? "체크리스트 완료"
+                  : "체크리스트 확인"}
+              </span>
+            </div>
+            {userChecklist?.lastPreReadingCheck && (
+              <span className='text-xs text-theme-secondary'>
+                {new Date(userChecklist.lastPreReadingCheck).toLocaleDateString(
+                  "ko-KR",
+                  {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }
+                )}
+              </span>
+            )}
+            <span className='text-xs text-theme-secondary text-center'>
+              {ChecklistService.isPreReadingCheckValid(userChecklist)
+                ? "하루에 한 번만 확인"
+                : "하루에 한 번만 확인"}
+            </span>
+          </button>
+          {!isCompleted &&
+            book.hasStartedReading &&
+            readingSessions.length > 0 && (
+              <button
+                onClick={() => setIsCompleteModalOpen(true)}
+                disabled={isTimerProcessing}
+                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                <CheckCircle className='h-4 w-4' />
+                완독하기
+              </button>
+            )}
+          {isCompleted && (
+            <>
+              <button
+                onClick={handleCancelCompletion}
+                disabled={isTimerProcessing}
+                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                <RotateCcw className='h-4 w-4' />
+                완독 취소
+              </button>
+              <button
+                onClick={() =>
+                  router.push(
+                    `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
+                  )
+                }
+                disabled={isTimerProcessing}
+                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                <MessageSquare className='h-4 w-4' />
+                리뷰 작성
+              </button>
+            </>
+          )}
+        </div>
+
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
           <div className='flex items-center justify-between mb-3'>
             <h3 className='text-lg font-semibold text-theme-primary'>
               독서 타이머
             </h3>
-            {!isCompleted &&
-              book.hasStartedReading &&
-              readingSessions.length > 0 && (
-                <button
-                  onClick={() => setIsCompleteModalOpen(true)}
-                  disabled={isTimerProcessing}
-                  className='flex items-center gap-2 px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  <CheckCircle className='h-4 w-4' />
-                  완독하기
-                </button>
-              )}
-            {isCompleted && (
-              <div className='flex gap-2'>
-                <button
-                  onClick={handleCancelCompletion}
-                  disabled={isTimerProcessing}
-                  className='flex items-center gap-2 px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  <RotateCcw className='h-4 w-4' />
-                  완독 취소
-                </button>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
-                    )
-                  }
-                  disabled={isTimerProcessing}
-                  className='flex items-center gap-2 px-3 py-1 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  <MessageSquare className='h-4 w-4' />
-                  리뷰 작성
-                </button>
-              </div>
-            )}
           </div>
 
           <div className='text-center mb-3'>
@@ -836,6 +901,30 @@ export default function BookDetailPage({
             confirmText='삭제'
             cancelText='취소'
             icon={Trash2}
+          />
+        )}
+
+        {/* 체크리스트 모달 */}
+        <ChecklistModal
+          isOpen={isChecklistModalOpen}
+          onClose={() => setIsChecklistModalOpen(false)}
+          onComplete={handleChecklistComplete}
+          checklist={PRE_READING_CHECKLIST}
+          title='독서 전 체크리스트'
+          description='독서를 시작하기 전에 다음 항목들을 확인해주세요.'
+        />
+
+        {/* 체크리스트 리마인더 모달 */}
+        {showChecklistReminder && (
+          <ConfirmModal
+            isOpen={showChecklistReminder}
+            onClose={() => setShowChecklistReminder(false)}
+            onConfirm={handleChecklistComplete}
+            title='독서 전 체크리스트'
+            message='독서를 시작하기 전에 체크리스트를 확인해주세요.'
+            confirmText='확인'
+            cancelText='취소'
+            icon={ClipboardList}
           />
         )}
       </div>

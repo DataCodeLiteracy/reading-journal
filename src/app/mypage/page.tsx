@@ -20,10 +20,11 @@ import { useData } from "@/contexts/DataContext"
 import { Book } from "@/types/book"
 import { UserStatistics } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
+import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
 
 export default function MyPage() {
   const router = useRouter()
-  const { user, loading, isLoggedIn, userUid, signOut } = useAuth()
+  const { user, userData, loading, isLoggedIn, userUid, signOut } = useAuth()
   const { allBooks, userStatistics, isLoading } = useData()
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
@@ -162,12 +163,10 @@ export default function MyPage() {
                 </p>
                 <p className='text-sm font-bold text-theme-primary'>
                   {userStatistics
-                    ? `${Math.floor(
-                        userStatistics.totalReadingTime / 3600
-                      )}시간 ${Math.floor(
-                        (userStatistics.totalReadingTime % 3600) / 60
-                      )}분 ${userStatistics.totalReadingTime % 60}초`
-                    : "0시간 0분 0초"}
+                    ? formatReadingTimeFromSeconds(
+                        userStatistics.totalReadingTime
+                      )
+                    : "0:00"}
                 </p>
               </div>
             </div>
@@ -212,6 +211,33 @@ export default function MyPage() {
             </div>
           </button>
         </div>
+
+        {/* 관리자 메뉴 */}
+        {userData && userData.isAdmin && (
+          <div className='mb-4'>
+            <h2 className='text-lg font-semibold text-theme-primary mb-3'>
+              🛠️ 관리자 도구
+            </h2>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+              <button
+                onClick={() => router.push("/admin")}
+                className='bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left text-white'
+              >
+                <div className='flex items-center gap-3'>
+                  <div className='p-2 bg-white/20 rounded-lg'>
+                    <BarChart3 className='h-5 w-5' />
+                  </div>
+                  <div>
+                    <h3 className='font-semibold mb-1'>관리자 페이지</h3>
+                    <p className='text-xs text-white/80'>
+                      독서 기록 관리 및 분석
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 계정 관리 */}
         <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>

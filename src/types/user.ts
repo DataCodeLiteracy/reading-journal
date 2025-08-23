@@ -9,6 +9,7 @@ export interface User {
   phoneNumber: string | null
   lastLoginAt: Date
   isActive: boolean
+  isAdmin?: boolean
   created_at?: Date
   updated_at?: Date
 }
@@ -69,8 +70,27 @@ export interface UserReadingGoal {
 export interface FirebaseUser {
   uid: string
   email: string | null
-  displayName: string | null
-  photoURL: string | null
-  emailVerified: boolean
-  phoneNumber: string | null
+  displayName?: string | null
+  photoURL?: string | null
+  isAdmin?: boolean
+}
+
+export interface ChecklistItem {
+  id: string
+  title: string
+  description: string
+  category: "pre-reading" | "long-term"
+}
+
+export interface UserChecklist {
+  user_id: string
+  preReadingCompleted: boolean
+  lastPreReadingCheck?: Date
+  longTermReminders: {
+    [key: string]: {
+      lastReminded: Date
+      frequency: "daily" | "weekly" | "monthly"
+    }
+  }
+  updated_at?: Date
 }
