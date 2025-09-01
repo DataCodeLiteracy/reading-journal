@@ -472,7 +472,6 @@ export default function BookDetailPage({
 
   const openChecklistModal = () => {
     setIsChecklistModalOpen(true)
-    setShowChecklistReminder(false)
   }
 
   const totalReadingTime = readingSessions.reduce(
@@ -947,10 +946,13 @@ export default function BookDetailPage({
           <ConfirmModal
             isOpen={showChecklistReminder}
             onClose={() => setShowChecklistReminder(false)}
-            onConfirm={handleChecklistComplete}
+            onConfirm={() => {
+              setShowChecklistReminder(false)
+              setIsChecklistModalOpen(true)
+            }}
             title='독서 전 체크리스트'
             message='독서를 시작하기 전에 체크리스트를 확인해주세요.'
-            confirmText='확인'
+            confirmText='체크리스트 확인'
             cancelText='취소'
             icon={ClipboardList}
           />
