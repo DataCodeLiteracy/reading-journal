@@ -15,8 +15,6 @@ import {
   Trash2,
   CheckCircle,
   User,
-  ClipboardList,
-  Lightbulb,
   X,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -24,7 +22,6 @@ import { Book } from "@/types/book"
 import { UserStatistics, UserChecklist } from "@/types/user"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
-import ChecklistModal from "@/components/ChecklistModal"
 import Pagination from "@/components/Pagination"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
@@ -66,8 +63,6 @@ export default function Home() {
 
   // 체크리스트 관련 상태
   const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
-  const [longTermChecklist, setLongTermChecklist] = useState<any[]>([])
-  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false)
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -136,26 +131,6 @@ export default function Home() {
         // 체크리스트 데이터 로드
         const checklistData = await ChecklistService.getUserChecklist(userUid)
         setUserChecklist(checklistData)
-
-        // 장기 체크리스트 로드 (실패 시 기본값 사용)
-        try {
-          const systemChecklist = await ChecklistService.getSystemChecklist(
-            "long-term"
-          )
-          if (systemChecklist) {
-            setLongTermChecklist(systemChecklist.items)
-          } else {
-            setLongTermChecklist(ChecklistService.getDefaultLongTermChecklist())
-          }
-        } catch (error) {
-          console.error(
-            "Failed to load system checklist, using default:",
-            error
-          )
-          setLongTermChecklist(ChecklistService.getDefaultLongTermChecklist())
-        }
-
-        // 장기 체크리스트는 사용자가 원할 때만 표시하므로 자동 표시 제거
       } catch (error) {
         console.error("Error loading books:", error)
         if (error instanceof ApiError) {
@@ -288,14 +263,6 @@ export default function Home() {
     } finally {
       setBookToDelete(null)
     }
-  }
-
-  const handleChecklistComplete = async () => {
-    // 장기 체크리스트는 단순히 확인용이므로 별도 처리 없음
-  }
-
-  const openChecklistModal = () => {
-    setIsChecklistModalOpen(true)
   }
 
   if (loading) {
@@ -485,43 +452,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* 장기 체크리스트 섹션 */}
-        <div className='bg-theme-secondary rounded-lg p-4 mb-4 shadow-sm'>
-          <div className='flex items-center justify-between mb-3'>
-            <div className='flex items-center gap-2'>
-              <Lightbulb className='h-5 w-5 text-orange-500' />
-              <h3 className='text-lg font-semibold text-theme-primary'>
-                장기 체크리스트
-              </h3>
-            </div>
-            <button
-              onClick={openChecklistModal}
-              className='flex items-center gap-2 px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-md transition-colors'
-            >
-              <ClipboardList className='h-4 w-4' />
-              확인하기
-            </button>
-          </div>
-          <p className='text-sm text-theme-secondary mb-3'>
-            부모로서의 마음가짐과 지속성을 위한 체크리스트입니다.
-          </p>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-            {longTermChecklist.slice(0, 4).map((item: any, index: number) => (
-              <div
-                key={item.id}
-                className='flex items-start gap-2 p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm'
-              >
-                <span className='text-sm font-bold text-gray-600 dark:text-gray-400 mt-0.5 flex-shrink-0'>
-                  {index + 1}.
-                </span>
-                <span className='text-sm font-medium text-gray-900 dark:text-gray-100 leading-relaxed'>
-                  {item.title}
-                </span>
-              </div>
-            ))}
           </div>
         </div>
 
@@ -768,17 +698,6 @@ export default function Home() {
         confirmText='삭제'
         cancelText='취소'
         icon={Trash2}
-      />
-
-      {/* 장기 체크리스트 모달 */}
-      <ChecklistModal
-        isOpen={isChecklistModalOpen}
-        onClose={() => setIsChecklistModalOpen(false)}
-        onComplete={handleChecklistComplete}
-        checklist={longTermChecklist}
-        title='장기 체크리스트'
-        description='부모로서의 마음가짐과 지속성을 위한 체크리스트입니다.'
-        isLongTerm={true}
       />
     </div>
   )
