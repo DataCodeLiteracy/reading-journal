@@ -112,6 +112,22 @@ export default function AddBookModal({
             />
           </div>
 
+          <div className='mb-6'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
+              상태
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as Book["status"])}
+              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
+            >
+              <option value='want-to-read'>읽고 싶은 책</option>
+              <option value='reading'>읽는 중</option>
+              <option value='on-hold'>보류</option>
+              <option value='completed'>완독</option>
+            </select>
+          </div>
+
           <div className='flex gap-3'>
             <button
               type='button'

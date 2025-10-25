@@ -97,6 +97,38 @@ export class BookService {
     }
   }
 
+  static async searchUserBooksByStatus(
+    user_id: string,
+    status: Book["status"],
+    searchQuery: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{ books: Book[]; total: number }> {
+    try {
+      const statusBooks = await this.getUserBooksByStatus(user_id, status)
+
+      // 검색어가 있으면 필터링
+      const filteredBooks = searchQuery.trim()
+        ? statusBooks.filter(
+            (book) =>
+              book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (book.author &&
+                book.author.toLowerCase().includes(searchQuery.toLowerCase()))
+          )
+        : statusBooks
+
+      const total = filteredBooks.length
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      const books = filteredBooks.slice(startIndex, endIndex)
+
+      return { books, total }
+    } catch (error) {
+      console.error("BookService.searchUserBooksByStatus error:", error)
+      throw error
+    }
+  }
+
   static async deleteBook(bookId: string): Promise<void> {
     try {
       const book = await this.getBook(bookId)

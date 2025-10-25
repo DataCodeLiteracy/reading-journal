@@ -17,6 +17,7 @@ import {
   User,
   ClipboardList,
   Lightbulb,
+  X,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -54,8 +55,10 @@ export default function Home() {
   const [itemsPerPage] = useState(10)
 
   const [activeTab, setActiveTab] = useState<
-    "reading" | "completed" | "want-to-read"
+    "reading" | "completed" | "want-to-read" | "on-hold"
   >("reading")
+
+  const [searchQuery, setSearchQuery] = useState("")
 
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false)
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
@@ -73,11 +76,16 @@ export default function Home() {
     allBooks.filter((book) => book.status === "completed").length
   const getWantToReadBooks = () =>
     allBooks.filter((book) => book.status === "want-to-read").length
+  const getOnHoldBooks = () =>
+    allBooks.filter((book) => book.status === "on-hold").length
   const getAverageRating = () => {
     if (allBooks.length === 0) return 0
     const totalRating = allBooks.reduce((acc, book) => acc + book.rating, 0)
     return totalRating / allBooks.length
   }
+
+  // 검색 상태 관리
+  const [isSearching, setIsSearching] = useState(false)
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -99,20 +107,31 @@ export default function Home() {
 
         console.log("Loading books for user_id:", userUid)
 
-        const booksData = await BookService.getUserBooksByStatusPaginated(
-          userUid,
-          activeTab,
-          currentPage,
-          itemsPerPage
-        )
+        // 검색어가 있으면 검색 API 사용, 없으면 일반 페이지네이션 API 사용
+        const booksData = searchQuery.trim()
+          ? await BookService.searchUserBooksByStatus(
+              userUid,
+              activeTab,
+              searchQuery,
+              currentPage,
+              itemsPerPage
+            )
+          : await BookService.getUserBooksByStatusPaginated(
+              userUid,
+              activeTab,
+              currentPage,
+              itemsPerPage
+            )
 
         console.log("Loaded books data:", {
           booksCount: booksData.books.length,
           totalItems: booksData.total,
+          isSearching: !!searchQuery.trim(),
         })
 
         setBooks(booksData.books)
         setTotalItems(booksData.total)
+        setIsSearching(!!searchQuery.trim())
 
         // 체크리스트 데이터 로드
         const checklistData = await ChecklistService.getUserChecklist(userUid)
@@ -148,42 +167,18 @@ export default function Home() {
     }
 
     loadBooks()
-  }, [isLoggedIn, userUid, activeTab, currentPage, itemsPerPage])
+  }, [isLoggedIn, userUid, activeTab, currentPage, itemsPerPage, searchQuery])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
 
-  const handleTabChange = (tab: "reading" | "completed" | "want-to-read") => {
+  const handleTabChange = (
+    tab: "reading" | "completed" | "want-to-read" | "on-hold"
+  ) => {
     setActiveTab(tab)
     setCurrentPage(1)
-
-    if (userUid) {
-      const loadTabData = async () => {
-        try {
-          setError(null)
-
-          const booksData = await BookService.getUserBooksByStatusPaginated(
-            userUid,
-            tab,
-            1,
-            itemsPerPage
-          )
-
-          setBooks(booksData.books)
-          setTotalItems(booksData.total)
-        } catch (error) {
-          console.error("Error loading tab data:", error)
-          if (error instanceof ApiError) {
-            setError(error.message)
-          } else {
-            setError("데이터를 불러오는 중 오류가 발생했습니다.")
-          }
-        }
-      }
-
-      loadTabData()
-    }
+    // 탭 변경 시 검색어는 유지하되, 페이지는 1로 리셋
   }
 
   const handleBookClick = (bookId: string) => {
@@ -466,6 +461,20 @@ export default function Home() {
 
           <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
             <div className='flex items-center'>
+              <Clock className='h-5 w-5 text-orange-500' />
+              <div className='ml-2'>
+                <p className='text-xs font-medium text-theme-secondary'>
+                  보류 중
+                </p>
+                <p className='text-lg font-bold text-theme-primary'>
+                  {getOnHoldBooks()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
+            <div className='flex items-center'>
               <Star className='h-5 w-5 text-yellow-500' />
               <div className='ml-2'>
                 <p className='text-xs font-medium text-theme-secondary'>
@@ -533,12 +542,21 @@ export default function Home() {
               label: "읽고 싶은 책",
               count: getWantToReadBooks(),
             },
+            {
+              key: "on-hold",
+              label: "보류",
+              count: getOnHoldBooks(),
+            },
           ].map((tab) => (
             <button
               key={tab.key}
               onClick={() =>
                 handleTabChange(
-                  tab.key as "reading" | "completed" | "want-to-read"
+                  tab.key as
+                    | "reading"
+                    | "completed"
+                    | "want-to-read"
+                    | "on-hold"
                 )
               }
               className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
@@ -552,6 +570,36 @@ export default function Home() {
           ))}
         </div>
 
+        {/* 검색 섹션 */}
+        <div className='mb-4'>
+          <div className='relative'>
+            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
+            <input
+              type='text'
+              placeholder='책 제목이나 저자로 검색...'
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1) // 검색어 변경 시 페이지를 1로 리셋
+              }}
+              className='w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent'
+            />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery("")
+                  setCurrentPage(1)
+                }}
+                className='absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors'
+                title='검색어 지우기'
+              >
+                <X className='h-4 w-4' />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 새 책 추가 버튼 */}
         <div className='mb-4'>
           <button
             onClick={() => setIsAddBookModalOpen(true)}
@@ -570,24 +618,34 @@ export default function Home() {
           <div className='text-center py-12'>
             <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
             <h3 className='text-lg font-medium text-theme-primary mb-2'>
-              {getTotalBooks() === 0
+              {isSearching
+                ? "검색 결과가 없습니다"
+                : getTotalBooks() === 0
                 ? "아직 등록된 책이 없습니다"
                 : activeTab === "reading"
                 ? "읽고 있는 책이 없습니다"
                 : activeTab === "completed"
                 ? "완독한 책이 없습니다"
+                : activeTab === "on-hold"
+                ? "보류 중인 책이 없습니다"
                 : "읽고 싶은 책이 없습니다"}
             </h3>
             <p className='text-theme-secondary mb-4'>
-              {getTotalBooks() === 0
+              {isSearching
+                ? `"${searchQuery}"에 대한 검색 결과가 없습니다. 다른 검색어를 시도해보세요.`
+                : getTotalBooks() === 0
                 ? "새로운 책을 추가해보세요!"
                 : activeTab === "reading"
                 ? "책을 읽기 시작하면 여기에 표시됩니다"
                 : activeTab === "completed"
                 ? "책을 완독하면 여기에 표시됩니다"
+                : activeTab === "on-hold"
+                ? "책을 보류하면 여기에 표시됩니다"
                 : "새로운 책을 추가해보세요!"}
             </p>
-            {(getTotalBooks() === 0 || activeTab === "want-to-read") && (
+            {(getTotalBooks() === 0 ||
+              activeTab === "want-to-read" ||
+              isSearching) && (
               <button
                 onClick={() => setIsAddBookModalOpen(true)}
                 className='inline-flex items-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white px-4 py-2 rounded-lg transition-colors'
@@ -643,6 +701,8 @@ export default function Home() {
                             ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                             : book.status === "completed"
                             ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : book.status === "on-hold"
+                            ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
                             : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
                         }`}
                       >
@@ -650,6 +710,8 @@ export default function Home() {
                           ? "읽는 중"
                           : book.status === "completed"
                           ? "완독"
+                          : book.status === "on-hold"
+                          ? "보류"
                           : "읽고 싶음"}
                       </span>
                     </div>

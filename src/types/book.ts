@@ -7,7 +7,7 @@ export interface Book {
   author?: string
   publishedDate?: string
   startDate?: string
-  status: "reading" | "completed" | "want-to-read"
+  status: "reading" | "completed" | "want-to-read" | "on-hold"
   rating: number
   review?: string
   hasStartedReading: boolean

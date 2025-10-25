@@ -410,6 +410,32 @@ export default function BookDetailPage({
     }
   }
 
+  const handlePutOnHold = async () => {
+    try {
+      setError(null)
+      await BookService.updateBookStatus(
+        resolvedParams?.id || "",
+        "on-hold",
+        resolvedParams?.user_id || ""
+      )
+
+      const updatedBook = {
+        ...book!,
+        status: "on-hold" as const,
+      }
+      setBook(updatedBook)
+
+      // DataContext의 책 상태 업데이트
+      updateBook(resolvedParams?.id || "", updatedBook)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setError(error.message)
+      } else {
+        setError("보류 상태로 변경하는 중 오류가 발생했습니다.")
+      }
+    }
+  }
+
   const handleDeleteReadingSession = async (sessionId: string) => {
     setSessionToDelete(sessionId)
     setIsDeleteSessionModalOpen(true)
@@ -494,6 +520,7 @@ export default function BookDetailPage({
   }
 
   const isCompleted = book?.status === "completed"
+  const isOnHold = book?.status === "on-hold"
 
   if (isLoading) {
     return (
@@ -541,7 +568,7 @@ export default function BookDetailPage({
   }
 
   return (
-    <div className='min-h-screen bg-theme-gradient pb-20'>
+    <div className='min-h-screen bg-theme-gradient pb-32'>
       <div className='container mx-auto px-4 py-4'>
         {/* 에러 메시지 */}
         {error && (
@@ -553,6 +580,7 @@ export default function BookDetailPage({
           </div>
         )}
 
+        {/* 상단 헤더 - 간소화 */}
         <div className='flex items-center gap-4 mb-6'>
           <button
             onClick={() => router.push("/")}
@@ -565,30 +593,14 @@ export default function BookDetailPage({
             <button
               onClick={() => setIsEditModalOpen(true)}
               className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+              title='책 정보 편집'
             >
               <Edit className='h-5 w-5 text-theme-secondary' />
             </button>
-            {!isCompleted &&
-              book.hasStartedReading &&
-              readingSessions.length > 0 && (
-                <button
-                  onClick={() => setIsCompleteModalOpen(true)}
-                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-                >
-                  <CheckCircle className='h-5 w-5 text-theme-secondary' />
-                </button>
-              )}
-            {isCompleted && (
-              <button
-                onClick={() => setIsRereadModalOpen(true)}
-                className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-              >
-                <RotateCcw className='h-5 w-5 text-theme-secondary' />
-              </button>
-            )}
             <button
               onClick={() => setIsDeleteModalOpen(true)}
               className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+              title='책 삭제'
             >
               <Trash2 className='h-5 w-5 text-theme-secondary' />
             </button>
@@ -645,14 +657,14 @@ export default function BookDetailPage({
           </div>
         </div>
 
-        {/* 체크리스트 및 완독 관련 버튼들 */}
-        <div className='flex gap-3 mb-4'>
+        {/* 체크리스트 섹션 - 모바일 최적화 */}
+        <div className='mb-4'>
           <button
             onClick={openChecklistModal}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 px-4 rounded-lg transition-colors ${
+            className={`w-full flex items-center justify-between py-3 px-4 rounded-lg transition-colors ${
               ChecklistService.isPreReadingCheckValid(userChecklist)
-                ? "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300"
-                : "bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300"
+                ? "bg-green-500 hover:bg-green-600 text-white"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
           >
             <div className='flex items-center gap-2'>
@@ -664,7 +676,7 @@ export default function BookDetailPage({
               </span>
             </div>
             {userChecklist?.lastPreReadingCheck && (
-              <span className='text-xs text-theme-secondary'>
+              <span className='text-xs text-white/80 font-medium'>
                 {(() => {
                   const lastCheckDate = ChecklistService.convertTimestampToDate(
                     userChecklist.lastPreReadingCheck
@@ -681,30 +693,49 @@ export default function BookDetailPage({
                 })()}
               </span>
             )}
-            <span className='text-xs text-theme-secondary text-center'>
-              {ChecklistService.isPreReadingCheckValid(userChecklist)
-                ? "하루에 한 번만 확인"
-                : "하루에 한 번만 확인"}
-            </span>
           </button>
+        </div>
+
+        {/* 주요 액션 버튼들 - 모바일 최적화 */}
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4'>
           {!isCompleted &&
             book.hasStartedReading &&
             readingSessions.length > 0 && (
               <button
                 onClick={() => setIsCompleteModalOpen(true)}
                 disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                className='flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <CheckCircle className='h-4 w-4' />
                 완독하기
               </button>
             )}
+          {!isCompleted && !isOnHold && book.hasStartedReading && (
+            <button
+              onClick={handlePutOnHold}
+              disabled={isTimerProcessing}
+              className='flex items-center justify-center gap-2 py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              <Pause className='h-4 w-4' />
+              보류하기
+            </button>
+          )}
+          {isOnHold && (
+            <button
+              onClick={handleReread}
+              disabled={isTimerProcessing}
+              className='flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              <Play className='h-4 w-4' />
+              다시 읽기
+            </button>
+          )}
           {isCompleted && (
             <>
               <button
                 onClick={handleCancelCompletion}
                 disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                className='flex items-center justify-center gap-2 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <RotateCcw className='h-4 w-4' />
                 완독 취소
@@ -716,7 +747,7 @@ export default function BookDetailPage({
                   )
                 }
                 disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                className='flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <MessageSquare className='h-4 w-4' />
                 리뷰 작성
@@ -751,35 +782,11 @@ export default function BookDetailPage({
             )}
           </div>
 
-          <div className='flex gap-3'>
-            {isCompleted ? (
-              <button
-                onClick={() => setIsRereadModalOpen(true)}
-                disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <RotateCcw className='h-5 w-5' />
-                계속 읽기
-              </button>
-            ) : !isTimerRunning ? (
-              <button
-                onClick={startTimer}
-                disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <Play className='h-5 w-5' />
-                {isTimerProcessing ? "시작 중..." : "타이머 시작"}
-              </button>
-            ) : (
-              <button
-                onClick={stopTimer}
-                disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <Pause className='h-5 w-5' />
-                {isTimerProcessing ? "정지 중..." : "타이머 정지"}
-              </button>
-            )}
+          {/* 타이머 상태 표시 - 버튼은 하단 고정 액션 바로 이동 */}
+          <div className='text-center text-sm text-theme-secondary'>
+            {isTimerRunning
+              ? "독서 중..."
+              : "독서를 시작하려면 하단 버튼을 사용하세요"}
           </div>
         </div>
 
@@ -865,22 +872,69 @@ export default function BookDetailPage({
           </div>
         )}
 
-        {hasUnsavedChanges && (
-          <div className='fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme-tertiary p-4'>
-            <div className='container mx-auto flex items-center justify-between'>
-              <span className='text-sm text-theme-secondary'>
-                변경사항이 저장되지 않았습니다
-              </span>
-              <button
-                onClick={handleSaveChanges}
-                className='flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-md transition-colors'
-              >
-                <Save className='h-4 w-4' />
-                변경사항 저장
-              </button>
-            </div>
+        {/* 하단 고정 액션 바 - 모바일 최적화 */}
+        <div className='fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme-tertiary p-4 z-40'>
+          <div className='container mx-auto'>
+            {hasUnsavedChanges ? (
+              <div className='flex items-center justify-between'>
+                <span className='text-sm text-theme-secondary'>
+                  변경사항이 저장되지 않았습니다
+                </span>
+                <button
+                  onClick={handleSaveChanges}
+                  className='flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-md transition-colors'
+                >
+                  <Save className='h-4 w-4' />
+                  변경사항 저장
+                </button>
+              </div>
+            ) : (
+              <div className='flex gap-2'>
+                {/* 모바일에서 주요 액션들을 하단에 배치 */}
+                {!isCompleted && book.hasStartedReading && (
+                  <button
+                    onClick={startTimer}
+                    disabled={isTimerProcessing || isTimerRunning}
+                    className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                  >
+                    <Play className='h-4 w-4' />
+                    {isTimerRunning ? "타이머 실행 중" : "독서 시작"}
+                  </button>
+                )}
+                {isTimerRunning && (
+                  <button
+                    onClick={stopTimer}
+                    disabled={isTimerProcessing}
+                    className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                  >
+                    <Pause className='h-4 w-4' />
+                    독서 정지
+                  </button>
+                )}
+                {isCompleted && (
+                  <button
+                    onClick={() => setIsRereadModalOpen(true)}
+                    disabled={isTimerProcessing}
+                    className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                  >
+                    <RotateCcw className='h-4 w-4' />
+                    다시 읽기
+                  </button>
+                )}
+                {isOnHold && (
+                  <button
+                    onClick={handleReread}
+                    disabled={isTimerProcessing}
+                    className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                  >
+                    <Play className='h-4 w-4' />
+                    다시 읽기
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         <RereadModal
           isOpen={isRereadModalOpen}
