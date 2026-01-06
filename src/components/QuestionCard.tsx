@@ -1,7 +1,12 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { BookQuestion } from "@/types/question"
-import { HelpCircle, Edit, Trash2 } from "lucide-react"
+import { HelpCircle, Edit, Trash2, Heart, MessageSquare, Lock, Globe } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import { LikeService } from "@/services/likeService"
+import { QuestionService } from "@/services/questionService"
+import CommentSection from "@/components/CommentSection"
 
 interface QuestionCardProps {
   question: BookQuestion
@@ -18,6 +23,49 @@ export default function QuestionCard({
   showChapterPath = true,
   showActions = false,
 }: QuestionCardProps) {
+  const { userUid } = useAuth()
+  const isOwner = userUid === (question as any).user_id
+  const isPublic = (question as any).isPublic || false
+  const [isLiked, setIsLiked] = useState(false)
+  const [likesCount, setLikesCount] = useState((question as any).likesCount || 0)
+  const [isTogglingLike, setIsTogglingLike] = useState(false)
+
+  // 좋아요 상태 확인
+  useEffect(() => {
+    if (isPublic && userUid && !isOwner) {
+      LikeService.getUserLike(userUid, "question", question.id).then((like) => {
+        setIsLiked(!!like)
+      })
+    }
+  }, [question.id, isPublic, userUid, isOwner])
+
+  const handleToggleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!userUid || isOwner || !isPublic || isTogglingLike) return
+
+    try {
+      setIsTogglingLike(true)
+      if (isLiked) {
+        await LikeService.removeLike(userUid, "question", question.id)
+        setIsLiked(false)
+        setLikesCount((prev: number) => Math.max(0, prev - 1))
+      } else {
+        await LikeService.addLike(userUid, "question", question.id)
+        setIsLiked(true)
+        setLikesCount((prev: number) => prev + 1)
+      }
+
+      // 최신 데이터로 업데이트
+      const updatedQuestion = await QuestionService.getQuestion(question.id)
+      if (updatedQuestion) {
+        setLikesCount((updatedQuestion as any).likesCount || 0)
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error)
+    } finally {
+      setIsTogglingLike(false)
+    }
+  }
   const getQuestionTypeLabel = (type: string): string => {
     switch (type) {
       case "comprehension":
@@ -79,7 +127,44 @@ export default function QuestionCard({
             <span className='text-xs text-theme-secondary px-2 py-1 bg-theme-tertiary rounded-full'>
               {getQuestionTypeLabel(question.questionType)}
             </span>
+            {isPublic && (
+              <>
+                <Globe className='h-3 w-3 text-blue-500' />
+                <span className='text-xs text-theme-tertiary'>공개</span>
+              </>
+            )}
           </div>
+
+          {/* 좋아요/댓글 수 (공개된 경우만) */}
+          {isPublic && (
+            <>
+              <div className='flex items-center gap-4 mt-3 pt-3 border-t border-theme-tertiary'>
+                <button
+                  onClick={handleToggleLike}
+                  disabled={!userUid || isOwner || isTogglingLike}
+                  className={`flex items-center gap-1 transition-colors ${
+                    isLiked
+                      ? "text-red-500 hover:text-red-600"
+                      : "text-theme-secondary hover:text-red-500"
+                  } ${!userUid || isOwner ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                  title={isOwner ? "본인의 콘텐츠에는 좋아요를 누를 수 없습니다" : isLiked ? "좋아요 취소" : "좋아요"}
+                >
+                  <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+                  <span className='text-xs'>{likesCount}</span>
+                </button>
+                <div className='flex items-center gap-1 text-theme-secondary'>
+                  <MessageSquare className='h-4 w-4' />
+                  <span className='text-xs'>{(question as any).commentsCount || 0}</span>
+                </div>
+              </div>
+              <CommentSection
+                contentType='question'
+                contentId={question.id}
+                isPublic={isPublic}
+                initialCommentsCount={(question as any).commentsCount || 0}
+              />
+            </>
+          )}
         </div>
 
         {showActions && (onEdit || onDelete) && (

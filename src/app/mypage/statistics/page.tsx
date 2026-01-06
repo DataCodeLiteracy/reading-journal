@@ -70,7 +70,7 @@ export default function StatisticsPage() {
   }
 
   return (
-    <div className='min-h-screen bg-theme-gradient'>
+    <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-6'>
         <header className='mb-6'>
           <button

@@ -252,6 +252,12 @@ async function setupFirestore() {
     console.log("- readingSessions: 독서 세션 (userId, bookId 외래키)")
     console.log("- userSummaries: 사용자 요약 정보 (userId 외래키)")
     console.log("- statistics: 사용자 통계 및 분석 결과 (userId 외래키)")
+    console.log("\n📝 새로운 컬렉션 (스키마만 정의됨):")
+    console.log("- quotes: 구절 기록 (인용 기록)")
+    console.log("- critiques: 서평")
+    console.log("- likes: 좋아요")
+    console.log("- comments: 댓글")
+    console.log("\n💡 상세 스키마는 docs/firestore-schema.md를 참고하세요.")
   } catch (error) {
     console.error("❌ Firestore 설정 중 오류 발생:", error)
   }

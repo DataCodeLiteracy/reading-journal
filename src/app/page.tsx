@@ -3,26 +3,22 @@
 import { useState, useEffect } from "react"
 import {
   BookOpen,
-  Plus,
-  Search,
-  Calendar,
-  Star,
-  Bookmark,
   AlertCircle,
   Clock,
   TrendingUp,
   Target,
-  Trash2,
-  CheckCircle,
   User,
-  X,
+  Bookmark,
+  CheckCircle,
+  Calendar,
+  Star,
+  Trophy,
+  Zap,
+  Timer,
+  Flame,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
-import { UserStatistics, UserChecklist } from "@/types/user"
-import AddBookModal from "@/components/AddBookModal"
-import ConfirmModal from "@/components/ConfirmModal"
-import Pagination from "@/components/Pagination"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
@@ -32,6 +28,8 @@ import { ChecklistService } from "@/services/checklistService"
 // import LongTermChecklistSection from "@/components/LongTermChecklistSection"
 
 import { ApiError } from "@/lib/apiClient"
+import Leaderboard from "@/components/Leaderboard"
+import { formatDisplayExperienceString } from "@/utils/experienceUtils"
 
 export default function Home() {
   const router = useRouter()
@@ -40,32 +38,7 @@ export default function Home() {
   const {
     allBooks,
     userStatistics,
-    isLoading,
-    addBook,
-    removeBook,
-    updateStatistics,
   } = useData()
-
-  const [books, setBooks] = useState<Book[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
-  const [itemsPerPage] = useState(10)
-
-  const [activeTab, setActiveTab] = useState<
-    "reading" | "completed" | "want-to-read" | "on-hold"
-  >("reading")
-
-  const [searchQuery, setSearchQuery] = useState("")
-
-  const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false)
-  const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
-  const [bookToDelete, setBookToDelete] = useState<Book | null>(null)
-
-  // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
-  // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
-  // const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -82,8 +55,12 @@ export default function Home() {
     return totalRating / allBooks.length
   }
 
-  // 검색 상태 관리
-  const [isSearching, setIsSearching] = useState(false)
+  const [recentBooks, setRecentBooks] = useState<Book[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
+  // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
+  // const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -94,7 +71,7 @@ export default function Home() {
   useEffect(() => {
     if (!isLoggedIn || !userUid) return
 
-    const loadBooks = async () => {
+    const loadRecentBooks = async () => {
       try {
         setError(null)
 
@@ -103,40 +80,17 @@ export default function Home() {
           return
         }
 
-        console.log("Loading books for user_id:", userUid)
+        // 최근 읽는 중인 책 5개만 가져오기
+        const booksData = await BookService.getUserBooksByStatusPaginated(
+          userUid,
+          "reading",
+          1,
+          5
+        )
 
-        // 검색어가 있으면 검색 API 사용, 없으면 일반 페이지네이션 API 사용
-        const booksData = searchQuery.trim()
-          ? await BookService.searchUserBooksByStatus(
-              userUid,
-              activeTab,
-              searchQuery,
-              currentPage,
-              itemsPerPage
-            )
-          : await BookService.getUserBooksByStatusPaginated(
-              userUid,
-              activeTab,
-              currentPage,
-              itemsPerPage
-            )
-
-        console.log("Loaded books data:", {
-          booksCount: booksData.books.length,
-          totalItems: booksData.total,
-          isSearching: !!searchQuery.trim(),
-        })
-
-        setBooks(booksData.books)
-        setTotalItems(booksData.total)
-        setIsSearching(!!searchQuery.trim())
-
-        // 체크리스트 데이터 로드 (현재 서비스에서는 사용하지 않음)
-        // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
-        // const checklistData = await ChecklistService.getUserChecklist(userUid)
-        // setUserChecklist(checklistData)
+        setRecentBooks(booksData.books)
       } catch (error) {
-        console.error("Error loading books:", error)
+        console.error("Error loading recent books:", error)
         if (error instanceof ApiError) {
           setError(error.message)
         } else {
@@ -145,128 +99,11 @@ export default function Home() {
       }
     }
 
-    loadBooks()
-  }, [isLoggedIn, userUid, activeTab, currentPage, itemsPerPage, searchQuery])
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
-
-  const handleTabChange = (
-    tab: "reading" | "completed" | "want-to-read" | "on-hold"
-  ) => {
-    setActiveTab(tab)
-    setCurrentPage(1)
-    // 탭 변경 시 검색어는 유지하되, 페이지는 1로 리셋
-  }
+    loadRecentBooks()
+  }, [isLoggedIn, userUid])
 
   const handleBookClick = (bookId: string) => {
     router.push(`/book/${bookId}/${userUid || "1"}`)
-  }
-
-  const handleAddBook = async (newBook: Omit<Book, "id" | "user_id">) => {
-    if (!userUid) return
-
-    try {
-      setError(null)
-      console.log("handleAddBook called with newBook:", newBook)
-      console.log("userUid:", userUid)
-
-      const bookData = {
-        ...newBook,
-        user_id: userUid,
-      }
-      console.log("bookData to be created:", bookData)
-
-      const bookId = await BookService.createBook(bookData)
-      console.log("Book created with ID:", bookId)
-
-      const createdBook: Book = {
-        ...bookData,
-        id: bookId,
-      }
-      console.log("createdBook:", createdBook)
-
-      if (newBook.status === "want-to-read") {
-        setActiveTab("want-to-read")
-      } else if (newBook.status === "reading") {
-        setActiveTab("reading")
-      } else if (newBook.status === "completed") {
-        setActiveTab("completed")
-      }
-
-      setBooks((prev) => [createdBook, ...prev])
-      addBook(createdBook)
-
-      setTotalItems((prev) => prev + 1)
-      setCurrentPage(1)
-    } catch (error) {
-      console.error("handleAddBook error:", error)
-      if (error instanceof ApiError) {
-        setError(error.message)
-      } else {
-        setError("책을 추가하는 중 오류가 발생했습니다.")
-      }
-    }
-  }
-
-  const handleBookStatusUpdate = async (
-    bookId: string,
-    newStatus: Book["status"]
-  ) => {
-    if (!userUid) return
-
-    try {
-      setError(null)
-      await BookService.updateBookStatus(bookId, newStatus, userUid)
-
-      setBooks((prev) => prev.filter((book) => book.id !== bookId))
-      removeBook(bookId)
-
-      if (books.length === 1 && currentPage > 1) {
-        setCurrentPage((prev) => prev - 1)
-      }
-    } catch (error) {
-      if (error instanceof ApiError) {
-        setError(error.message)
-      } else {
-        setError("책 상태를 업데이트하는 중 오류가 발생했습니다.")
-      }
-    }
-  }
-
-  const handleDeleteBook = async (bookId: string) => {
-    const book = books.find((b) => b.id === bookId)
-    if (book) {
-      setBookToDelete(book)
-      setIsDeleteBookModalOpen(true)
-    }
-  }
-
-  const confirmDeleteBook = async () => {
-    if (!userUid || !bookToDelete) return
-
-    try {
-      setError(null)
-      await BookService.deleteBook(bookToDelete.id)
-
-      setBooks((prev) => prev.filter((book) => book.id !== bookToDelete.id))
-      removeBook(bookToDelete.id)
-
-      setTotalItems((prev) => prev - 1)
-
-      if (books.length === 1 && currentPage > 1) {
-        setCurrentPage((prev) => prev - 1)
-      }
-    } catch (error) {
-      if (error instanceof ApiError) {
-        setError(error.message)
-      } else {
-        setError("책을 삭제하는 중 오류가 발생했습니다.")
-      }
-    } finally {
-      setBookToDelete(null)
-    }
   }
 
   if (loading) {
@@ -285,7 +122,7 @@ export default function Home() {
   }
 
   return (
-    <div className='min-h-screen bg-theme-gradient'>
+    <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-6'>
         <header className='mb-6'>
           <div className='flex items-center justify-between mb-4'>
@@ -331,13 +168,50 @@ export default function Home() {
         )}
         */}
 
+        {/* 리더보드 섹션 */}
+        <div className='mb-6'>
+          <Leaderboard limit={5} showFullList={false} />
+        </div>
+
         {/* 사용자 통계 섹션 */}
         {userStatistics && (
           <div className='mb-6 bg-theme-secondary rounded-lg p-6 shadow-sm'>
             <h2 className='text-lg font-semibold text-theme-primary mb-4'>
-              📊 독서 통계
+              📊 나의 독서 현황
             </h2>
-            <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+            {(() => {
+              const actualExp = userStatistics.experience || 0
+              const displayExp = formatDisplayExperienceString(actualExp)
+              console.log("[메인 페이지] 사용자 통계:", {
+                user_id: userUid,
+                level: userStatistics.level || 1,
+                actualExperience: actualExp,
+                displayExperience: displayExp,
+                totalReadingTime: userStatistics.totalReadingTime || 0,
+              })
+              return null
+            })()}
+            <div className='grid grid-cols-2 md:grid-cols-3 gap-4 mb-4'>
+              <div className='text-center'>
+                <div className='flex items-center justify-center mb-2'>
+                  <Trophy className='h-6 w-6 text-yellow-500' />
+                </div>
+                <p className='text-xs text-theme-secondary mb-1'>레벨</p>
+                <p className='text-lg font-bold text-theme-primary'>
+                  Lv.{userStatistics.level || 1}
+                </p>
+              </div>
+
+              <div className='text-center'>
+                <div className='flex items-center justify-center mb-2'>
+                  <Zap className='h-6 w-6 text-purple-500' />
+                </div>
+                <p className='text-xs text-theme-secondary mb-1'>경험치</p>
+                <p className='text-lg font-bold text-theme-primary'>
+                  {formatDisplayExperienceString(userStatistics.experience || 0)} EXP
+                </p>
+              </div>
+
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
                   <Clock className='h-6 w-6 accent-theme-primary' />
@@ -347,8 +221,7 @@ export default function Home() {
                 </p>
                 <p className='text-lg font-bold text-theme-primary'>
                   {Math.floor(userStatistics.totalReadingTime / 3600)}시간{" "}
-                  {Math.floor((userStatistics.totalReadingTime % 3600) / 60)}분{" "}
-                  {userStatistics.totalReadingTime % 60}초
+                  {Math.floor((userStatistics.totalReadingTime % 3600) / 60)}분
                 </p>
               </div>
 
@@ -364,18 +237,17 @@ export default function Home() {
 
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
-                  <TrendingUp className='h-6 w-6 text-purple-500' />
+                  <Timer className='h-6 w-6 text-blue-500' />
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>평균 세션</p>
                 <p className='text-lg font-bold text-theme-primary'>
-                  {Math.floor(userStatistics.averageSessionTime / 60)}분{" "}
-                  {userStatistics.averageSessionTime % 60}초
+                  {Math.floor(userStatistics.averageSessionTime / 60)}분
                 </p>
               </div>
 
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
-                  <Target className='h-6 w-6 text-orange-500' />
+                  <Flame className='h-6 w-6 text-orange-500' />
                 </div>
                 <p className='text-xs text-theme-secondary mb-1'>연속 독서일</p>
                 <p className='text-lg font-bold text-theme-primary'>
@@ -386,7 +258,8 @@ export default function Home() {
           </div>
         )}
 
-        <div className='grid grid-cols-2 gap-2 mb-4'>
+        {/* 책 통계 카드 */}
+        <div className='grid grid-cols-2 gap-2 mb-6'>
           <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
             <div className='flex items-center'>
               <BookOpen className='h-5 w-5 accent-theme-primary' />
@@ -472,250 +345,47 @@ export default function Home() {
           </div>
         </div>
 
-        <div className='flex space-x-1 bg-theme-secondary rounded-lg p-1 mb-4 shadow-sm'>
-          {[
-            {
-              key: "reading",
-              label: "읽는 중",
-              count: getReadingBooks(),
-            },
-            {
-              key: "completed",
-              label: "완독",
-              count: getCompletedBooks(),
-            },
-            {
-              key: "want-to-read",
-              label: "읽고 싶은 책",
-              count: getWantToReadBooks(),
-            },
-            {
-              key: "on-hold",
-              label: "보류",
-              count: getOnHoldBooks(),
-            },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() =>
-                handleTabChange(
-                  tab.key as
-                    | "reading"
-                    | "completed"
-                    | "want-to-read"
-                    | "on-hold"
-                )
-              }
-              className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "bg-accent-theme text-white"
-                  : "text-theme-secondary hover:text-theme-primary"
-              }`}
-            >
-              {tab.label} ({tab.count})
-            </button>
-          ))}
-        </div>
-
-        {/* 검색 섹션 */}
-        <div className='mb-4'>
-          <div className='relative'>
-            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
-            <input
-              type='text'
-              placeholder='책 제목이나 저자로 검색...'
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setCurrentPage(1) // 검색어 변경 시 페이지를 1로 리셋
-              }}
-              className='w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent'
-            />
-            {searchQuery && (
+        {/* 최근 읽는 중인 책 */}
+        {recentBooks.length > 0 && (
+          <div className='mb-6'>
+            <div className='flex items-center justify-between mb-4'>
+              <h2 className='text-lg font-semibold text-theme-primary'>
+                📖 최근 읽는 중인 책
+              </h2>
               <button
-                onClick={() => {
-                  setSearchQuery("")
-                  setCurrentPage(1)
-                }}
-                className='absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors'
-                title='검색어 지우기'
+                onClick={() => router.push("/books")}
+                className='text-sm text-accent-theme hover:underline'
               >
-                <X className='h-4 w-4' />
+                전체 보기 →
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* 새 책 추가 버튼 */}
-        <div className='mb-4'>
-          <button
-            onClick={() => setIsAddBookModalOpen(true)}
-            className='flex items-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white px-4 py-3 rounded-lg transition-colors w-full justify-center'
-          >
-            <Plus className='h-5 w-5' />새 책 추가
-          </button>
-        </div>
-
-        {isLoading ? (
-          <div className='text-center py-12'>
-            <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-            <p className='text-theme-secondary'>책 목록을 불러오는 중...</p>
-          </div>
-        ) : books.length === 0 ? (
-          <div className='text-center py-12'>
-            <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-            <h3 className='text-lg font-medium text-theme-primary mb-2'>
-              {isSearching
-                ? "검색 결과가 없습니다"
-                : getTotalBooks() === 0
-                ? "아직 등록된 책이 없습니다"
-                : activeTab === "reading"
-                ? "읽고 있는 책이 없습니다"
-                : activeTab === "completed"
-                ? "완독한 책이 없습니다"
-                : activeTab === "on-hold"
-                ? "보류 중인 책이 없습니다"
-                : "읽고 싶은 책이 없습니다"}
-            </h3>
-            <p className='text-theme-secondary mb-4'>
-              {isSearching
-                ? `"${searchQuery}"에 대한 검색 결과가 없습니다. 다른 검색어를 시도해보세요.`
-                : getTotalBooks() === 0
-                ? "새로운 책을 추가해보세요!"
-                : activeTab === "reading"
-                ? "책을 읽기 시작하면 여기에 표시됩니다"
-                : activeTab === "completed"
-                ? "책을 완독하면 여기에 표시됩니다"
-                : activeTab === "on-hold"
-                ? "책을 보류하면 여기에 표시됩니다"
-                : "새로운 책을 추가해보세요!"}
-            </p>
-            {(getTotalBooks() === 0 ||
-              activeTab === "want-to-read" ||
-              isSearching) && (
-              <button
-                onClick={() => setIsAddBookModalOpen(true)}
-                className='inline-flex items-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white px-4 py-2 rounded-lg transition-colors'
-              >
-                <Plus className='h-4 w-4' />
-                {getTotalBooks() === 0 ? "첫 번째 책 추가하기" : "책 추가하기"}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className='grid grid-cols-1 gap-3'>
-            {books.map((book: Book) => (
-              <div
-                key={book.id}
-                onClick={() => handleBookClick(book.id)}
-                className='bg-theme-secondary rounded-lg shadow-sm hover:shadow-md transition-shadow p-3 cursor-pointer relative group'
-              >
-                <div className='flex items-start gap-3'>
-                  <div className='w-14 h-18 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                    <BookOpen className='h-7 w-7 text-gray-400' />
-                  </div>
-                  <div className='flex-1 min-w-0'>
-                    <div className='flex items-start justify-between mb-2'>
-                      <div className='flex-1 min-w-0'>
-                        <h3 className='font-semibold text-theme-primary mb-1 truncate'>
-                          {book.title}
-                        </h3>
-                        <p className='text-sm text-theme-secondary truncate'>
-                          {book.author || "저자 미상"}
-                        </p>
-                      </div>
-                      <div className='flex items-center gap-1 ml-2'>
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-3 w-3 ${
-                              i < book.rating
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
+            </div>
+            <div className='grid grid-cols-1 gap-3'>
+              {recentBooks.map((book: Book) => (
+                <div
+                  key={book.id}
+                  onClick={() => handleBookClick(book.id)}
+                  className='bg-theme-secondary rounded-lg shadow-sm hover:shadow-md transition-shadow p-3 cursor-pointer'
+                >
+                  <div className='flex items-start gap-3'>
+                    <div className='w-14 h-18 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
+                      <BookOpen className='h-7 w-7 text-gray-400' />
                     </div>
-
-                    <div className='flex items-center justify-between text-xs text-theme-tertiary'>
-                      <span className='text-xs'>
-                        {book.publishedDate || book.startDate}
-                      </span>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          book.status === "reading"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                            : book.status === "completed"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : book.status === "on-hold"
-                            ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                        }`}
-                      >
-                        {book.status === "reading"
-                          ? "읽는 중"
-                          : book.status === "completed"
-                          ? "완독"
-                          : book.status === "on-hold"
-                          ? "보류"
-                          : "읽고 싶음"}
-                      </span>
+                    <div className='flex-1 min-w-0'>
+                      <h3 className='font-semibold text-theme-primary mb-1 truncate'>
+                        {book.title}
+                      </h3>
+                      <p className='text-sm text-theme-secondary truncate'>
+                        {book.author || "저자 미상"}
+                      </p>
                     </div>
                   </div>
                 </div>
-
-                {/* 삭제 버튼 */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteBook(book.id)
-                  }}
-                  className='absolute top-2 right-2 p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors opacity-0 group-hover:opacity-100'
-                  title='책 삭제'
-                >
-                  <Trash2 className='h-4 w-4' />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 페이지네이션 */}
-        {!isLoading && (
-          <div className='mt-8 mb-8 pb-8'>
-            {books.length > 0 ? (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={Math.ceil(totalItems / itemsPerPage)}
-                onPageChange={handlePageChange}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-              />
-            ) : (
-              <div className='h-16' />
-            )}
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      <AddBookModal
-        isOpen={isAddBookModalOpen}
-        onClose={() => setIsAddBookModalOpen(false)}
-        onAddBook={handleAddBook}
-      />
-
-      {/* 책 삭제 확인 모달 */}
-      <ConfirmModal
-        isOpen={isDeleteBookModalOpen}
-        onClose={() => setIsDeleteBookModalOpen(false)}
-        onConfirm={confirmDeleteBook}
-        title='책 삭제'
-        message={`"${bookToDelete?.title}" 책과 관련된 모든 독서 기록을 삭제하시겠습니까?`}
-        confirmText='삭제'
-        cancelText='취소'
-        icon={Trash2}
-      />
     </div>
   )
 }

@@ -10,11 +10,15 @@ export type Difficulty = "easy" | "medium" | "hard"
 export interface BookQuestion {
   id: string
   bookId: string
+  user_id?: string // 질문 작성자 ID (공개 질문의 경우 필요)
   questionText: string
   chapterPath: string[] // 최대 5단계 깊이: ["5부", "1장", "1절", "1항", "1목"]
   questionType: QuestionType
   difficulty: Difficulty
   order: number // 같은 목차 내 정렬 순서
+  isPublic?: boolean // 공개 여부 (기본값: false)
+  likesCount?: number // 좋아요 수 (캐시된 값)
+  commentsCount?: number // 댓글 수 (캐시된 값)
   created_at?: Date
   updated_at?: Date
 }
@@ -31,6 +35,9 @@ export interface QuestionAnswer {
   answerText?: string // 텍스트 답변 (오디오만 있을 수도 있음)
   audioUrl?: string // Firebase Storage URL
   audioTranscript?: string // STT로 변환된 텍스트
+  isPublic?: boolean // 공개 여부 (기본값: false)
+  likesCount?: number // 좋아요 수 (캐시된 값)
+  commentsCount?: number // 댓글 수 (캐시된 값)
   created_at?: Date
   updated_at?: Date
 }

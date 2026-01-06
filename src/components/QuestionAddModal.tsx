@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Plus, HelpCircle } from "lucide-react"
+import { X, Plus, HelpCircle, Lock, Globe } from "lucide-react"
 import { BookQuestion, QuestionType, Difficulty } from "@/types/question"
 
 interface QuestionAddModalProps {
@@ -24,6 +24,7 @@ export default function QuestionAddModal({
   const [chapterPath, setChapterPath] = useState<string[]>([""])
   const [questionType, setQuestionType] = useState<QuestionType>("comprehension")
   const [difficulty, setDifficulty] = useState<Difficulty>("easy")
+  const [isPublic, setIsPublic] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,6 +35,7 @@ export default function QuestionAddModal({
       setChapterPath([""])
       setQuestionType("comprehension")
       setDifficulty("easy")
+      setIsPublic(false)
       setError(null)
     }
   }, [isOpen])
@@ -104,6 +106,7 @@ export default function QuestionAddModal({
         chapterPath: normalizedPath,
         questionType,
         difficulty,
+        isPublic,
       })
       onClose()
     } catch (err) {
@@ -265,6 +268,42 @@ export default function QuestionAddModal({
                   {level === "easy" ? "쉬움" : level === "medium" ? "보통" : "어려움"}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* 공개 설정 */}
+          <div className='mb-6'>
+            <div className='flex items-center justify-between p-3 bg-theme-tertiary rounded-lg'>
+              <div className='flex items-center gap-2'>
+                {isPublic ? (
+                  <Globe className='h-5 w-5 text-blue-500' />
+                ) : (
+                  <Lock className='h-5 w-5 text-gray-400' />
+                )}
+                <div>
+                  <label className='text-sm font-medium text-theme-primary cursor-pointer'>
+                    공개하기
+                  </label>
+                  <p className='text-xs text-theme-tertiary'>
+                    {isPublic
+                      ? "다른 독서자들이 이 질문을 볼 수 있습니다"
+                      : "나만 볼 수 있습니다"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type='button'
+                onClick={() => setIsPublic(!isPublic)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  isPublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    isPublic ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
             </div>
           </div>
 

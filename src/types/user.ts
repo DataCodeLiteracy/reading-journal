@@ -10,6 +10,12 @@ export interface User {
   lastLoginAt: Date
   isActive: boolean
   isAdmin?: boolean
+  // 레벨 시스템 관련 (리더보드 조회용)
+  level?: number // 현재 레벨
+  experience?: number // 총 경험치
+  totalReadingTime?: number // 총 독서 시간 (초 단위)
+  // 1회성 마이그레이션 플래그
+  levelDataMigrated?: boolean // 레벨 데이터가 users 컬렉션에 마이그레이션되었는지 여부
   created_at?: Date
   updated_at?: Date
 }
@@ -38,6 +44,14 @@ export interface UserStatistics {
   monthlyReadingTime: number
   mostReadGenre?: string
   readingStreak: number
+  // 레벨 시스템 관련
+  level?: number // 현재 레벨
+  experience?: number // 총 경험치
+  // 소셜 상호작용 통계 (보너스 경험치 계산용)
+  totalLikesReceived?: number // 내 콘텐츠가 받은 총 좋아요 수
+  totalCommentsWritten?: number // 내가 작성한 총 댓글 수
+  // 프로필 공개 설정
+  isProfilePublic?: boolean // 프로필 공개 여부 (기본값: true)
   updated_at?: Date
 }
 

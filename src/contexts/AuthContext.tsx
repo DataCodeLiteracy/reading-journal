@@ -14,7 +14,7 @@ import {
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { User } from "@/types/user"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 interface AuthContextType {
@@ -102,9 +102,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               lastLoginAt: new Date(),
               isActive: true,
               isAdmin: false, // 기본값은 false
+              levelDataMigrated: false,
               created_at: new Date(),
               updated_at: new Date(),
             }
+            await setDoc(doc(db, "users", firebaseUser.uid), defaultUserData)
             setUserData(defaultUserData)
           }
         } catch (error) {

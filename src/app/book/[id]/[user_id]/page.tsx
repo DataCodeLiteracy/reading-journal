@@ -18,6 +18,9 @@ import {
   Trash2,
   ClipboardList,
   Plus,
+  Heart,
+  Globe,
+  Lock,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -39,7 +42,16 @@ import { getKoreaDate } from "@/utils/timeUtils"
 import { QuestionService } from "@/services/questionService"
 import { BookQuestion } from "@/types/question"
 import QuestionCard from "@/components/QuestionCard"
-import { HelpCircle, ChevronRight } from "lucide-react"
+import { HelpCircle, ChevronRight, PenSquare } from "lucide-react"
+import QuoteModal from "@/components/QuoteModal"
+import QuoteCard from "@/components/QuoteCard"
+import CritiqueModal from "@/components/CritiqueModal"
+import CritiqueCard from "@/components/CritiqueCard"
+import { QuoteService } from "@/services/quoteService"
+import { CritiqueService } from "@/services/critiqueService"
+import { LikeService } from "@/services/likeService"
+import CommentSection from "@/components/CommentSection"
+import { Quote, Critique } from "@/types/content"
 
 import { ApiError } from "@/lib/apiClient"
 
@@ -62,6 +74,8 @@ export default function BookDetailPage({
   const [book, setBook] = useState<Book | null>(null)
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([])
   const [questions, setQuestions] = useState<BookQuestion[]>([])
+  const [quotes, setQuotes] = useState<Quote[]>([])
+  const [critiques, setCritiques] = useState<Critique[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [resolvedParams, setResolvedParams] = useState<{
@@ -82,6 +96,22 @@ export default function BookDetailPage({
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isOnHoldModalOpen, setIsOnHoldModalOpen] = useState(false)
+  
+  // 구절 기록 관련 상태
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null)
+  const [isDeleteQuoteModalOpen, setIsDeleteQuoteModalOpen] = useState(false)
+  const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null)
+  
+  // 서평 관련 상태
+  const [isCritiqueModalOpen, setIsCritiqueModalOpen] = useState(false)
+  const [editingCritique, setEditingCritique] = useState<Critique | null>(null)
+  const [isDeleteCritiqueModalOpen, setIsDeleteCritiqueModalOpen] = useState(false)
+  const [critiqueToDelete, setCritiqueToDelete] = useState<string | null>(null)
+  
+  // 리뷰 좋아요 관련 상태
+  const [isReviewLiked, setIsReviewLiked] = useState(false)
+  const [reviewLikesCount, setReviewLikesCount] = useState(0)
 
   // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
   // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
@@ -114,12 +144,27 @@ export default function BookDetailPage({
         setBook(bookData)
 
         try {
-          const [sessionsData, questionsData] = await Promise.all([
+          const [sessionsData, questionsData, quotesData, critiquesData] = await Promise.all([
             ReadingSessionService.getBookReadingSessions(resolvedParams.id),
             QuestionService.getBookQuestions(resolvedParams.id),
+            QuoteService.getBookQuotes(resolvedParams.id),
+            CritiqueService.getBookCritiques(resolvedParams.id),
           ])
           setReadingSessions(sessionsData)
           setQuestions(questionsData)
+          setQuotes(quotesData)
+          setCritiques(critiquesData)
+
+          // 리뷰 좋아요 상태 확인
+          if (bookData.review && bookData.reviewIsPublic && userUid && userUid !== bookData.user_id) {
+            const reviewLike = await LikeService.getUserLike(userUid, "review", bookData.id)
+            setIsReviewLiked(!!reviewLike)
+            const reviewLikes = await LikeService.getLikesCount("review", bookData.id)
+            setReviewLikesCount(reviewLikes)
+          } else {
+            setIsReviewLiked(false)
+            setReviewLikesCount(0)
+          }
 
           // 체크리스트 데이터 로드 (현재 서비스에서는 사용하지 않음)
           // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
@@ -672,6 +717,58 @@ export default function BookDetailPage({
           </div>
         </div>
 
+        {/* 책 공개 설정 (소유자만) */}
+        {userUid === book.user_id && (
+          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                {book.isBookPublic ? (
+                  <Globe className='h-5 w-5 text-blue-500' />
+                ) : (
+                  <Lock className='h-5 w-5 text-gray-400' />
+                )}
+                <div>
+                  <label className='text-sm font-medium text-theme-primary cursor-pointer'>
+                    이 책의 모든 콘텐츠 공개하기
+                  </label>
+                  <p className='text-xs text-theme-tertiary'>
+                    {book.isBookPublic
+                      ? "다른 독서자들이 이 책의 구절 기록, 질문, 리뷰, 서평을 볼 수 있습니다"
+                      : "이 책의 모든 콘텐츠는 나만 볼 수 있습니다"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type='button'
+                onClick={async () => {
+                  if (!resolvedParams) return
+                  try {
+                    const updatedBook = {
+                      ...book,
+                      isBookPublic: !book.isBookPublic,
+                    }
+                    await BookService.updateBook(resolvedParams.id, updatedBook)
+                    setBook(updatedBook)
+                    updateBook(resolvedParams.id, updatedBook)
+                  } catch (error) {
+                    console.error("Error updating book public setting:", error)
+                    setError("공개 설정을 업데이트하는 중 오류가 발생했습니다.")
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  book.isBookPublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    book.isBookPublic ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 체크리스트 섹션 - 현재 서비스에서는 사용하지 않음 */}
         {/* 나중에 사용할 수 있도록 컴포넌트로 분리되어 있음 */}
         {/* 
@@ -906,6 +1003,67 @@ export default function BookDetailPage({
           )}
         </div>
 
+        {/* 구절 기록 섹션 */}
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
+          <div className='flex items-center justify-between mb-3'>
+            <h3 className='text-lg font-semibold text-theme-primary'>
+              구절 기록
+            </h3>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
+                {quotes.length}개
+              </span>
+              <button
+                onClick={() => {
+                  setEditingQuote(null)
+                  setIsQuoteModalOpen(true)
+                }}
+                className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
+                title='구절 기록 추가'
+              >
+                <Plus className='h-4 w-4' />
+              </button>
+            </div>
+          </div>
+
+          {quotes.length === 0 ? (
+            <div className='text-center py-6'>
+              <PenSquare className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+              <p className='text-theme-secondary mb-4'>
+                아직 구절 기록이 없습니다. 인상 깊은 구절을 기록해보세요!
+              </p>
+              <button
+                onClick={() => {
+                  setEditingQuote(null)
+                  setIsQuoteModalOpen(true)
+                }}
+                className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+              >
+                <Plus className='h-4 w-4' />
+                <span>구절 기록 추가하기</span>
+              </button>
+            </div>
+          ) : (
+            <div className='space-y-3'>
+              {quotes.map((quote) => (
+                <QuoteCard
+                  key={quote.id}
+                  quote={quote}
+                  bookTitle={book?.title}
+                  onEdit={(quote) => {
+                    setEditingQuote(quote)
+                    setIsQuoteModalOpen(true)
+                  }}
+                  onDelete={(quoteId) => {
+                    setQuoteToDelete(quoteId)
+                    setIsDeleteQuoteModalOpen(true)
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* 질문 카드 섹션 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
           <div className='flex items-center justify-between mb-3'>
@@ -961,34 +1119,175 @@ export default function BookDetailPage({
           )}
         </div>
 
-        {book.review && (
+        {/* 리뷰 섹션 (완독 후) */}
+        {isCompleted && (
           <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-4'>
-            <h3 className='text-lg font-semibold text-theme-primary mb-3'>
-              독서 리뷰
-            </h3>
-            <div className='bg-theme-tertiary rounded-lg p-3'>
-              <div className='flex items-center gap-2 mb-2'>
-                <span className='text-xs text-theme-secondary'>평점:</span>
-                <div className='flex gap-1'>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`h-3 w-3 ${
-                        star <= book.rating
-                          ? "text-yellow-400 fill-current"
-                          : "text-gray-300"
-                      }`}
-                    />
-                  ))}
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='text-lg font-semibold text-theme-primary'>
+                독서 리뷰
+              </h3>
+              {!book.review && (
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
+                    )
+                  }
+                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
+                  title='리뷰 작성'
+                >
+                  <Plus className='h-4 w-4' />
+                </button>
+              )}
+            </div>
+
+            {book.review ? (
+              <div className='bg-theme-tertiary rounded-lg p-3'>
+                <div className='flex items-center gap-2 mb-2'>
+                  <span className='text-xs text-theme-secondary'>평점:</span>
+                  <div className='flex gap-1'>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-3 w-3 ${
+                          star <= book.rating
+                            ? "text-yellow-400 fill-current"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className='text-xs text-theme-secondary'>
+                    {book.rating}점
+                  </span>
                 </div>
-                <span className='text-xs text-theme-secondary'>
-                  {book.rating}점
-                </span>
+                <div className='text-theme-primary whitespace-pre-wrap text-sm mb-3'>
+                  {book.review}
+                </div>
+                {/* 좋아요 버튼 (공개된 리뷰만) */}
+                {book.reviewIsPublic && userUid && userUid !== book.user_id && (
+                  <div className='flex items-center gap-4 pt-3 border-t border-theme-tertiary'>
+                    <button
+                      onClick={async () => {
+                        if (!userUid || !resolvedParams) return
+                        try {
+                          if (isReviewLiked) {
+                            await LikeService.removeLike(userUid, "review", resolvedParams.id)
+                            setIsReviewLiked(false)
+                            const count = await LikeService.getLikesCount("review", resolvedParams.id)
+                            setReviewLikesCount(count)
+                          } else {
+                            await LikeService.addLike(userUid, "review", resolvedParams.id)
+                            setIsReviewLiked(true)
+                            const count = await LikeService.getLikesCount("review", resolvedParams.id)
+                            setReviewLikesCount(count)
+                          }
+                        } catch (error) {
+                          console.error("Error toggling review like:", error)
+                        }
+                      }}
+                      className={`flex items-center gap-1 transition-colors ${
+                        isReviewLiked
+                          ? "text-red-500 hover:text-red-600"
+                          : "text-theme-secondary hover:text-red-500"
+                      }`}
+                    >
+                      <Heart className={`h-4 w-4 ${isReviewLiked ? "fill-current" : ""}`} />
+                      <span className='text-xs'>{reviewLikesCount}</span>
+                    </button>
+                  </div>
+                )}
+                {/* 댓글 섹션 (공개된 리뷰만) */}
+                {book.reviewIsPublic && (
+                  <CommentSection
+                    contentType='review'
+                    contentId={resolvedParams?.id || ""}
+                    isPublic={book.reviewIsPublic || false}
+                  />
+                )}
               </div>
-              <div className='text-theme-primary whitespace-pre-wrap text-sm'>
-                {book.review}
+            ) : (
+              <div className='text-center py-6'>
+                <Star className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+                <p className='text-theme-secondary mb-4'>
+                  아직 리뷰가 없습니다. 책에 대한 리뷰를 작성해보세요!
+                </p>
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
+                    )
+                  }
+                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>리뷰 작성하기</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 서평 섹션 (완독 후) */}
+        {isCompleted && (
+          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-4'>
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='text-lg font-semibold text-theme-primary'>
+                서평
+              </h3>
+              <div className='flex items-center gap-2'>
+                <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
+                  {critiques.length}개
+                </span>
+                <button
+                  onClick={() => {
+                    setEditingCritique(null)
+                    setIsCritiqueModalOpen(true)
+                  }}
+                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
+                  title='서평 추가'
+                >
+                  <Plus className='h-4 w-4' />
+                </button>
               </div>
             </div>
+
+            {critiques.length === 0 ? (
+              <div className='text-center py-6'>
+                <MessageSquare className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+                <p className='text-theme-secondary mb-4'>
+                  아직 서평이 없습니다. 깊이 있는 분석과 평가를 작성해보세요!
+                </p>
+                <button
+                  onClick={() => {
+                    setEditingCritique(null)
+                    setIsCritiqueModalOpen(true)
+                  }}
+                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>서평 작성하기</span>
+                </button>
+              </div>
+            ) : (
+              <div className='space-y-3'>
+                {critiques.map((critique) => (
+                  <CritiqueCard
+                    key={critique.id}
+                    critique={critique}
+                    bookTitle={book?.title}
+                    onEdit={(critique) => {
+                      setEditingCritique(critique)
+                      setIsCritiqueModalOpen(true)
+                    }}
+                    onDelete={(critiqueId) => {
+                      setCritiqueToDelete(critiqueId)
+                      setIsDeleteCritiqueModalOpen(true)
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1098,6 +1397,178 @@ export default function BookDetailPage({
           confirmText='보류하기'
           cancelText='취소'
           icon={Pause}
+        />
+
+        {/* 구절 기록 모달 */}
+        <QuoteModal
+          isOpen={isQuoteModalOpen}
+          onClose={() => {
+            setIsQuoteModalOpen(false)
+            setEditingQuote(null)
+          }}
+          onSave={async (quoteData) => {
+            if (!userUid || !resolvedParams) return
+
+            try {
+              setError(null)
+              if (editingQuote) {
+                // 수정
+                await QuoteService.updateQuote(editingQuote.id, {
+                  ...quoteData,
+                  user_id: userUid,
+                })
+              } else {
+                // 생성
+                await QuoteService.createQuote({
+                  ...quoteData,
+                  user_id: userUid,
+                })
+              }
+
+              // 구절 기록 목록 새로고침
+              const updatedQuotes = await QuoteService.getBookQuotes(
+                resolvedParams.id
+              )
+              setQuotes(updatedQuotes)
+
+              setIsQuoteModalOpen(false)
+              setEditingQuote(null)
+            } catch (error) {
+              console.error("Error saving quote:", error)
+              if (error instanceof ApiError) {
+                setError(error.message)
+              } else {
+                setError("구절 기록을 저장하는 중 오류가 발생했습니다.")
+              }
+            }
+          }}
+          bookId={resolvedParams?.id || ""}
+          bookTitle={book?.title}
+          existingQuote={editingQuote}
+        />
+
+        {/* 구절 기록 삭제 확인 모달 */}
+        <ConfirmModal
+          isOpen={isDeleteQuoteModalOpen}
+          onClose={() => {
+            setIsDeleteQuoteModalOpen(false)
+            setQuoteToDelete(null)
+          }}
+          onConfirm={async () => {
+            if (!quoteToDelete || !resolvedParams) return
+
+            try {
+              setError(null)
+              await QuoteService.deleteQuote(quoteToDelete)
+
+              // 구절 기록 목록 새로고침
+              const updatedQuotes = await QuoteService.getBookQuotes(
+                resolvedParams.id
+              )
+              setQuotes(updatedQuotes)
+
+              setIsDeleteQuoteModalOpen(false)
+              setQuoteToDelete(null)
+            } catch (error) {
+              console.error("Error deleting quote:", error)
+              if (error instanceof ApiError) {
+                setError(error.message)
+              } else {
+                setError("구절 기록을 삭제하는 중 오류가 발생했습니다.")
+              }
+            }
+          }}
+          title='구절 기록 삭제'
+          message='이 구절 기록을 삭제하시겠습니까?'
+          confirmText='삭제'
+          cancelText='취소'
+          icon={Trash2}
+        />
+
+        {/* 서평 모달 */}
+        <CritiqueModal
+          isOpen={isCritiqueModalOpen}
+          onClose={() => {
+            setIsCritiqueModalOpen(false)
+            setEditingCritique(null)
+          }}
+          onSave={async (critiqueData) => {
+            if (!userUid || !resolvedParams) return
+
+            try {
+              setError(null)
+              if (editingCritique) {
+                // 수정
+                await CritiqueService.updateCritique(editingCritique.id, {
+                  ...critiqueData,
+                  user_id: userUid,
+                })
+              } else {
+                // 생성
+                await CritiqueService.createCritique({
+                  ...critiqueData,
+                  user_id: userUid,
+                })
+              }
+
+              // 서평 목록 새로고침
+              const updatedCritiques = await CritiqueService.getBookCritiques(
+                resolvedParams.id
+              )
+              setCritiques(updatedCritiques)
+
+              setIsCritiqueModalOpen(false)
+              setEditingCritique(null)
+            } catch (error) {
+              console.error("Error saving critique:", error)
+              if (error instanceof ApiError) {
+                setError(error.message)
+              } else {
+                setError("서평을 저장하는 중 오류가 발생했습니다.")
+              }
+            }
+          }}
+          bookId={resolvedParams?.id || ""}
+          bookTitle={book?.title}
+          existingCritique={editingCritique}
+        />
+
+        {/* 서평 삭제 확인 모달 */}
+        <ConfirmModal
+          isOpen={isDeleteCritiqueModalOpen}
+          onClose={() => {
+            setIsDeleteCritiqueModalOpen(false)
+            setCritiqueToDelete(null)
+          }}
+          onConfirm={async () => {
+            if (!critiqueToDelete || !resolvedParams) return
+
+            try {
+              setError(null)
+              await CritiqueService.deleteCritique(critiqueToDelete)
+
+              // 서평 목록 새로고침
+              const updatedCritiques = await CritiqueService.getBookCritiques(
+                resolvedParams.id
+              )
+              setCritiques(updatedCritiques)
+
+              setIsDeleteCritiqueModalOpen(false)
+              setCritiqueToDelete(null)
+            } catch (error) {
+              console.error("Error deleting critique:", error)
+              if (error instanceof ApiError) {
+                setError(error.message)
+              } else {
+                setError("서평을 삭제하는 중 오류가 발생했습니다.")
+              }
+            }
+          }}
+          title='서평 삭제'
+          message='이 서평을 삭제하시겠습니까?'
+          confirmText='삭제'
+          cancelText='취소'
+          icon={Trash2}
         />
       </div>
     </div>

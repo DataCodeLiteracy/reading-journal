@@ -9,6 +9,8 @@ import {
   Calendar,
   Clock,
   AlertCircle,
+  Lock,
+  Globe,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -36,6 +38,7 @@ export default function ReviewPage({
 
   const [review, setReview] = useState("")
   const [rating, setRating] = useState(0)
+  const [isPublic, setIsPublic] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -65,6 +68,7 @@ export default function ReviewPage({
         setBook(bookData)
         setRating(bookData.rating)
         setReview(bookData.review || "")
+        setIsPublic(bookData.reviewIsPublic || false)
         setReadingSessions(sessionsData)
       } catch (error) {
         if (error instanceof ApiError) {
@@ -119,6 +123,7 @@ export default function ReviewPage({
         ...book,
         rating,
         review,
+        reviewIsPublic: isPublic,
       }
 
       await BookService.updateBook(resolvedParams?.id || "", updatedBook)
@@ -279,6 +284,42 @@ export default function ReviewPage({
             className='w-full h-48 px-4 py-3 border border-theme-tertiary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary resize-none'
           />
           <p className='text-xs text-theme-tertiary mt-2'>{review.length}자</p>
+        </div>
+
+        {/* 공개 설정 */}
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              {isPublic ? (
+                <Globe className='h-5 w-5 text-blue-500' />
+              ) : (
+                <Lock className='h-5 w-5 text-gray-400' />
+              )}
+              <div>
+                <label className='text-sm font-medium text-theme-primary cursor-pointer'>
+                  공개하기
+                </label>
+                <p className='text-xs text-theme-tertiary'>
+                  {isPublic
+                    ? "다른 독서자들이 이 리뷰를 볼 수 있습니다"
+                    : "나만 볼 수 있습니다"}
+                </p>
+              </div>
+            </div>
+            <button
+              type='button'
+              onClick={() => setIsPublic(!isPublic)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isPublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isPublic ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         <div className='flex gap-3'>

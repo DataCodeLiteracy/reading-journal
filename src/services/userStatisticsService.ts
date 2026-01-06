@@ -1,6 +1,11 @@
 import { ApiClient } from "@/lib/apiClient"
-import { UserStatistics } from "@/types/user"
+import { UserStatistics, User } from "@/types/user"
 import { ReadingSession } from "@/types/user"
+import {
+  calculateLevelInfo,
+  readingTimeToExperience,
+} from "@/utils/experienceSystem"
+import { UserService } from "./userService"
 
 // Firestore 업데이트용 타입 (created_at, updated_at 제외)
 type UserStatisticsUpdateData = Omit<Partial<UserStatistics>, "updated_at">
@@ -41,6 +46,25 @@ export class UserStatisticsService {
           user_id,
           dataToUpdate
         )
+        
+        // users 컬렉션도 함께 업데이트 (레벨, 경험치, 총 독서시간이 있는 경우)
+        if (dataToUpdate.level !== undefined || dataToUpdate.experience !== undefined || dataToUpdate.totalReadingTime !== undefined) {
+          try {
+            const userUpdateData: Partial<User> = {}
+            if (dataToUpdate.level !== undefined) userUpdateData.level = dataToUpdate.level
+            if (dataToUpdate.experience !== undefined) userUpdateData.experience = dataToUpdate.experience
+            if (dataToUpdate.totalReadingTime !== undefined) userUpdateData.totalReadingTime = dataToUpdate.totalReadingTime
+            
+            await ApiClient.updateDocument<Partial<User>>(
+              "users",
+              user_id,
+              userUpdateData
+            )
+          } catch (error) {
+            console.warn("Failed to update users collection:", error)
+          }
+        }
+        
         console.log("User statistics updated successfully")
       } else {
         await ApiClient.createDocument("userStatistics", user_id, {
@@ -111,6 +135,23 @@ export class UserStatisticsService {
           user_id,
           updatedStats
         )
+      }
+
+      // users 컬렉션도 함께 업데이트 (레벨, 경험치, 총 독서시간이 있는 경우)
+      if (updatedStats.level !== undefined && updatedStats.experience !== undefined && updatedStats.totalReadingTime !== undefined) {
+        try {
+          await ApiClient.updateDocument<Partial<User>>(
+            "users",
+            user_id,
+            {
+              level: updatedStats.level,
+              experience: updatedStats.experience,
+              totalReadingTime: updatedStats.totalReadingTime,
+            }
+          )
+        } catch (error) {
+          console.warn("Failed to update users collection:", error)
+        }
       }
 
       // 반환할 때는 Date 객체를 포함한 형태로 변환
@@ -214,6 +255,14 @@ export class UserStatisticsService {
       })
 
       if (readingSessions.length === 0) {
+        // 기존 통계에서 보너스 경험치 정보 가져오기
+        const existingStats = await this.getUserStatistics(user_id)
+        const bonusExp = this.calculateBonusExperience(
+          existingStats?.totalLikesReceived || 0,
+          existingStats?.totalCommentsWritten || 0
+        )
+        const levelInfo = calculateLevelInfo(0, bonusExp)
+
         return {
           user_id,
           totalReadingTime: 0,
@@ -225,6 +274,8 @@ export class UserStatisticsService {
           longestStreak: 0,
           monthlyReadingTime: 0,
           readingStreak: 0,
+          level: levelInfo.level,
+          experience: levelInfo.experience,
         }
       }
 
@@ -362,6 +413,16 @@ export class UserStatisticsService {
         }
       }
 
+      // 기존 통계에서 보너스 경험치 정보 가져오기
+      const existingStats = await this.getUserStatistics(user_id)
+      const bonusExp = this.calculateBonusExperience(
+        existingStats?.totalLikesReceived || 0,
+        existingStats?.totalCommentsWritten || 0
+      )
+
+      // 레벨 및 경험치 계산
+      const levelInfo = calculateLevelInfo(totalReadingTime, bonusExp)
+
       const statistics: CalculatedStatistics = {
         user_id,
         totalReadingTime,
@@ -373,6 +434,8 @@ export class UserStatisticsService {
         longestStreak,
         monthlyReadingTime,
         readingStreak: currentReadingStreak,
+        level: levelInfo.level,
+        experience: levelInfo.experience,
       }
 
       console.log("Calculated statistics:", statistics)
@@ -410,6 +473,24 @@ export class UserStatisticsService {
       )
 
       await this.createOrUpdateUserStatistics(user_id, updatedStatistics)
+      
+      // users 컬렉션도 함께 업데이트
+      if (updatedStatistics.level !== undefined && updatedStatistics.experience !== undefined && updatedStatistics.totalReadingTime !== undefined) {
+        try {
+          await ApiClient.updateDocument<Partial<User>>(
+            "users",
+            user_id,
+            {
+              level: updatedStatistics.level,
+              experience: updatedStatistics.experience,
+              totalReadingTime: updatedStatistics.totalReadingTime,
+            }
+          )
+        } catch (error) {
+          console.warn("Failed to update users collection:", error)
+        }
+      }
+      
       console.log("Statistics updated from reading session")
     } catch (error) {
       console.error(
@@ -467,6 +548,24 @@ export class UserStatisticsService {
       )
 
       await this.createOrUpdateUserStatistics(user_id, updatedStatistics)
+      
+      // users 컬렉션도 함께 업데이트
+      if (updatedStatistics.level !== undefined && updatedStatistics.experience !== undefined && updatedStatistics.totalReadingTime !== undefined) {
+        try {
+          await ApiClient.updateDocument<Partial<User>>(
+            "users",
+            user_id,
+            {
+              level: updatedStatistics.level,
+              experience: updatedStatistics.experience,
+              totalReadingTime: updatedStatistics.totalReadingTime,
+            }
+          )
+        } catch (error) {
+          console.warn("Failed to update users collection:", error)
+        }
+      }
+      
       console.log(
         "User statistics recalculated successfully with provided sessions"
       )
@@ -476,6 +575,115 @@ export class UserStatisticsService {
         error
       )
       throw error
+    }
+  }
+
+  /**
+   * 보너스 경험치 계산 (좋아요, 댓글 기반)
+   * 좋아요 1개 = 10 EXP, 댓글 1개 = 5 EXP
+   */
+  static calculateBonusExperience(
+    totalLikesReceived: number,
+    totalCommentsWritten: number
+  ): number {
+    const LIKE_EXP = 10 // 좋아요 1개당 경험치
+    const COMMENT_EXP = 5 // 댓글 1개당 경험치
+
+    return totalLikesReceived * LIKE_EXP + totalCommentsWritten * COMMENT_EXP
+  }
+
+  /**
+   * 레벨 및 경험치 업데이트
+   * 독서 시간과 보너스 경험치를 기반으로 레벨을 재계산합니다.
+   */
+  static async updateLevelAndExperience(
+    user_id: string,
+    totalReadingTime: number,
+    totalLikesReceived?: number,
+    totalCommentsWritten?: number
+  ): Promise<{ level: number; experience: number }> {
+    try {
+      // 기존 통계에서 좋아요/댓글 수 가져오기 (제공되지 않은 경우)
+      let likes = totalLikesReceived
+      let comments = totalCommentsWritten
+
+      if (likes === undefined || comments === undefined) {
+        const existingStats = await this.getUserStatistics(user_id)
+        likes = likes ?? existingStats?.totalLikesReceived ?? 0
+        comments = comments ?? existingStats?.totalCommentsWritten ?? 0
+      }
+
+      const bonusExp = this.calculateBonusExperience(likes, comments)
+      const levelInfo = calculateLevelInfo(totalReadingTime, bonusExp)
+
+      // 통계 업데이트
+      await this.createOrUpdateUserStatistics(user_id, {
+        level: levelInfo.level,
+        experience: levelInfo.experience,
+        totalLikesReceived: likes,
+        totalCommentsWritten: comments,
+      })
+
+      // users 컬렉션도 함께 업데이트
+      try {
+        await ApiClient.updateDocument<Partial<User>>(
+          "users",
+          user_id,
+          {
+            level: levelInfo.level,
+            experience: levelInfo.experience,
+            totalReadingTime: totalReadingTime,
+          }
+        )
+      } catch (error) {
+        console.warn("Failed to update users collection:", error)
+        // users 컬렉션 업데이트 실패해도 계속 진행
+      }
+
+      return {
+        level: levelInfo.level,
+        experience: levelInfo.experience,
+      }
+    } catch (error) {
+      console.error(
+        "UserStatisticsService.updateLevelAndExperience error:",
+        error
+      )
+      throw error
+    }
+  }
+
+  /**
+   * 레벨 정보 조회 (진행률 포함)
+   */
+  static async getLevelInfo(user_id: string): Promise<{
+    level: number
+    experience: number
+    progress: number
+    expToNextLevel: number
+  } | null> {
+    try {
+      const stats = await this.getUserStatistics(user_id)
+      if (!stats) return null
+
+      const bonusExp = this.calculateBonusExperience(
+        stats.totalLikesReceived || 0,
+        stats.totalCommentsWritten || 0
+      )
+      const levelInfo = calculateLevelInfo(
+        stats.totalReadingTime || 0,
+        bonusExp
+      )
+
+      return {
+        level: levelInfo.level,
+        experience: levelInfo.experience,
+        progress: levelInfo.progress,
+        expToNextLevel: levelInfo.expToNextLevel,
+      }
+    } catch (error) {
+      console.error("UserStatisticsService.getLevelInfo error:", error)
+      return null
     }
   }
 }

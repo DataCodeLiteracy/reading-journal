@@ -4,6 +4,7 @@ import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { SettingsProvider } from "@/contexts/SettingsContext"
 import { DataProvider } from "@/contexts/DataContext"
+import BottomNavigation from "@/components/BottomNavigation"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +28,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <SettingsProvider>
-            <DataProvider>{children}</DataProvider>
+            <DataProvider>
+              {children}
+              <BottomNavigation />
+            </DataProvider>
           </SettingsProvider>
         </AuthProvider>
       </body>

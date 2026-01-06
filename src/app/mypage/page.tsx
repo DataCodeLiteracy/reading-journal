@@ -15,6 +15,8 @@ import {
   TrendingUp,
   Home,
   ClipboardList,
+  Globe,
+  Lock,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
@@ -22,6 +24,7 @@ import { Book } from "@/types/book"
 import { UserStatistics } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
 import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
+import { UserStatisticsService } from "@/services/userStatisticsService"
 
 export default function MyPage() {
   const router = useRouter()
@@ -30,6 +33,7 @@ export default function MyPage() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false)
+  const [isProfilePublic, setIsProfilePublic] = useState(true)
 
   // 실시간으로 계산하는 함수들
   const getTotalBooks = () => allBooks.length
@@ -51,6 +55,12 @@ export default function MyPage() {
       return
     }
   }, [isLoggedIn, loading, router])
+
+  useEffect(() => {
+    if (userStatistics) {
+      setIsProfilePublic(userStatistics.isProfilePublic !== false)
+    }
+  }, [userStatistics])
 
   const handleLogout = () => {
     setIsLogoutModalOpen(true)
@@ -93,7 +103,7 @@ export default function MyPage() {
   }
 
   return (
-    <div className='min-h-screen bg-theme-gradient'>
+    <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-6'>
         <header className='mb-6'>
           <button
@@ -258,6 +268,56 @@ export default function MyPage() {
             </div>
           </div>
         )}
+
+        {/* 프로필 공개 설정 */}
+        <div className='bg-theme-secondary rounded-lg p-4 shadow-sm mb-4'>
+          <h2 className='text-lg font-semibold text-theme-primary mb-3'>
+            프로필 공개 설정
+          </h2>
+          <div className='flex items-center justify-between p-3 bg-theme-tertiary rounded-lg'>
+            <div className='flex items-center gap-2'>
+              {isProfilePublic ? (
+                <Globe className='h-5 w-5 text-blue-500' />
+              ) : (
+                <Lock className='h-5 w-5 text-gray-400' />
+              )}
+              <div>
+                <label className='text-sm font-medium text-theme-primary cursor-pointer'>
+                  프로필 공개
+                </label>
+                <p className='text-xs text-theme-tertiary'>
+                  {isProfilePublic
+                    ? "다른 사용자들이 내 프로필과 통계를 볼 수 있습니다"
+                    : "내 프로필과 통계가 비공개됩니다"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                if (!userUid) return
+                const newValue = !isProfilePublic
+                setIsProfilePublic(newValue)
+                try {
+                  await UserStatisticsService.createOrUpdateUserStatistics(userUid, {
+                    isProfilePublic: newValue,
+                  })
+                } catch (error) {
+                  console.error("Error updating profile visibility:", error)
+                  setIsProfilePublic(!newValue) // 롤백
+                }
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isProfilePublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isProfilePublic ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
 
         {/* 계정 관리 */}
         <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
