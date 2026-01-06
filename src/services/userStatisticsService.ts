@@ -2,6 +2,18 @@ import { ApiClient } from "@/lib/apiClient"
 import { UserStatistics } from "@/types/user"
 import { ReadingSession } from "@/types/user"
 
+// Firestore 업데이트용 타입 (created_at, updated_at 제외)
+type UserStatisticsUpdateData = Omit<Partial<UserStatistics>, "updated_at">
+
+// Firestore에서 가져온 데이터 타입 (created_at, updated_at 포함 가능)
+type UserStatisticsWithDates = UserStatistics & {
+  created_at?: Date
+  updated_at?: Date
+}
+
+// 통계 계산 결과 타입 (updated_at 제외)
+type CalculatedStatistics = Omit<Partial<UserStatistics>, "updated_at">
+
 export class UserStatisticsService {
   static async createOrUpdateUserStatistics(
     user_id: string,
@@ -19,10 +31,16 @@ export class UserStatisticsService {
       const existingStats = await this.getUserStatistics(user_id)
 
       if (existingStats) {
-        await ApiClient.updateDocument("userStatistics", user_id, {
-          ...statisticsData,
-          updated_at: ApiClient.getServerTimestamp(),
-        })
+        // updated_at은 ApiClient.updateDocument에서 자동으로 추가되므로 제거
+        const dataToUpdate: UserStatisticsUpdateData = { ...statisticsData }
+        if ("updated_at" in dataToUpdate) {
+          delete (dataToUpdate as Partial<UserStatistics>).updated_at
+        }
+        await ApiClient.updateDocument<UserStatisticsUpdateData>(
+          "userStatistics",
+          user_id,
+          dataToUpdate
+        )
         console.log("User statistics updated successfully")
       } else {
         await ApiClient.createDocument("userStatistics", user_id, {
@@ -68,27 +86,41 @@ export class UserStatisticsService {
       )
 
       // 기존 데이터와 새로 계산한 데이터를 병합
-      const updatedStats: UserStatistics = {
-        user_id,
-        totalReadingTime: 0,
-        totalSessions: 0,
-        averageSessionTime: 0,
-        longestSessionTime: 0,
-        averageDailyTime: 0,
-        daysWithSessions: 0,
-        longestStreak: 0,
-        monthlyReadingTime: 0,
-        readingStreak: 0,
-        ...result,
+      // Date 객체는 제거하고 숫자/문자열만 포함
+      const resultWithDates = result as UserStatisticsWithDates | null
+      const resultData = resultWithDates
+        ? (({ created_at, updated_at, ...rest }) => rest)(resultWithDates)
+        : ({} as Partial<UserStatistics>)
+
+      const updatedStats: UserStatisticsUpdateData = {
+        ...resultData,
         ...calculatedStats,
-        updated_at: new Date(),
       }
 
-      // 직접 ApiClient를 사용하여 업데이트
-      await ApiClient.updateDocument("userStatistics", user_id, updatedStats)
+      // 문서가 없으면 생성, 있으면 업데이트
+      if (!result) {
+        await ApiClient.createDocument("userStatistics", user_id, {
+          ...updatedStats,
+          created_at: ApiClient.getServerTimestamp(),
+          updated_at: ApiClient.getServerTimestamp(),
+        })
+      } else {
+        // 직접 ApiClient를 사용하여 업데이트
+        await ApiClient.updateDocument<UserStatisticsUpdateData>(
+          "userStatistics",
+          user_id,
+          updatedStats
+        )
+      }
 
-      console.log("Updated statistics:", updatedStats)
-      return updatedStats
+      // 반환할 때는 Date 객체를 포함한 형태로 변환
+      const returnStats: UserStatistics = {
+        ...updatedStats,
+        updated_at: new Date(),
+      } as UserStatistics
+
+      console.log("Updated statistics:", returnStats)
+      return returnStats
     } catch (error) {
       console.error(
         "UserStatisticsService.getUserStatisticsWithSessions error:",
@@ -135,19 +167,31 @@ export class UserStatisticsService {
           )
 
           // 기존 데이터와 새로 계산한 데이터를 병합
-          const updatedStats = {
-            ...result,
+          // Date 객체는 제거하고 숫자/문자열만 포함
+          const resultWithDates = result as UserStatisticsWithDates
+          const resultData = (({ created_at, updated_at, ...rest }) => rest)(
+            resultWithDates
+          )
+
+          const updatedStats: UserStatisticsUpdateData = {
+            ...resultData,
             ...calculatedStats,
-            updated_at: new Date(),
           }
 
           // 직접 ApiClient를 사용하여 업데이트 (무한 루프 방지)
-          await ApiClient.updateDocument(
+          await ApiClient.updateDocument<UserStatisticsUpdateData>(
             "userStatistics",
             user_id,
             updatedStats
           )
-          return updatedStats
+
+          // 반환할 때는 Date 객체를 포함한 형태로 변환
+          const returnStats: UserStatistics = {
+            ...updatedStats,
+            updated_at: new Date(),
+          } as UserStatistics
+
+          return returnStats
         }
       }
 
@@ -191,20 +235,33 @@ export class UserStatisticsService {
       const totalSessions = readingSessions.length
       const averageSessionTime = Math.round(totalReadingTime / totalSessions)
 
-      // 개선된 날짜 계산 함수: 새벽 시간대 처리
+      // 개선된 날짜 계산 함수: 새벽 시간대 처리 (한국 시간 기준)
       const getEffectiveDate = (session: ReadingSession): string => {
+        // 한국 시간 기준으로 날짜 계산
         const startTime = new Date(session.startTime)
-        const hour = startTime.getHours()
+        const koreaTime = new Date(startTime.getTime() + 9 * 60 * 60 * 1000)
+        const hour = koreaTime.getUTCHours()
 
-        // 새벽 0시~3시에 읽은 경우 전날로 계산
-        if (hour >= 0 && hour <= 3) {
-          const previousDay = new Date(startTime)
-          previousDay.setDate(previousDay.getDate() - 1)
-          return previousDay.toISOString().split("T")[0]
+        // 한국 시간 기준으로 년, 월, 일 추출
+        const year = koreaTime.getUTCFullYear()
+        const month = String(koreaTime.getUTCMonth() + 1).padStart(2, "0")
+        const day = String(koreaTime.getUTCDate()).padStart(2, "0")
+
+        // 새벽 0시~1시에 읽은 경우 전날로 계산
+        if (hour >= 0 && hour < 1) {
+          const previousDay = new Date(
+            koreaTime.getTime() - 24 * 60 * 60 * 1000
+          )
+          const prevYear = previousDay.getUTCFullYear()
+          const prevMonth = String(previousDay.getUTCMonth() + 1).padStart(
+            2,
+            "0"
+          )
+          const prevDay = String(previousDay.getUTCDate()).padStart(2, "0")
+          return `${prevYear}-${prevMonth}-${prevDay}`
         }
 
-        // 그 외의 시간은 원래 날짜 사용
-        return session.date
+        return `${year}-${month}-${day}`
       }
 
       // 일일 독서 시간 계산 (개선된 날짜 기준)
@@ -305,7 +362,7 @@ export class UserStatisticsService {
         }
       }
 
-      const statistics: Partial<UserStatistics> = {
+      const statistics: CalculatedStatistics = {
         user_id,
         totalReadingTime,
         totalSessions,
@@ -316,7 +373,6 @@ export class UserStatisticsService {
         longestStreak,
         monthlyReadingTime,
         readingStreak: currentReadingStreak,
-        updated_at: new Date(),
       }
 
       console.log("Calculated statistics:", statistics)

@@ -28,6 +28,8 @@ import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ChecklistService } from "@/services/checklistService"
+// 체크리스트 컴포넌트 (현재 사용하지 않음, 나중에 사용할 수 있도록 유지)
+// import LongTermChecklistSection from "@/components/LongTermChecklistSection"
 
 import { ApiError } from "@/lib/apiClient"
 
@@ -61,8 +63,9 @@ export default function Home() {
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null)
 
-  // 체크리스트 관련 상태
-  const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
+  // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
+  // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
+  // const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -128,9 +131,10 @@ export default function Home() {
         setTotalItems(booksData.total)
         setIsSearching(!!searchQuery.trim())
 
-        // 체크리스트 데이터 로드
-        const checklistData = await ChecklistService.getUserChecklist(userUid)
-        setUserChecklist(checklistData)
+        // 체크리스트 데이터 로드 (현재 서비스에서는 사용하지 않음)
+        // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
+        // const checklistData = await ChecklistService.getUserChecklist(userUid)
+        // setUserChecklist(checklistData)
       } catch (error) {
         console.error("Error loading books:", error)
         if (error instanceof ApiError) {
@@ -313,6 +317,19 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* 장기 체크리스트 섹션 - 현재 서비스에서는 사용하지 않음 */}
+        {/* 나중에 사용할 수 있도록 컴포넌트로 분리되어 있음 */}
+        {/* 
+        {userUid && (
+          <LongTermChecklistSection
+            userUid={userUid}
+            onChecklistComplete={() => {
+              // 체크리스트 완료 후 처리 로직
+            }}
+          />
+        )}
+        */}
 
         {/* 사용자 통계 섹션 */}
         {userStatistics && (

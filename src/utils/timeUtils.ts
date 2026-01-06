@@ -116,3 +116,46 @@ export const splitBookTitles = (bookTitle: string): string[] => {
     .map((title) => title.trim())
     .filter((title) => title.length > 0)
 }
+
+/**
+ * 한국 시간(KST, UTC+9) 기준으로 날짜를 계산
+ * 새벽 01:00 이전은 전날로 처리
+ * @param date Date 객체 (로컬 시간 또는 UTC 시간)
+ * @returns "YYYY-MM-DD" 형식의 날짜 문자열
+ */
+export const getKoreaDate = (date: Date): string => {
+  // Date 객체의 UTC 타임스탬프를 가져와서 한국 시간(UTC+9)으로 변환
+  const utcTimestamp = date.getTime()
+  const koreaTimestamp = utcTimestamp + 9 * 60 * 60 * 1000
+  const koreaTime = new Date(koreaTimestamp)
+
+  // 한국 시간 기준으로 년, 월, 일 추출 (UTC 메서드를 사용하여 변환된 시간 기준)
+  const year = koreaTime.getUTCFullYear()
+  const month = String(koreaTime.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(koreaTime.getUTCDate()).padStart(2, "0")
+
+  // 한국 시간 기준 시간 추출
+  const hour = koreaTime.getUTCHours()
+
+  // 새벽 01:00 이전이면 전날로 처리
+  if (hour < 1) {
+    const previousDay = new Date(koreaTimestamp - 24 * 60 * 60 * 1000)
+    const prevYear = previousDay.getUTCFullYear()
+    const prevMonth = String(previousDay.getUTCMonth() + 1).padStart(2, "0")
+    const prevDay = String(previousDay.getUTCDate()).padStart(2, "0")
+    return `${prevYear}-${prevMonth}-${prevDay}`
+  }
+
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * ISO 문자열(UTC)을 한국 시간 기준 날짜로 변환
+ * 새벽 01:00 이전은 전날로 처리
+ * @param isoString ISO 형식의 시간 문자열
+ * @returns "YYYY-MM-DD" 형식의 날짜 문자열
+ */
+export const getKoreaDateFromISO = (isoString: string): string => {
+  const date = new Date(isoString)
+  return getKoreaDate(date)
+}

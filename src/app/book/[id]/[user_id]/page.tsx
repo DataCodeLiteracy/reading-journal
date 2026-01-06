@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Trash2,
   ClipboardList,
+  Plus,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -26,12 +27,19 @@ import EditBookModal from "@/components/EditBookModal"
 import CompleteBookModal from "@/components/CompleteBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import ChecklistModal from "@/components/ChecklistModal"
+// 체크리스트 컴포넌트 (현재 사용하지 않음, 나중에 사용할 수 있도록 유지)
+// import PreReadingChecklistSection from "@/components/PreReadingChecklistSection"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ChecklistService } from "@/services/checklistService"
+import { getKoreaDate } from "@/utils/timeUtils"
+import { QuestionService } from "@/services/questionService"
+import { BookQuestion } from "@/types/question"
+import QuestionCard from "@/components/QuestionCard"
+import { HelpCircle, ChevronRight } from "lucide-react"
 
 import { ApiError } from "@/lib/apiClient"
 
@@ -53,6 +61,7 @@ export default function BookDetailPage({
 
   const [book, setBook] = useState<Book | null>(null)
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([])
+  const [questions, setQuestions] = useState<BookQuestion[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [resolvedParams, setResolvedParams] = useState<{
@@ -74,11 +83,12 @@ export default function BookDetailPage({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isOnHoldModalOpen, setIsOnHoldModalOpen] = useState(false)
 
-  // 체크리스트 관련 상태
-  const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
-  const [preReadingChecklist, setPreReadingChecklist] = useState<any[]>([])
-  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false)
-  const [showChecklistReminder, setShowChecklistReminder] = useState(false)
+  // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
+  // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
+  // const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
+  // const [preReadingChecklist, setPreReadingChecklist] = useState<any[]>([])
+  // const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false)
+  // const [showChecklistReminder, setShowChecklistReminder] = useState(false)
 
   useEffect(() => {
     params.then((resolved) => {
@@ -104,41 +114,43 @@ export default function BookDetailPage({
         setBook(bookData)
 
         try {
-          const sessionsData =
-            await ReadingSessionService.getBookReadingSessions(
-              resolvedParams.id
-            )
+          const [sessionsData, questionsData] = await Promise.all([
+            ReadingSessionService.getBookReadingSessions(resolvedParams.id),
+            QuestionService.getBookQuestions(resolvedParams.id),
+          ])
           setReadingSessions(sessionsData)
+          setQuestions(questionsData)
 
-          // 체크리스트 데이터 로드
-          if (userUid) {
-            const checklistData = await ChecklistService.getUserChecklist(
-              userUid
-            )
-            setUserChecklist(checklistData)
+          // 체크리스트 데이터 로드 (현재 서비스에서는 사용하지 않음)
+          // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
+          // if (userUid) {
+          //   const checklistData = await ChecklistService.getUserChecklist(
+          //     userUid
+          //   )
+          //   setUserChecklist(checklistData)
 
-            // 시스템 체크리스트 로드 (실패 시 기본값 사용)
-            try {
-              const systemChecklist = await ChecklistService.getSystemChecklist(
-                "pre-reading"
-              )
-              if (systemChecklist) {
-                setPreReadingChecklist(systemChecklist.items)
-              } else {
-                setPreReadingChecklist(
-                  ChecklistService.getDefaultPreReadingChecklist()
-                )
-              }
-            } catch (error) {
-              console.error(
-                "Failed to load system checklist, using default:",
-                error
-              )
-              setPreReadingChecklist(
-                ChecklistService.getDefaultPreReadingChecklist()
-              )
-            }
-          }
+          //   // 시스템 체크리스트 로드 (실패 시 기본값 사용)
+          //   try {
+          //     const systemChecklist = await ChecklistService.getSystemChecklist(
+          //       "pre-reading"
+          //     )
+          //     if (systemChecklist) {
+          //       setPreReadingChecklist(systemChecklist.items)
+          //     } else {
+          //       setPreReadingChecklist(
+          //         ChecklistService.getDefaultPreReadingChecklist()
+          //       )
+          //     }
+          //   } catch (error) {
+          //     console.error(
+          //       "Failed to load system checklist, using default:",
+          //       error
+          //     )
+          //     setPreReadingChecklist(
+          //       ChecklistService.getDefaultPreReadingChecklist()
+          //     )
+          //   }
+          // }
         } catch (error) {
           console.error("Error loading reading sessions:", error)
           setError("독서 세션을 불러오는 중 오류가 발생했습니다.")
@@ -170,14 +182,14 @@ export default function BookDetailPage({
   const startTimer = async () => {
     if (isTimerProcessing) return // 이미 처리 중이면 무시
 
-    // 체크리스트 확인 여부 체크
-    const isChecklistValid =
-      ChecklistService.isPreReadingCheckValid(userChecklist)
-
-    if (!isChecklistValid) {
-      setShowChecklistReminder(true)
-      return
-    }
+    // 체크리스트 확인 여부 체크 (현재 서비스에서는 사용하지 않음)
+    // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
+    // const isChecklistValid =
+    //   ChecklistService.isPreReadingCheckValid(userChecklist)
+    // if (!isChecklistValid) {
+    //   setShowChecklistReminder(true)
+    //   return
+    // }
 
     try {
       setIsTimerProcessing(true)
@@ -233,7 +245,7 @@ export default function BookDetailPage({
           startTime: timerStartTime.toISOString(), // UTC 시간으로 저장
           endTime: endTime.toISOString(), // UTC 시간으로 저장
           duration,
-          date: timerStartTime.toISOString().split("T")[0], // 타이머 시작 시간 기준으로 날짜 설정
+          date: getKoreaDate(timerStartTime), // 한국 시간 기준으로 날짜 설정
         }
 
         try {
@@ -489,17 +501,19 @@ export default function BookDetailPage({
     }
   }
 
-  const handleChecklistComplete = async () => {
-    if (userUid) {
-      await ChecklistService.markPreReadingCompleted(userUid)
-      const updatedChecklist = await ChecklistService.getUserChecklist(userUid)
-      setUserChecklist(updatedChecklist)
-    }
-  }
+  // 체크리스트 관련 함수 (현재 서비스에서는 사용하지 않음)
+  // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
+  // const handleChecklistComplete = async () => {
+  //   if (userUid) {
+  //     await ChecklistService.markPreReadingCompleted(userUid)
+  //     const updatedChecklist = await ChecklistService.getUserChecklist(userUid)
+  //     setUserChecklist(updatedChecklist)
+  //   }
+  // }
 
-  const openChecklistModal = () => {
-    setIsChecklistModalOpen(true)
-  }
+  // const openChecklistModal = () => {
+  //   setIsChecklistModalOpen(true)
+  // }
 
   const totalReadingTime = readingSessions.reduce(
     (acc: number, session: ReadingSession) => acc + session.duration,
@@ -658,7 +672,17 @@ export default function BookDetailPage({
           </div>
         </div>
 
-        {/* 체크리스트 섹션 - 모바일 최적화 */}
+        {/* 체크리스트 섹션 - 현재 서비스에서는 사용하지 않음 */}
+        {/* 나중에 사용할 수 있도록 컴포넌트로 분리되어 있음 */}
+        {/* 
+        <PreReadingChecklistSection
+          userUid={userUid || ""}
+          onChecklistComplete={handleChecklistComplete}
+        />
+        */}
+        
+        {/* 기존 체크리스트 UI (사용하지 않음, 참고용으로 유지) */}
+        {/* 
         <div className='mb-4'>
           <button
             onClick={openChecklistModal}
@@ -696,6 +720,7 @@ export default function BookDetailPage({
             )}
           </button>
         </div>
+        */}
 
         {/* 주요 액션 버튼들 - 모바일 최적화 */}
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4'>
@@ -881,6 +906,61 @@ export default function BookDetailPage({
           )}
         </div>
 
+        {/* 질문 카드 섹션 */}
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
+          <div className='flex items-center justify-between mb-3'>
+            <h3 className='text-lg font-semibold text-theme-primary'>
+              독서 질문
+            </h3>
+            <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
+              {questions.length}개
+            </span>
+          </div>
+
+          {questions.length === 0 ? (
+            <div className='text-center py-6'>
+              <p className='text-theme-secondary mb-4'>
+                아직 질문이 없습니다. 질문을 추가해보세요!
+              </p>
+              <button
+                onClick={() =>
+                  router.push(
+                    `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
+                  )
+                }
+                className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+              >
+                <Plus className='h-4 w-4' />
+                <span>질문 추가하기</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className='space-y-3 mb-4'>
+                {questions.slice(0, 5).map((question) => (
+                  <QuestionCard
+                    key={question.id}
+                    question={question}
+                    showChapterPath={true}
+                    showActions={false}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() =>
+                  router.push(
+                    `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
+                  )
+                }
+                className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
+              >
+                <span>더보기 ({questions.length}개)</span>
+                <ChevronRight className='h-4 w-4' />
+              </button>
+            </>
+          )}
+        </div>
+
         {book.review && (
           <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-4'>
             <h3 className='text-lg font-semibold text-theme-primary mb-3'>
@@ -979,7 +1059,9 @@ export default function BookDetailPage({
           />
         )}
 
-        {/* 체크리스트 모달 */}
+        {/* 체크리스트 모달 - 현재 서비스에서는 사용하지 않음 */}
+        {/* 나중에 사용할 수 있도록 코드는 유지하되 주석 처리 */}
+        {/* 
         <ChecklistModal
           isOpen={isChecklistModalOpen}
           onClose={() => setIsChecklistModalOpen(false)}
@@ -989,7 +1071,6 @@ export default function BookDetailPage({
           description='독서를 시작하기 전에 다음 항목들을 확인해주세요.'
         />
 
-        {/* 체크리스트 리마인더 모달 */}
         {showChecklistReminder && (
           <ConfirmModal
             isOpen={showChecklistReminder}
@@ -1005,6 +1086,7 @@ export default function BookDetailPage({
             icon={ClipboardList}
           />
         )}
+        */}
 
         {/* 보류하기 확인 모달 */}
         <ConfirmModal
