@@ -44,12 +44,15 @@ export default function Leaderboard({
   showFullList = false,
 }: LeaderboardProps) {
   const router = useRouter()
-  const { userUid } = useAuth()
+  const { userUid, isLoggedIn, loading } = useAuth()
   const [topUsers, setTopUsers] = useState<LeaderboardUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sortBy, setSortBy] = useState<"level" | "experience" | "readingTime">("level")
 
   useEffect(() => {
+    // 로그인 상태가 확인될 때까지 대기
+    if (loading) return
+
     const loadLeaderboard = async () => {
       try {
         setIsLoading(true)
@@ -72,7 +75,7 @@ export default function Leaderboard({
     }
 
     loadLeaderboard()
-  }, [limit])
+  }, [limit, userUid, isLoggedIn, loading])
 
   if (isLoading) {
     return (
