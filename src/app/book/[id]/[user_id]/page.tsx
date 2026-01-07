@@ -579,6 +579,32 @@ export default function BookDetailPage({
     }
   }
 
+  // 날짜별로 독서 기록 그룹화
+  const groupSessionsByDate = () => {
+    const grouped: { [date: string]: ReadingSession[] } = {}
+    
+    readingSessions.forEach((session) => {
+      const date = session.date
+      if (!grouped[date]) {
+        grouped[date] = []
+      }
+      grouped[date].push(session)
+    })
+
+    // 날짜별로 정렬 (최신 날짜가 먼저)
+    const sortedDates = Object.keys(grouped).sort((a, b) => {
+      return new Date(b).getTime() - new Date(a).getTime()
+    })
+
+    return sortedDates.map((date) => ({
+      date,
+      sessions: grouped[date],
+      totalDuration: grouped[date].reduce((acc, session) => acc + session.duration, 0),
+    }))
+  }
+
+  const groupedSessions = groupSessionsByDate()
+
   const isCompleted = book?.status === "completed"
   const isOnHold = book?.status === "on-hold"
 
@@ -963,39 +989,61 @@ export default function BookDetailPage({
             </p>
           ) : (
             <div
-              className={`space-y-2 ${
+              className={`space-y-4 ${
                 readingSessions.length > 10 ? "max-h-80 overflow-y-auto" : ""
               }`}
             >
-              {readingSessions.map((session: ReadingSession) => (
-                <div
-                  key={session.id}
-                  className='flex items-center justify-between p-2 bg-theme-tertiary rounded-lg'
-                >
-                  <div>
-                    <div className='text-xs font-medium text-theme-primary'>
-                      {session.date}
+              {groupedSessions.map((group) => (
+                <div key={group.date} className='space-y-2'>
+                  {/* 날짜 헤더 */}
+                  <div className='flex items-center justify-between p-2 bg-theme-tertiary rounded-lg border-l-4 border-accent-theme'>
+                    <div className='flex items-center gap-2'>
+                      <Calendar className='h-4 w-4 text-accent-theme' />
+                      <span className='text-sm font-semibold text-theme-primary'>
+                        {group.date}
+                      </span>
                     </div>
-                    <div className='text-xs text-theme-secondary'>
-                      {formatTimeForDisplay(session.startTime)} -{" "}
-                      {formatTimeForDisplay(session.endTime)}
+                    <div className='flex items-center gap-2'>
+                      <Clock className='h-4 w-4 text-accent-theme' />
+                      <span className='text-sm font-medium text-accent-theme'>
+                        총 {Math.floor(group.totalDuration / 3600) > 0 && `${Math.floor(group.totalDuration / 3600)}시간 `}
+                        {Math.floor((group.totalDuration % 3600) / 60)}분
+                        {group.totalDuration % 60 > 0 && ` ${group.totalDuration % 60}초`}
+                      </span>
                     </div>
                   </div>
-                  <div className='flex items-center gap-2'>
-                    <div className='text-xs font-medium text-accent-theme'>
-                      {Math.floor(session.duration / 60)}분{" "}
-                      {session.duration % 60}초
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteReadingSession(session.id)
-                      }}
-                      className='p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
-                      title='독서 기록 삭제'
-                    >
-                      <Trash2 className='h-3 w-3' />
-                    </button>
+                  
+                  {/* 해당 날짜의 세션들 */}
+                  <div className='space-y-2 pl-4'>
+                    {group.sessions.map((session: ReadingSession) => (
+                      <div
+                        key={session.id}
+                        className='flex items-center justify-between p-2 bg-theme-tertiary/50 rounded-lg'
+                      >
+                        <div className='flex-1'>
+                          <div className='text-xs text-theme-secondary'>
+                            {formatTimeForDisplay(session.startTime)} -{" "}
+                            {formatTimeForDisplay(session.endTime)}
+                          </div>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <div className='text-xs font-medium text-theme-primary'>
+                            {Math.floor(session.duration / 60)}분{" "}
+                            {session.duration % 60}초
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteReadingSession(session.id)
+                            }}
+                            className='p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
+                            title='독서 기록 삭제'
+                          >
+                            <Trash2 className='h-3 w-3' />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
