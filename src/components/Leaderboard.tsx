@@ -50,12 +50,17 @@ export default function Leaderboard({
   const [sortBy, setSortBy] = useState<"level" | "experience" | "readingTime">("level")
 
   useEffect(() => {
-    // 로그인 상태가 확인될 때까지 대기
-    if (loading) return
+    console.log("[리더보드 컴포넌트] useEffect 실행:", {
+      loading,
+      isLoggedIn,
+      userUid,
+      limit
+    })
 
     const loadLeaderboard = async () => {
       try {
         setIsLoading(true)
+        console.log("[리더보드 컴포넌트] 리더보드 데이터 로드 시작")
         // 메인 페이지에서는 항상 레벨 기준으로 TOP5만 표시
         const users = await LeaderboardService.getTopUsersByLevel(limit)
         console.log("[리더보드 컴포넌트] 전체 유저:", users.map(u => ({
@@ -66,6 +71,13 @@ export default function Leaderboard({
           displayExperience: formatDisplayExperienceString(u.experience),
           totalReadingTime: u.totalReadingTime,
         })))
+        console.log("[리더보드 컴포넌트] 현재 로그인한 유저:", {
+          userUid,
+          isLoggedIn,
+          loading,
+          isInList: users.some(u => u.user_id === userUid)
+        })
+        
         setTopUsers(users)
       } catch (error) {
         console.error("Error loading leaderboard:", error)
@@ -74,6 +86,16 @@ export default function Leaderboard({
       }
     }
 
+    // 로그인 상태가 확인될 때까지 대기
+    if (loading) {
+      console.log("[리더보드 컴포넌트] 로딩 중, 대기...")
+      setIsLoading(true)
+      return
+    }
+
+    // 로그인 상태가 확인된 후 데이터 로드
+    // 이미 로그인되어 있는 상태에서도 컴포넌트가 마운트되면 데이터를 로드함
+    // 로그인하지 않은 경우에도 리더보드는 표시할 수 있음
     loadLeaderboard()
   }, [limit, userUid, isLoggedIn, loading])
 
