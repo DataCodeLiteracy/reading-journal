@@ -34,7 +34,11 @@ export class BookService {
     if (status === "reading") {
       updateData.hasStartedReading = true
     } else if (status === "completed") {
+      // 완독 처리 시 회독 수 증가
+      const book = await this.getBook(bookId)
+      const currentRereadCount = book?.rereadCount ?? 0
       updateData.completedDate = new Date().toISOString().split("T")[0]
+      updateData.rereadCount = currentRereadCount + 1
     }
 
     await ApiClient.updateDocument("books", bookId, updateData)

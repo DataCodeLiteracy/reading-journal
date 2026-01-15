@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { ReadingSession, UserChecklist } from "@/types/user"
 import RereadModal from "@/components/RereadModal"
+import RereadDetailModal from "@/components/RereadDetailModal"
 import EditBookModal from "@/components/EditBookModal"
 import CompleteBookModal from "@/components/CompleteBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -54,6 +55,8 @@ import CommentSection from "@/components/CommentSection"
 import { Quote, Critique } from "@/types/content"
 
 import { ApiError } from "@/lib/apiClient"
+import { RereadService } from "@/services/rereadService"
+import { Reread } from "@/types/reread"
 
 export default function BookDetailPage({
   params,
@@ -88,6 +91,8 @@ export default function BookDetailPage({
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const [isTimerProcessing, setIsTimerProcessing] = useState(false)
   const [isRereadModalOpen, setIsRereadModalOpen] = useState(false)
+  const [isRereadDetailModalOpen, setIsRereadDetailModalOpen] = useState(false)
+  const [rereads, setRereads] = useState<Reread[]>([])
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -144,16 +149,70 @@ export default function BookDetailPage({
         setBook(bookData)
 
         try {
-          const [sessionsData, questionsData, quotesData, critiquesData] = await Promise.all([
+          const [sessionsData, questionsData, quotesData, critiquesData, rereadsData] = await Promise.all([
             ReadingSessionService.getBookReadingSessions(resolvedParams.id),
             QuestionService.getBookQuestions(resolvedParams.id),
             QuoteService.getBookQuotes(resolvedParams.id),
             CritiqueService.getBookCritiques(resolvedParams.id),
+            RereadService.getBookRereads(resolvedParams.id),
           ])
           setReadingSessions(sessionsData)
           setQuestions(questionsData)
           setQuotes(quotesData)
           setCritiques(critiquesData)
+          setRereads(rereadsData)
+
+          // 이미 완독된 책인데 회독 기록이 없는 경우 자동 생성
+          if (
+            bookData.status === "completed" &&
+            bookData.completedDate &&
+            rereadsData.length === 0
+          ) {
+            try {
+              // 시작일 찾기
+              let startDate: string
+              if (sessionsData.length > 0) {
+                // 가장 오래된 독서 세션 날짜
+                const sortedSessions = [...sessionsData].sort((a, b) =>
+                  a.date.localeCompare(b.date)
+                )
+                startDate = sortedSessions[0].date
+              } else {
+                // 독서 세션이 없으면 책의 시작일 또는 완독일 사용
+                startDate = bookData.startDate || bookData.completedDate
+              }
+
+              const currentRereadCount = bookData.rereadCount ?? 0
+              const rereadNumber = currentRereadCount > 0 ? currentRereadCount : 1
+
+              // 회독 기록 생성
+              await RereadService.createReread({
+                bookId: resolvedParams.id,
+                user_id: resolvedParams.user_id,
+                rereadNumber: rereadNumber,
+                startDate: startDate,
+                completedDate: bookData.completedDate,
+              })
+
+              // 회독 기록 다시 로드
+              const updatedRereads = await RereadService.getBookRereads(resolvedParams.id)
+              setRereads(updatedRereads)
+
+              // 회독 수가 없으면 업데이트
+              if (!bookData.rereadCount || bookData.rereadCount === 0) {
+                await BookService.updateBook(resolvedParams.id, {
+                  rereadCount: rereadNumber,
+                })
+                const updatedBookData = await BookService.getBook(resolvedParams.id)
+                if (updatedBookData) {
+                  setBook(updatedBookData)
+                }
+              }
+            } catch (error) {
+              console.error("기존 완독 책 회독 기록 생성 오류:", error)
+              // 오류가 발생해도 계속 진행
+            }
+          }
 
           // 리뷰 좋아요 상태 확인
           if (bookData.review && bookData.reviewIsPublic && userUid && userUid !== bookData.user_id) {
@@ -390,18 +449,68 @@ export default function BookDetailPage({
   const markAsCompleted = async () => {
     try {
       setError(null)
+      
+      // 회독 기록을 위한 시작일 찾기
+      let startDate: string | null = null
+      
+      // 현재 회독의 시작일이 있으면 그것을 사용 (다시 읽기 시작한 날짜)
+      if (book?.currentRereadStartDate) {
+        startDate = book.currentRereadStartDate
+      } else if (readingSessions.length > 0) {
+        // 현재 회독 시작일이 없으면 가장 오래된 독서 세션 날짜 사용
+        const sortedSessions = [...readingSessions].sort((a, b) => 
+          a.date.localeCompare(b.date)
+        )
+        startDate = sortedSessions[0].date
+      } else {
+        // 독서 세션이 없으면 책의 시작일 또는 오늘 날짜 사용
+        startDate = book?.startDate || new Date().toISOString().split("T")[0]
+      }
+
+      const completedDate = new Date().toISOString().split("T")[0]
+      const currentRereadCount = book?.rereadCount ?? 0
+      const newRereadNumber = currentRereadCount + 1
+
+      // 회독 기록 생성
+      await RereadService.createReread({
+        bookId: resolvedParams?.id || "",
+        user_id: resolvedParams?.user_id || "",
+        rereadNumber: newRereadNumber,
+        startDate: startDate,
+        completedDate: completedDate,
+      })
+
+      // 책 상태 업데이트 (currentRereadStartDate 초기화)
       await BookService.updateBookStatus(
         resolvedParams?.id || "",
         "completed",
         resolvedParams?.user_id || ""
       )
+      
+      // currentRereadStartDate 초기화
+      await BookService.updateBook(resolvedParams?.id || "", {
+        currentRereadStartDate: undefined,
+      })
+
+      // 업데이트된 책 정보를 다시 가져와서 회독 수 포함
+      const updatedBookData = await BookService.getBook(resolvedParams?.id || "")
+      if (!updatedBookData) {
+        throw new Error("책 정보를 가져올 수 없습니다.")
+      }
 
       const updatedBook = {
         ...book!,
+        ...updatedBookData,
         status: "completed" as const,
-        completedDate: new Date().toISOString().split("T")[0],
+        completedDate: updatedBookData.completedDate || completedDate,
+        rereadCount: updatedBookData.rereadCount ?? 0,
+        currentRereadStartDate: undefined,
       }
       setBook(updatedBook)
+
+      // 회독 기록 다시 로드
+      const updatedRereads = await RereadService.getBookRereads(resolvedParams?.id || "")
+      setRereads(updatedRereads)
 
       // DataContext의 책 상태 업데이트
       updateBook(resolvedParams?.id || "", updatedBook)
@@ -417,16 +526,26 @@ export default function BookDetailPage({
   const handleReread = async () => {
     try {
       setError(null)
+      
+      // 다시 읽기 시작한 날짜 기록
+      const currentDate = new Date().toISOString().split("T")[0]
+      
       await BookService.updateBookStatus(
         resolvedParams?.id || "",
         "reading",
         resolvedParams?.user_id || ""
       )
+      
+      // 현재 회독 시작일 저장
+      await BookService.updateBook(resolvedParams?.id || "", {
+        currentRereadStartDate: currentDate,
+      })
 
       const updatedBook = {
         ...book!,
         status: "reading" as const,
         hasStartedReading: true,
+        currentRereadStartDate: currentDate,
       }
       setBook(updatedBook)
 
@@ -444,16 +563,27 @@ export default function BookDetailPage({
   const handleCancelCompletion = async () => {
     try {
       setError(null)
+      
+      // 완독 취소 후 다시 읽기 시작한 날짜 기록
+      const currentDate = new Date().toISOString().split("T")[0]
+      
       await BookService.updateBookStatus(
         resolvedParams?.id || "",
         "reading",
         resolvedParams?.user_id || ""
       )
+      
+      // 현재 회독 시작일 저장
+      await BookService.updateBook(resolvedParams?.id || "", {
+        currentRereadStartDate: currentDate,
+        completedDate: undefined,
+      })
 
       const updatedBook = {
         ...book!,
         status: "reading" as const,
         completedDate: undefined,
+        currentRereadStartDate: currentDate,
       }
       setBook(updatedBook)
 
@@ -734,9 +864,36 @@ export default function BookDetailPage({
               </div>
 
               {book.completedDate && (
-                <div className='flex items-center gap-1 text-sm text-green-600 dark:text-green-400 mt-2'>
-                  <CheckCircle className='h-4 w-4' />
-                  <span>완독일: {book.completedDate}</span>
+                <div className='flex flex-col gap-1 mt-2'>
+                  <div className='flex items-center gap-1 text-sm text-green-600 dark:text-green-400'>
+                    <CheckCircle className='h-4 w-4' />
+                    <span>완독일: {book.completedDate}</span>
+                  </div>
+                  {(() => {
+                    // 총 일수 계산 (모든 회독의 durationDays 합산)
+                    const totalDays = rereads.reduce((sum, reread) => {
+                      return sum + (reread.durationDays || 0)
+                    }, 0)
+                    
+                    return (
+                      <>
+                        {totalDays > 0 && (
+                          <div className='flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400'>
+                            <Clock className='h-4 w-4' />
+                            <span>총 {totalDays}일</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setIsRereadDetailModalOpen(true)}
+                          className='flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer'
+                        >
+                          <BookOpen className='h-4 w-4' />
+                          <span className='underline'>회독: {book.rereadCount ?? 0}회</span>
+                          <ChevronRight className='h-3 w-3' />
+                        </button>
+                      </>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -1362,6 +1519,13 @@ export default function BookDetailPage({
           onClose={() => setIsRereadModalOpen(false)}
           onConfirm={handleReread}
           bookTitle={book.title}
+        />
+
+        <RereadDetailModal
+          isOpen={isRereadDetailModalOpen}
+          onClose={() => setIsRereadDetailModalOpen(false)}
+          rereads={rereads}
+          bookTitle={book?.title || ""}
         />
 
         <EditBookModal
