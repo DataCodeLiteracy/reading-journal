@@ -71,14 +71,35 @@ export default function Leaderboard({
           displayExperience: formatDisplayExperienceString(u.experience),
           totalReadingTime: u.totalReadingTime,
         })))
+        
+        const isCurrentUserInList = users.some(u => u.user_id === userUid)
         console.log("[리더보드 컴포넌트] 현재 로그인한 유저:", {
           userUid,
           isLoggedIn,
           loading,
-          isInList: users.some(u => u.user_id === userUid)
+          isInList: isCurrentUserInList
         })
         
-        setTopUsers(users)
+        // 로그인한 유저가 상위 5명에 포함되어 있지 않으면 추가
+        if (isLoggedIn && userUid && !isCurrentUserInList) {
+          console.log("[리더보드 컴포넌트] 로그인한 유저가 리스트에 없음, 추가 시도...")
+          const currentUserInfo = await LeaderboardService.getUserRankInfo(userUid)
+          if (currentUserInfo) {
+            console.log("[리더보드 컴포넌트] 로그인한 유저 정보:", {
+              user_id: currentUserInfo.user_id,
+              displayName: currentUserInfo.displayName,
+              level: currentUserInfo.level,
+              experience: currentUserInfo.experience,
+            })
+            // 로그인한 유저를 리스트 끝에 추가
+            setTopUsers([...users, currentUserInfo])
+          } else {
+            console.log("[리더보드 컴포넌트] 로그인한 유저 정보를 가져올 수 없음")
+            setTopUsers(users)
+          }
+        } else {
+          setTopUsers(users)
+        }
       } catch (error) {
         console.error("Error loading leaderboard:", error)
       } finally {
@@ -176,8 +197,10 @@ export default function Leaderboard({
 
       <div className='space-y-2'>
         {topUsers.map((user, index) => {
-          const rank = index + 1
           const isCurrentUser = userUid === user.user_id
+          // 로그인한 유저가 상위 5명에 포함되어 있지 않고 리스트 끝에 추가된 경우
+          const isCurrentUserAppended = isCurrentUser && index >= limit
+          const rank = isCurrentUserAppended ? null : index + 1
 
           return (
             <div
@@ -189,7 +212,15 @@ export default function Leaderboard({
               }`}
             >
               {/* 순위 */}
-              <div className='flex-shrink-0'>{getRankIcon(rank)}</div>
+              <div className='flex-shrink-0'>
+                {rank ? (
+                  getRankIcon(rank)
+                ) : (
+                  <div className='w-6 h-6 rounded-full bg-theme-tertiary flex items-center justify-center'>
+                    <span className='text-xs font-semibold text-theme-secondary'>...</span>
+                  </div>
+                )}
+              </div>
 
               {/* 프로필 사진 */}
               <div className='flex-shrink-0'>

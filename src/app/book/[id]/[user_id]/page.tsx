@@ -593,7 +593,7 @@ export default function BookDetailPage({
       if (error instanceof ApiError) {
         setError(error.message)
       } else {
-        setError("완독 취소 중 오류가 발생했습니다.")
+        setError("다시 읽기 처리 중 오류가 발생했습니다.")
       }
     }
   }
@@ -1044,7 +1044,7 @@ export default function BookDetailPage({
                 className='flex items-center justify-center gap-2 py-3 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 <RotateCcw className='h-4 w-4' />
-                완독 취소
+                다시 읽기
               </button>
               <button
                 onClick={() =>

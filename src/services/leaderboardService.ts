@@ -267,5 +267,29 @@ export class LeaderboardService {
       return { users: [], total: 0 }
     }
   }
+
+  /**
+   * 특정 유저의 순위 정보 가져오기 (레벨 기준)
+   */
+  static async getUserRankInfo(userId: string): Promise<LeaderboardUser | null> {
+    try {
+      const user = await UserService.getUser(userId)
+      if (!user || !user.level || user.level <= 0 || user.experience === undefined) {
+        return null
+      }
+
+      return {
+        user_id: user.uid,
+        displayName: user.displayName || user.email || "익명",
+        photoURL: user.photoURL || undefined,
+        level: user.level || 1,
+        experience: user.experience || 0,
+        totalReadingTime: user.totalReadingTime || 0,
+      }
+    } catch (error) {
+      console.error("LeaderboardService.getUserRankInfo error:", error)
+      return null
+    }
+  }
 }
 
