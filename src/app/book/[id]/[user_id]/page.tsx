@@ -32,6 +32,7 @@ import CompleteBookModal from "@/components/CompleteBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import ChecklistModal from "@/components/ChecklistModal"
 import SuccessModal from "@/components/SuccessModal"
+import EditReadingSessionModal from "@/components/EditReadingSessionModal"
 // 체크리스트 컴포넌트 (현재 사용하지 않음, 나중에 사용할 수 있도록 유지)
 // import PreReadingChecklistSection from "@/components/PreReadingChecklistSection"
 import { useAuth } from "@/contexts/AuthContext"
@@ -100,6 +101,8 @@ export default function BookDetailPage({
   const [isDeleteSessionModalOpen, setIsDeleteSessionModalOpen] =
     useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
+  const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false)
+  const [sessionToEdit, setSessionToEdit] = useState<ReadingSession | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [successModalTitle, setSuccessModalTitle] = useState("")
@@ -683,6 +686,39 @@ export default function BookDetailPage({
     }
   }
 
+  const handleEditReadingSession = (session: ReadingSession) => {
+    setSessionToEdit(session)
+    setIsEditSessionModalOpen(true)
+  }
+
+  const handleSaveReadingSession = async (updatedSession: ReadingSession) => {
+    try {
+      setError(null)
+      await ReadingSessionService.updateReadingSession(updatedSession.id, {
+        startTime: updatedSession.startTime,
+        endTime: updatedSession.endTime,
+        duration: updatedSession.duration,
+      })
+
+      // 독서 기록 목록을 다시 가져와서 UI 업데이트
+      const updatedSessions =
+        await ReadingSessionService.getBookReadingSessions(
+          resolvedParams?.id || ""
+        )
+      setReadingSessions(updatedSessions)
+
+      // DataContext 업데이트 (통계 재계산을 위해)
+      await updateStatistics()
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setError(error.message)
+      } else {
+        setError("독서 기록을 수정하는 중 오류가 발생했습니다.")
+      }
+      throw error
+    }
+  }
+
   const handleDeleteReadingSession = async (sessionId: string) => {
     setSessionToDelete(sessionId)
     setIsDeleteSessionModalOpen(true)
@@ -1247,16 +1283,28 @@ export default function BookDetailPage({
                             {Math.floor(session.duration / 60)}분{" "}
                             {session.duration % 60}초
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteReadingSession(session.id)
-                            }}
-                            className='p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
-                            title='독서 기록 삭제'
-                          >
-                            <Trash2 className='h-3 w-3' />
-                          </button>
+                          <div className='flex items-center gap-1'>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditReadingSession(session)
+                              }}
+                              className='p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors'
+                              title='독서 기록 수정'
+                            >
+                              <Edit className='h-3 w-3' />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteReadingSession(session.id)
+                              }}
+                              className='p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
+                              title='독서 기록 삭제'
+                            >
+                              <Trash2 className='h-3 w-3' />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1619,6 +1667,17 @@ export default function BookDetailPage({
           confirmText='삭제'
           cancelText='취소'
           icon={Trash2}
+        />
+
+        {/* 독서 기록 수정 모달 */}
+        <EditReadingSessionModal
+          isOpen={isEditSessionModalOpen}
+          onClose={() => {
+            setIsEditSessionModalOpen(false)
+            setSessionToEdit(null)
+          }}
+          onSave={handleSaveReadingSession}
+          session={sessionToEdit}
         />
 
         {/* 독서 기록 삭제 확인 모달 */}

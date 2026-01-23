@@ -96,6 +96,17 @@ export class ReadingSessionService {
     }
   }
 
+  static async updateReadingSession(
+    sessionId: string,
+    sessionData: Partial<Omit<ReadingSession, "id" | "created_at" | "updated_at">>
+  ): Promise<void> {
+    try {
+      await ApiClient.updateDocument("readingSessions", sessionId, sessionData)
+    } catch (error) {
+      throw error
+    }
+  }
+
   static async deleteReadingSession(sessionId: string): Promise<void> {
     try {
       await ApiClient.deleteDocument("readingSessions", sessionId)
