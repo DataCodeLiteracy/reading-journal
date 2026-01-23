@@ -31,6 +31,7 @@ import EditBookModal from "@/components/EditBookModal"
 import CompleteBookModal from "@/components/CompleteBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import ChecklistModal from "@/components/ChecklistModal"
+import SuccessModal from "@/components/SuccessModal"
 // 체크리스트 컴포넌트 (현재 사용하지 않음, 나중에 사용할 수 있도록 유지)
 // import PreReadingChecklistSection from "@/components/PreReadingChecklistSection"
 import { useAuth } from "@/contexts/AuthContext"
@@ -100,6 +101,9 @@ export default function BookDetailPage({
     useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
+  const [successModalTitle, setSuccessModalTitle] = useState("")
+  const [successModalMessage, setSuccessModalMessage] = useState("")
   const [isOnHoldModalOpen, setIsOnHoldModalOpen] = useState(false)
   
   // 구절 기록 관련 상태
@@ -449,6 +453,7 @@ export default function BookDetailPage({
   const markAsCompleted = async () => {
     try {
       setError(null)
+      console.log("[완독하기] 시작", { bookId: resolvedParams?.id })
       
       // 회독 기록을 위한 시작일 찾기
       let startDate: string | null = null
@@ -471,6 +476,13 @@ export default function BookDetailPage({
       const currentRereadCount = book?.rereadCount ?? 0
       const newRereadNumber = currentRereadCount + 1
 
+      console.log("[완독하기] 회독 기록 생성", {
+        bookId: resolvedParams?.id,
+        rereadNumber: newRereadNumber,
+        startDate,
+        completedDate,
+      })
+
       // 회독 기록 생성
       await RereadService.createReread({
         bookId: resolvedParams?.id || "",
@@ -480,23 +492,32 @@ export default function BookDetailPage({
         completedDate: completedDate,
       })
 
+      console.log("[완독하기] 회독 기록 생성 완료")
+
       // 책 상태 업데이트 (currentRereadStartDate 초기화)
+      console.log("[완독하기] 책 상태 업데이트 시작")
       await BookService.updateBookStatus(
         resolvedParams?.id || "",
         "completed",
         resolvedParams?.user_id || ""
       )
       
+      console.log("[완독하기] 책 상태 업데이트 완료")
+      
       // currentRereadStartDate 초기화
       await BookService.updateBook(resolvedParams?.id || "", {
         currentRereadStartDate: undefined,
       })
+
+      console.log("[완독하기] currentRereadStartDate 초기화 완료")
 
       // 업데이트된 책 정보를 다시 가져와서 회독 수 포함
       const updatedBookData = await BookService.getBook(resolvedParams?.id || "")
       if (!updatedBookData) {
         throw new Error("책 정보를 가져올 수 없습니다.")
       }
+
+      console.log("[완독하기] 업데이트된 책 정보:", updatedBookData)
 
       const updatedBook = {
         ...book!,
@@ -512,9 +533,25 @@ export default function BookDetailPage({
       const updatedRereads = await RereadService.getBookRereads(resolvedParams?.id || "")
       setRereads(updatedRereads)
 
-      // DataContext의 책 상태 업데이트
-      updateBook(resolvedParams?.id || "", updatedBook)
+      console.log("[완독하기] DataContext 업데이트 시작")
+      // DataContext의 책 상태 업데이트 (동기 함수이므로 에러가 발생하지 않음)
+      try {
+        updateBook(resolvedParams?.id || "", updatedBook)
+        console.log("[완독하기] DataContext 업데이트 완료")
+      } catch (contextError) {
+        console.error("[완독하기] DataContext 업데이트 중 에러 (무시 가능):", contextError)
+        // DataContext 업데이트 실패는 치명적이지 않으므로 무시
+      }
+
+      // 성공 모달 표시
+      setSuccessModalTitle("완독 처리 완료")
+      setSuccessModalMessage(
+        `"${book?.title}" 책을 완독한 책으로 표시했습니다. ${newRereadNumber}회독이 기록되었습니다.`
+      )
+      setIsSuccessModalOpen(true)
+      setIsCompleteModalOpen(false)
     } catch (error) {
+      console.error("[완독하기] 에러 발생:", error)
       if (error instanceof ApiError) {
         setError(error.message)
       } else {
@@ -563,15 +600,19 @@ export default function BookDetailPage({
   const handleCancelCompletion = async () => {
     try {
       setError(null)
+      console.log("[다시 읽기] 시작", { bookId: resolvedParams?.id })
       
       // 완독 취소 후 다시 읽기 시작한 날짜 기록
       const currentDate = new Date().toISOString().split("T")[0]
       
+      console.log("[다시 읽기] 책 상태 업데이트 시작")
       await BookService.updateBookStatus(
         resolvedParams?.id || "",
         "reading",
         resolvedParams?.user_id || ""
       )
+      
+      console.log("[다시 읽기] 책 상태 업데이트 완료")
       
       // 현재 회독 시작일 저장
       await BookService.updateBook(resolvedParams?.id || "", {
@@ -579,17 +620,35 @@ export default function BookDetailPage({
         completedDate: undefined,
       })
 
+      console.log("[다시 읽기] currentRereadStartDate 저장 완료")
+
       const updatedBook = {
         ...book!,
         status: "reading" as const,
         completedDate: undefined,
         currentRereadStartDate: currentDate,
+        hasStartedReading: true,
       }
       setBook(updatedBook)
 
-      // DataContext의 책 상태 업데이트
-      updateBook(resolvedParams?.id || "", updatedBook)
+      console.log("[다시 읽기] DataContext 업데이트 시작")
+      // DataContext의 책 상태 업데이트 (동기 함수이므로 에러가 발생하지 않음)
+      try {
+        updateBook(resolvedParams?.id || "", updatedBook)
+        console.log("[다시 읽기] DataContext 업데이트 완료")
+      } catch (contextError) {
+        console.error("[다시 읽기] DataContext 업데이트 중 에러 (무시 가능):", contextError)
+        // DataContext 업데이트 실패는 치명적이지 않으므로 무시
+      }
+
+      // 성공 모달 표시
+      setSuccessModalTitle("다시 읽기 시작")
+      setSuccessModalMessage(
+        `"${book?.title}" 책을 다시 읽기로 변경했습니다. 새로운 회독이 시작되었습니다.`
+      )
+      setIsSuccessModalOpen(true)
     } catch (error) {
+      console.error("[다시 읽기] 에러 발생:", error)
       if (error instanceof ApiError) {
         setError(error.message)
       } else {
@@ -1540,6 +1599,14 @@ export default function BookDetailPage({
           onClose={() => setIsCompleteModalOpen(false)}
           onConfirm={markAsCompleted}
           bookTitle={book.title}
+        />
+
+        {/* 성공 모달 */}
+        <SuccessModal
+          isOpen={isSuccessModalOpen}
+          onClose={() => setIsSuccessModalOpen(false)}
+          title={successModalTitle}
+          message={successModalMessage}
         />
 
         {/* 책 삭제 확인 모달 */}

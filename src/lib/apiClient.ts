@@ -15,6 +15,7 @@ import {
   Timestamp,
   DocumentData,
   QuerySnapshot,
+  deleteField,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
@@ -120,13 +121,33 @@ export class ApiClient {
   ): Promise<void> {
     try {
       const docRef = doc(db, collectionName, id)
-      await updateDoc(docRef, {
-        ...data,
+      
+      // undefined 값을 가진 필드는 deleteField()로 변환
+      const updateData: any = {
         updated_at: serverTimestamp(),
+      }
+      
+      for (const [key, value] of Object.entries(data)) {
+        if (value === undefined) {
+          // undefined 값은 필드 삭제로 처리
+          updateData[key] = deleteField()
+        } else {
+          updateData[key] = value
+        }
+      }
+      
+      await updateDoc(docRef, updateData)
+    } catch (error: any) {
+      console.error("[ApiClient.updateDocument] 실제 에러:", {
+        code: error?.code,
+        message: error?.message,
+        stack: error?.stack,
+        collectionName,
+        id,
+        data,
       })
-    } catch (error) {
       throw new ApiError(
-        `문서를 업데이트하는 중 오류가 발생했습니다.`,
+        `문서를 업데이트하는 중 오류가 발생했습니다. ${error?.message || ""}`,
         "DOCUMENT_UPDATE_ERROR"
       )
     }
