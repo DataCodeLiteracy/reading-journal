@@ -45,6 +45,7 @@ export default function BooksPage() {
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false)
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null)
+  const [isNavigating, setIsNavigating] = useState(false)
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -130,6 +131,7 @@ export default function BooksPage() {
   }
 
   const handleBookClick = (bookId: string) => {
+    setIsNavigating(true)
     router.push(`/book/${bookId}/${userUid || "1"}`)
   }
 
@@ -468,18 +470,6 @@ export default function BooksPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* 삭제 버튼 */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteBook(book.id)
-                  }}
-                  className='absolute top-2 right-2 p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors opacity-0 group-hover:opacity-100'
-                  title='책 삭제'
-                >
-                  <Trash2 className='h-4 w-4' />
-                </button>
               </div>
             ))}
           </div>
@@ -516,6 +506,13 @@ export default function BooksPage() {
         cancelText='취소'
         icon={Trash2}
       />
+
+      {/* 로딩 Backdrop */}
+      {isNavigating && (
+        <div className='fixed inset-0 bg-black/60 dark:bg-black/75 flex items-center justify-center z-50'>
+          <div className='animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent' />
+        </div>
+      )}
     </div>
   )
 }

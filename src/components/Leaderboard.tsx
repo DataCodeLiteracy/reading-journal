@@ -50,55 +50,30 @@ export default function Leaderboard({
   const [sortBy, setSortBy] = useState<"level" | "experience" | "readingTime">("level")
 
   useEffect(() => {
-    console.log("[리더보드 컴포넌트] useEffect 실행:", {
-      loading,
-      isLoggedIn,
-      userUid,
-      limit
-    })
-
     const loadLeaderboard = async () => {
       try {
         setIsLoading(true)
-        console.log("[리더보드 컴포넌트] 리더보드 데이터 로드 시작")
-        // 메인 페이지에서는 항상 레벨 기준으로 TOP5만 표시
-        const users = await LeaderboardService.getTopUsersByLevel(limit)
-        console.log("[리더보드 컴포넌트] 전체 유저:", users.map(u => ({
-          user_id: u.user_id,
-          displayName: u.displayName,
-          level: u.level,
-          actualExperience: u.experience,
-          displayExperience: formatDisplayExperienceString(u.experience),
-          totalReadingTime: u.totalReadingTime,
-        })))
         
-        const isCurrentUserInList = users.some(u => u.user_id === userUid)
-        console.log("[리더보드 컴포넌트] 현재 로그인한 유저:", {
-          userUid,
-          isLoggedIn,
-          loading,
-          isInList: isCurrentUserInList
-        })
+        // 전체 유저를 한 번에 조회하여 정렬
+        const allUsers = await LeaderboardService.getAllUsersSorted()
         
-        // 로그인한 유저가 상위 5명에 포함되어 있지 않으면 추가
-        if (isLoggedIn && userUid && !isCurrentUserInList) {
-          console.log("[리더보드 컴포넌트] 로그인한 유저가 리스트에 없음, 추가 시도...")
-          const currentUserInfo = await LeaderboardService.getUserRankInfo(userUid)
-          if (currentUserInfo) {
-            console.log("[리더보드 컴포넌트] 로그인한 유저 정보:", {
-              user_id: currentUserInfo.user_id,
-              displayName: currentUserInfo.displayName,
-              level: currentUserInfo.level,
-              experience: currentUserInfo.experience,
-            })
+        // 상위 limit명만 필터링
+        const topUsersList = allUsers.slice(0, limit)
+        
+        // 로그인한 유저가 상위 limit명에 포함되어 있는지 확인
+        const isCurrentUserInTop = topUsersList.some(u => u.user_id === userUid)
+        
+        // 로그인한 유저가 상위 limit명에 없고, 전체 리스트에 있으면 추가
+        if (isLoggedIn && userUid && !isCurrentUserInTop) {
+          const currentUser = allUsers.find(u => u.user_id === userUid)
+          if (currentUser) {
             // 로그인한 유저를 리스트 끝에 추가
-            setTopUsers([...users, currentUserInfo])
+            setTopUsers([...topUsersList, currentUser])
           } else {
-            console.log("[리더보드 컴포넌트] 로그인한 유저 정보를 가져올 수 없음")
-            setTopUsers(users)
+            setTopUsers(topUsersList)
           }
         } else {
-          setTopUsers(users)
+          setTopUsers(topUsersList)
         }
       } catch (error) {
         console.error("Error loading leaderboard:", error)
@@ -109,14 +84,11 @@ export default function Leaderboard({
 
     // 로그인 상태가 확인될 때까지 대기
     if (loading) {
-      console.log("[리더보드 컴포넌트] 로딩 중, 대기...")
       setIsLoading(true)
       return
     }
 
     // 로그인 상태가 확인된 후 데이터 로드
-    // 이미 로그인되어 있는 상태에서도 컴포넌트가 마운트되면 데이터를 로드함
-    // 로그인하지 않은 경우에도 리더보드는 표시할 수 있음
     loadLeaderboard()
   }, [limit, userUid, isLoggedIn, loading])
 
@@ -198,9 +170,10 @@ export default function Leaderboard({
       <div className='space-y-2'>
         {topUsers.map((user, index) => {
           const isCurrentUser = userUid === user.user_id
-          // 로그인한 유저가 상위 5명에 포함되어 있지 않고 리스트 끝에 추가된 경우
+          // 로그인한 유저가 상위 limit명에 포함되어 있지 않고 리스트 끝에 추가된 경우
           const isCurrentUserAppended = isCurrentUser && index >= limit
-          const rank = isCurrentUserAppended ? null : index + 1
+          // user.rank가 있으면 사용하고, 없으면 index + 1 사용
+          const rank = isCurrentUserAppended ? user.rank || null : (user.rank || index + 1)
 
           return (
             <div
