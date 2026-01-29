@@ -1,5 +1,6 @@
 import { ApiClient } from "@/lib/apiClient"
 import { Book } from "@/types/book"
+import { ReadingSessionService } from "@/services/readingSessionService"
 
 export class BookService {
   static async createBook(bookData: Omit<Book, "id">): Promise<string> {
@@ -84,10 +85,19 @@ export class BookService {
     user_id: string,
     status: Book["status"],
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    sortByLastRead: boolean = false
   ): Promise<{ books: Book[]; total: number }> {
     try {
-      const statusBooks = await this.getUserBooksByStatus(user_id, status)
+      let statusBooks: Book[]
+      if (sortByLastRead && status === "reading") {
+        statusBooks = await this.getUserBooksByStatusSortedByLastRead(
+          user_id,
+          status
+        )
+      } else {
+        statusBooks = await this.getUserBooksByStatus(user_id, status)
+      }
       const total = statusBooks.length
 
       const startIndex = (page - 1) * limit
@@ -101,15 +111,44 @@ export class BookService {
     }
   }
 
+  /**
+   * 사용자의 특정 상태 책 목록을 "가장 최근에 읽은 기록" 순으로 정렬해 반환합니다.
+   * 독서 세션에 기록이 없는 책은 목록 맨 뒤로 갑니다.
+   */
+  static async getUserBooksByStatusSortedByLastRead(
+    user_id: string,
+    status: Book["status"]
+  ): Promise<Book[]> {
+    const [statusBooks, sessions] = await Promise.all([
+      this.getUserBooksByStatus(user_id, status),
+      ReadingSessionService.getUserReadingSessions(user_id),
+    ])
+    const bookIdToLatestDate = new Map<string, number>()
+    for (const s of sessions) {
+      const t = new Date(s.date).getTime()
+      const cur = bookIdToLatestDate.get(s.bookId)
+      if (cur === undefined || t > cur) bookIdToLatestDate.set(s.bookId, t)
+    }
+    return statusBooks.slice().sort((a, b) => {
+      const dateA = bookIdToLatestDate.get(a.id) ?? 0
+      const dateB = bookIdToLatestDate.get(b.id) ?? 0
+      return dateB - dateA
+    })
+  }
+
   static async searchUserBooksByStatus(
     user_id: string,
     status: Book["status"],
     searchQuery: string,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    sortByLastRead: boolean = false
   ): Promise<{ books: Book[]; total: number }> {
     try {
-      const statusBooks = await this.getUserBooksByStatus(user_id, status)
+      const statusBooks =
+        sortByLastRead && status === "reading"
+          ? await this.getUserBooksByStatusSortedByLastRead(user_id, status)
+          : await this.getUserBooksByStatus(user_id, status)
 
       // 검색어가 있으면 필터링
       const filteredBooks = searchQuery.trim()

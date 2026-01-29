@@ -81,19 +81,23 @@ export default function BooksPage() {
         console.log("Loading books for user_id:", userUid)
 
         // 검색어가 있으면 검색 API 사용, 없으면 일반 페이지네이션 API 사용
+        // '읽는 중' 탭일 때는 최근 읽은 기록 순으로 정렬
+        const sortByLastRead = activeTab === "reading"
         const booksData = searchQuery.trim()
           ? await BookService.searchUserBooksByStatus(
               userUid,
               activeTab,
               searchQuery,
               currentPage,
-              itemsPerPage
+              itemsPerPage,
+              sortByLastRead
             )
           : await BookService.getUserBooksByStatusPaginated(
               userUid,
               activeTab,
               currentPage,
-              itemsPerPage
+              itemsPerPage,
+              sortByLastRead
             )
 
         console.log("Loaded books data:", {

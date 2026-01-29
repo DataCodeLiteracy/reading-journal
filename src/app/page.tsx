@@ -80,12 +80,13 @@ export default function Home() {
           return
         }
 
-        // 최근 읽는 중인 책 5개만 가져오기
+        // 최근 읽는 중인 책 5개만 가져오기 (최근 읽은 기록 순으로 정렬)
         const booksData = await BookService.getUserBooksByStatusPaginated(
           userUid,
           "reading",
           1,
-          5
+          5,
+          true
         )
 
         setRecentBooks(booksData.books)
