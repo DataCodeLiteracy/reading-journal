@@ -460,23 +460,45 @@ export default function BookDetailPage({
       
       // 회독 기록을 위한 시작일 찾기
       let startDate: string | null = null
-      
-      // 현재 회독의 시작일이 있으면 그것을 사용 (다시 읽기 시작한 날짜)
+      const currentRereadCount = book?.rereadCount ?? 0
+      const isFirstReread = currentRereadCount === 0
+
       if (book?.currentRereadStartDate) {
+        // 현재 회독의 시작일이 있으면 그것을 사용 (다시 읽기 시작한 날짜)
         startDate = book.currentRereadStartDate
       } else if (readingSessions.length > 0) {
-        // 현재 회독 시작일이 없으면 가장 오래된 독서 세션 날짜 사용
-        const sortedSessions = [...readingSessions].sort((a, b) => 
-          a.date.localeCompare(b.date)
-        )
-        startDate = sortedSessions[0].date
-      } else {
-        // 독서 세션이 없으면 책의 시작일 또는 오늘 날짜 사용
+        if (!isFirstReread && rereads.length > 0) {
+          // 2회독 이상: 이전 회독 완료일 이후의 세션만 '이번 회독' 구간. 그 중 가장 빠른 날을 시작일로 사용
+          const lastCompletedDate = rereads
+            .map((r) => r.completedDate)
+            .filter(Boolean)
+            .sort()
+            .pop()
+          if (lastCompletedDate) {
+            const sessionsAfterLastReread = readingSessions.filter(
+              (s) => s.date > lastCompletedDate
+            )
+            if (sessionsAfterLastReread.length > 0) {
+              const sorted = [...sessionsAfterLastReread].sort((a, b) =>
+                a.date.localeCompare(b.date)
+              )
+              startDate = sorted[0].date
+            }
+          }
+        }
+        if (startDate == null) {
+          // 1회독이거나 위에서 못 찾은 경우: 전체 세션 중 가장 오래된 날짜
+          const sortedSessions = [...readingSessions].sort((a, b) =>
+            a.date.localeCompare(b.date)
+          )
+          startDate = sortedSessions[0].date
+        }
+      }
+      if (startDate == null) {
         startDate = book?.startDate || new Date().toISOString().split("T")[0]
       }
 
       const completedDate = new Date().toISOString().split("T")[0]
-      const currentRereadCount = book?.rereadCount ?? 0
       const newRereadNumber = currentRereadCount + 1
 
       console.log("[완독하기] 회독 기록 생성", {
