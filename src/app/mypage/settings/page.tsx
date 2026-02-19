@@ -2,15 +2,21 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Moon, Sun, Type, Palette, Save, Check } from "lucide-react"
+import { ArrowLeft, Moon, Sun, Type, Palette, Save, Check, Target } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
+import { useData } from "@/contexts/DataContext"
+import { UserStatisticsService } from "@/services/userStatisticsService"
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { loading, isLoggedIn } = useAuth()
+  const { loading, isLoggedIn, userUid } = useAuth()
   const { settings, updateSettings } = useSettings()
+  const { userStatistics } = useData()
   const [isSaved, setIsSaved] = useState(false)
+  const [weeklyGoalHours, setWeeklyGoalHours] = useState(
+    () => settings.weeklyReadingGoalHours ?? 5
+  )
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -19,9 +25,31 @@ export default function SettingsPage() {
     }
   }, [isLoggedIn, loading, router])
 
-  const handleSettingChange = (key: keyof typeof settings, value: string) => {
+  useEffect(() => {
+    const fromServer = userStatistics?.weeklyReadingGoalHours
+    const fromLocal = settings.weeklyReadingGoalHours ?? 5
+    setWeeklyGoalHours(fromServer ?? fromLocal)
+  }, [userStatistics?.weeklyReadingGoalHours, settings.weeklyReadingGoalHours])
+
+  const handleSettingChange = (key: keyof typeof settings, value: string | number) => {
     updateSettings({ [key]: value })
     setIsSaved(false)
+  }
+
+  const handleWeeklyGoalChange = async (value: number) => {
+    if (value < 1 || value > 168) return
+    setWeeklyGoalHours(value)
+    updateSettings({ weeklyReadingGoalHours: value })
+    setIsSaved(false)
+    if (userUid) {
+      try {
+        await UserStatisticsService.createOrUpdateUserStatistics(userUid, {
+          weeklyReadingGoalHours: value,
+        })
+      } catch (e) {
+        console.error("Failed to save weekly goal to server:", e)
+      }
+    }
   }
 
   const handleSave = () => {
@@ -157,6 +185,46 @@ export default function SettingsPage() {
                   </span>
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* 주간 독서 목표 */}
+          <div className='bg-theme-secondary rounded-lg p-6 shadow-sm mb-6'>
+            <div className='flex items-center gap-3 mb-4'>
+              <div className='p-2 bg-green-100 dark:bg-green-900/20 rounded-lg'>
+                <Target className='h-5 w-5 text-green-600 dark:text-green-400' />
+              </div>
+              <h2 className='text-lg font-semibold text-theme-primary'>
+                주간 독서 목표
+              </h2>
+            </div>
+            <p className='text-sm text-theme-secondary mb-3'>
+              이번 주(월~일) 목표 독서 시간을 설정하세요. 메인·마이페이지의 이번 주 카드에 진행률로 표시됩니다.
+            </p>
+            <p className='text-xs text-theme-tertiary mb-2'>
+              유저별로 설정되며, 다른 기기에서 로그인해도 동일하게 적용됩니다.
+            </p>
+            <div className='flex items-center gap-3'>
+              <div className='relative flex-1 max-w-[8rem]'>
+                <input
+                  type='number'
+                  min={1}
+                  max={168}
+                  step={1}
+                  value={weeklyGoalHours}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10)
+                    if (!Number.isNaN(v) && v >= 1 && v <= 168) {
+                      handleWeeklyGoalChange(v)
+                    }
+                  }}
+                  className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-4 py-2 pr-8 text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
+                />
+                <span className='absolute right-3 top-1/2 -translate-y-1/2 text-theme-secondary text-sm'>
+                  시간
+                </span>
+              </div>
+              <span className='text-theme-tertiary text-sm'>/ 주</span>
             </div>
           </div>
 

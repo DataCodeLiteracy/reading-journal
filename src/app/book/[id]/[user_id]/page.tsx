@@ -59,6 +59,7 @@ import { Quote, Critique } from "@/types/content"
 import { ApiError } from "@/lib/apiClient"
 import { RereadService } from "@/services/rereadService"
 import { Reread } from "@/types/reread"
+import { GoldenBellRequestService } from "@/services/goldenBellRequestService"
 
 export default function BookDetailPage({
   params,
@@ -66,7 +67,7 @@ export default function BookDetailPage({
   params: Promise<{ id: string; user_id: string }>
 }) {
   const router = useRouter()
-  const { userUid } = useAuth()
+  const { userUid, user } = useAuth()
   const {
     allBooks,
     updateBook,
@@ -124,6 +125,10 @@ export default function BookDetailPage({
   // 리뷰 좋아요 관련 상태
   const [isReviewLiked, setIsReviewLiked] = useState(false)
   const [reviewLikesCount, setReviewLikesCount] = useState(0)
+
+  // 독서 골든벨 출제 요청
+  const [goldenBellRequestSent, setGoldenBellRequestSent] = useState(false)
+  const [goldenBellRequesting, setGoldenBellRequesting] = useState(false)
 
   // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
   // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
@@ -940,22 +945,62 @@ export default function BookDetailPage({
           </div>
         </div>
 
+        {/* 책 기본 정보 카드 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
           <div className='flex items-start gap-3'>
             <div className='w-16 h-20 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
               <BookOpen className='h-8 w-8 text-gray-400' />
             </div>
-            <div className='flex-1'>
-              <h2 className='text-lg font-semibold text-theme-primary mb-2'>
+            <div className='flex-1 min-w-0'>
+              <h2 className='text-lg font-semibold text-theme-primary mb-1'>
                 {book.title}
               </h2>
-              <p className='text-theme-secondary mb-3'>
+              <p className='text-sm text-theme-secondary mb-2'>
                 {book.author || "저자 미상"}
               </p>
-
+              <div className='flex flex-wrap gap-2 mb-3'>
+                {book.publisher && (
+                  <span className='text-xs text-theme-tertiary'>출판사: {book.publisher}</span>
+                )}
+                {(book.publishedDate || book.publisher) && (
+                  <span className='text-xs text-theme-tertiary'>
+                    {book.publishedDate ? `출판일: ${book.publishedDate}` : ""}
+                  </span>
+                )}
+                {book.category && (
+                  <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
+                    {book.category}
+                  </span>
+                )}
+              </div>
+              <div className='flex items-center gap-2 mb-2'>
+                <span className='text-xs text-theme-tertiary'>상태</span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${
+                    book.status === "reading"
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                      : book.status === "completed"
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
+                        : book.status === "on-hold"
+                          ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                  }`}
+                >
+                  {book.status === "reading"
+                    ? "읽는 중"
+                    : book.status === "completed"
+                      ? "완독"
+                      : book.status === "on-hold"
+                        ? "보류"
+                        : "읽고 싶은 책"}
+                </span>
+                {book.toReadThisYear && (
+                  <span className='text-xs text-theme-tertiary'>이번 년도에 읽을 책</span>
+                )}
+              </div>
               <div className='flex items-center gap-2 mb-3'>
-                <span className='text-sm text-theme-secondary'>평점:</span>
-                <div className='flex gap-1'>
+                <span className='text-sm text-theme-secondary'>평점</span>
+                <div className='flex gap-0.5'>
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
@@ -969,50 +1014,47 @@ export default function BookDetailPage({
                 </div>
               </div>
 
-              <div className='space-y-2 text-sm text-theme-secondary'>
-                <div className='flex items-center gap-1'>
-                  <Calendar className='h-4 w-4' />
-                  <span>출판일: {book.publishedDate || "미상"}</span>
+              <div className='border-t border-theme-tertiary pt-3 mt-3 space-y-1.5 text-sm text-theme-secondary'>
+                <div className='flex items-center gap-1.5'>
+                  <Clock className='h-4 w-4 shrink-0' />
+                  <span>총 독서 시간: {formatTotalTime(totalReadingTime)}</span>
                 </div>
-                <div className='flex items-center gap-1'>
-                  <Clock className='h-4 w-4' />
-                  <span>총 {formatTotalTime(totalReadingTime)}</span>
-                </div>
-              </div>
-
-              {book.completedDate && (
-                <div className='flex flex-col gap-1 mt-2'>
-                  <div className='flex items-center gap-1 text-sm text-green-600 dark:text-green-400'>
-                    <CheckCircle className='h-4 w-4' />
+                {book.startDate && (
+                  <div className='flex items-center gap-1.5'>
+                    <Calendar className='h-4 w-4 shrink-0' />
+                    <span>읽기 시작: {book.startDate}</span>
+                  </div>
+                )}
+                {book.completedDate && (
+                  <div className='flex items-center gap-1.5 text-green-600 dark:text-green-400'>
+                    <CheckCircle className='h-4 w-4 shrink-0' />
                     <span>완독일: {book.completedDate}</span>
                   </div>
-                  {(() => {
-                    // 총 일수 계산 (모든 회독의 durationDays 합산)
-                    const totalDays = rereads.reduce((sum, reread) => {
-                      return sum + (reread.durationDays || 0)
-                    }, 0)
-                    
-                    return (
-                      <>
-                        {totalDays > 0 && (
-                          <div className='flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400'>
-                            <Clock className='h-4 w-4' />
-                            <span>총 {totalDays}일</span>
-                          </div>
-                        )}
-                        <button
-                          onClick={() => setIsRereadDetailModalOpen(true)}
-                          className='flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer'
-                        >
-                          <BookOpen className='h-4 w-4' />
-                          <span className='underline'>회독: {book.rereadCount ?? 0}회</span>
-                          <ChevronRight className='h-3 w-3' />
-                        </button>
-                      </>
-                    )
-                  })()}
-                </div>
-              )}
+                )}
+                {book.currentRereadStartDate && (
+                  <div className='flex items-center gap-1.5'>
+                    <Calendar className='h-4 w-4 shrink-0' />
+                    <span>현재 회독 시작: {book.currentRereadStartDate}</span>
+                  </div>
+                )}
+                {rereads.length > 0 && (() => {
+                  const totalDays = rereads.reduce((sum, reread) => sum + (reread.durationDays || 0), 0)
+                  return totalDays > 0 ? (
+                    <div className='flex items-center gap-1.5 text-theme-secondary'>
+                      <Clock className='h-4 w-4 shrink-0' />
+                      <span>총 읽은 일수: {totalDays}일</span>
+                    </div>
+                  ) : null
+                })()}
+                <button
+                  onClick={() => setIsRereadDetailModalOpen(true)}
+                  className='flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer'
+                >
+                  <BookOpen className='h-4 w-4 shrink-0' />
+                  <span className='underline'>회독: {book.rereadCount ?? 0}회</span>
+                  <ChevronRight className='h-3 w-3' />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1065,6 +1107,49 @@ export default function BookDetailPage({
                   }`}
                 />
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 독서 골든벨 출제 요청 (소유자만) */}
+        {userUid && userUid === book.user_id && (
+          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
+            <div className='flex items-center justify-between gap-3'>
+              <p className='text-sm text-theme-secondary'>
+                이 책으로 독서 골든벨 문제 출제를 요청할 수 있습니다.
+              </p>
+              {goldenBellRequestSent ? (
+                <span className='text-sm text-green-600 dark:text-green-400 shrink-0'>
+                  요청됨
+                </span>
+              ) : (
+                <button
+                  type='button'
+                  disabled={goldenBellRequesting}
+                  onClick={async () => {
+                    if (!resolvedParams || !userUid || !book) return
+                    setGoldenBellRequesting(true)
+                    setError(null)
+                    try {
+                      await GoldenBellRequestService.create({
+                        user_id: userUid,
+                        user_display_name: user?.displayName ?? undefined,
+                        book_id: resolvedParams.id,
+                        book_title: book.title,
+                      })
+                      setGoldenBellRequestSent(true)
+                    } catch (err) {
+                      console.error("Golden bell request error:", err)
+                      setError("요청을 저장하는 중 오류가 발생했습니다.")
+                    } finally {
+                      setGoldenBellRequesting(false)
+                    }
+                  }}
+                  className='shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-accent-theme text-white hover:bg-accent-theme-secondary disabled:opacity-50'
+                >
+                  {goldenBellRequesting ? "요청 중..." : "골든벨 출제 요청"}
+                </button>
+              )}
             </div>
           </div>
         )}

@@ -16,6 +16,12 @@ export interface Book {
   completedDate?: string
   rereadCount?: number // 회독 수 (기본값 0)
   currentRereadStartDate?: string // 현재 회독의 시작일 (다시 읽기 시작한 날짜)
+  /** 분야 (노션 CSV 등) */
+  category?: string
+  /** 이번 년도에 읽을 책 여부 */
+  toReadThisYear?: boolean
+  /** 출판사 */
+  publisher?: string
   created_at?: Date
   updated_at?: Date
 }

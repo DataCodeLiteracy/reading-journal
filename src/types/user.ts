@@ -52,6 +52,10 @@ export interface UserStatistics {
   totalCommentsWritten?: number // 내가 작성한 총 댓글 수
   // 프로필 공개 설정
   isProfilePublic?: boolean // 프로필 공개 여부 (기본값: true)
+  /** 유저별 주간 독서 목표 (시간). 미설정 시 5 */
+  weeklyReadingGoalHours?: number
+  /** 마지막으로 주간 목표 달성 보너스를 지급한 주 (ISO 주 번호, 예: "2026-W04") */
+  lastWeeklyBonusWeek?: string
   updated_at?: Date
 }
 

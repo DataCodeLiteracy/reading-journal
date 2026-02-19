@@ -223,3 +223,22 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out forwards;
 }
+
+/* Native date input: keep calendar popup visible (z-index) and readable (color-scheme) */
+input[type="date"] {
+  position: relative;
+  z-index: 1;
+  min-height: 2.5rem;
+}
+input[type="date"]:focus {
+  z-index: 20;
+}
+/* Native date picker often unreadable in dark theme; force light scheme so calendar is visible */
+input[type="date"] {
+  color-scheme: light;
+}
+/* 캘린더 아이콘 노란색 (WebKit) */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85) sepia(1) saturate(10000%) hue-rotate(45deg);
+  cursor: pointer;
+}

@@ -15,6 +15,24 @@ export class UserService {
     return await ApiClient.getDocument<User>("users", uid)
   }
 
+  /** 관리자용: 전체 유저 목록 (uid, displayName, email) */
+  static async getAllUsersForAdmin(): Promise<
+    { uid: string; displayName: string | null; email: string | null }[]
+  > {
+    const list = await ApiClient.queryDocuments<User & { id?: string }>(
+      "users",
+      []
+    )
+    return list.map((doc) => {
+      const d = doc as User & { id?: string }
+      return {
+        uid: d.id ?? d.uid ?? "",
+        displayName: d.displayName ?? null,
+        email: d.email ?? null,
+      }
+    })
+  }
+
   static async createOrUpdateUserStatistics(
     user_id: string,
     statistics: Partial<UserStatistics>

@@ -6,6 +6,8 @@ interface Settings {
   theme: "light" | "dark"
   fontSize: "small" | "medium" | "large"
   colorScheme: "blue" | "green" | "purple" | "orange"
+  /** 주간 독서 목표 (시간 단위). 기본 5시간 */
+  weeklyReadingGoalHours: number
 }
 
 interface SettingsContextType {
@@ -18,6 +20,7 @@ const defaultSettings: Settings = {
   theme: "light",
   fontSize: "medium",
   colorScheme: "blue",
+  weeklyReadingGoalHours: 5,
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(
@@ -33,7 +36,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (savedSettings) {
       try {
         const parsedSettings = JSON.parse(savedSettings)
-        setSettings({ ...defaultSettings, ...parsedSettings })
+        const merged = { ...defaultSettings, ...parsedSettings }
+        if (typeof merged.weeklyReadingGoalHours !== "number" || merged.weeklyReadingGoalHours < 1) {
+          merged.weeklyReadingGoalHours = defaultSettings.weeklyReadingGoalHours
+        }
+        setSettings(merged)
       } catch (error) {
         console.error("Failed to parse saved settings:", error)
       }

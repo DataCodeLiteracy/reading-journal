@@ -4,6 +4,7 @@ import { ReadingSession } from "@/types/user"
 import {
   calculateLevelInfo,
   readingTimeToExperience,
+  calculateLevel,
 } from "@/utils/experienceSystem"
 import { UserService } from "./userService"
 
@@ -683,6 +684,54 @@ export class UserStatisticsService {
       }
     } catch (error) {
       console.error("UserStatisticsService.getLevelInfo error:", error)
+      return null
+    }
+  }
+
+  /** 현재 날짜가 속한 ISO 주 문자열 반환 (예: "2026-W04") */
+  static getISOWeekString(date: Date): string {
+    const d = new Date(date)
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7))
+    const yearStart = new Date(d.getFullYear(), 0, 1)
+    const weekNo = Math.ceil(
+      ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
+    )
+    return `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`
+  }
+
+  /**
+   * 주간 목표 달성 보너스 경험치 지급 (목표시간×20).
+   * 해당 주에 이미 지급했으면 null 반환.
+   */
+  static async addWeeklyGoalBonus(
+    user_id: string,
+    goalHours: number,
+    currentWeek: string
+  ): Promise<{ bonusExp: number } | null> {
+    try {
+      const stats = await this.getUserStatistics(user_id)
+      if (!stats) return null
+      if (stats.lastWeeklyBonusWeek === currentWeek) return null
+
+      const bonusExp = goalHours * 20
+      const newExperience = (stats.experience ?? 0) + bonusExp
+      const newLevel = calculateLevel(newExperience)
+
+      await this.createOrUpdateUserStatistics(user_id, {
+        experience: newExperience,
+        level: newLevel,
+        lastWeeklyBonusWeek: currentWeek,
+      })
+
+      await ApiClient.updateDocument<Partial<User>>("users", user_id, {
+        experience: newExperience,
+        level: newLevel,
+      })
+
+      return { bonusExp }
+    } catch (error) {
+      console.error("UserStatisticsService.addWeeklyGoalBonus error:", error)
       return null
     }
   }

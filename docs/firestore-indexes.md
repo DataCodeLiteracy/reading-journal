@@ -253,7 +253,18 @@ firebase deploy --only firestore:indexes
    - Field: `bookId`, Order: `Ascending`
    - Field: `date`, Order: `Descending`
 
-### 12. books 컬렉션 - isBookPublic + created_at (필수) ⭐
+### 12. goldenBellRequests 컬렉션 - created_at (필수) ⭐
+
+**컬렉션**: `goldenBellRequests`  
+**정렬**: `created_at` (내림차순)  
+**용도**: 관리자 페이지에서 독서 골든벨 출제 요청 목록을 최신순으로 조회
+
+**Firebase Console에서 설정:**
+1. Collection ID: `goldenBellRequests`
+2. Fields to index:
+   - Field: `created_at`, Order: `Descending`
+
+### 13. books 컬렉션 - isBookPublic + created_at (필수) ⭐
 
 **컬렉션**: `books`  
 **필터**: `isBookPublic` (== true)  
@@ -393,6 +404,16 @@ firebase deploy --only firestore:indexes
         },
         {
           "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "goldenBellRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "created_at",
           "order": "DESCENDING"
         }
       ]

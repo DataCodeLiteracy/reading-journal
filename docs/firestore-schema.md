@@ -100,6 +100,19 @@
   - `created_at`: Timestamp
   - `updated_at`: Timestamp
 
+### goldenBellRequests (독서 골든벨 출제 요청)
+- 문서 ID: `id` (자동 생성)
+- 필드:
+  - `user_id`: string - 요청한 유저 ID
+  - `user_display_name`: string (optional) - 요청한 유저 표시 이름
+  - `book_id`: string - 대상 책 ID
+  - `book_title`: string - 대상 책 제목
+  - `status`: "pending" | "done" (optional, 기본값: "pending") - 관리자 처리 상태
+  - `created_at`: Timestamp
+  - `updated_at`: Timestamp
+
+**인덱스:** `created_at` (descending) - 관리자 목록 최신순 조회
+
 ---
 
 ## 새로운 컬렉션

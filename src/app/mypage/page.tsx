@@ -23,6 +23,7 @@ import { useData } from "@/contexts/DataContext"
 import { Book } from "@/types/book"
 import { UserStatistics } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
+import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 
@@ -125,6 +126,13 @@ export default function MyPage() {
             </p>
           )}
         </header>
+
+        {/* 이번 주 독서 시간 카드 */}
+        {userUid && (
+          <div className='mb-4'>
+            <WeeklyReadingTimeCard userId={userUid} />
+          </div>
+        )}
 
         {/* 사용자 통계 요약 */}
         {!isLoading && userStatistics && (

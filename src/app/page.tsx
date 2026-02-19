@@ -28,8 +28,8 @@ import { ChecklistService } from "@/services/checklistService"
 // import LongTermChecklistSection from "@/components/LongTermChecklistSection"
 
 import { ApiError } from "@/lib/apiClient"
-import Leaderboard from "@/components/Leaderboard"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
+import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 
 export default function Home() {
   const router = useRouter()
@@ -169,10 +169,12 @@ export default function Home() {
         )}
         */}
 
-        {/* 리더보드 섹션 */}
-        <div className='mb-6'>
-          <Leaderboard limit={5} showFullList={false} />
-        </div>
+        {/* 이번 주 독서 시간 카드 */}
+        {userUid && (
+          <div className='mb-6'>
+            <WeeklyReadingTimeCard userId={userUid} />
+          </div>
+        )}
 
         {/* 사용자 통계 섹션 */}
         {userStatistics && (
