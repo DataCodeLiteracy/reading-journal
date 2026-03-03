@@ -138,17 +138,20 @@ export class ApiClient {
       
       await updateDoc(docRef, updateData)
     } catch (error: any) {
+      const errCode = error?.code ?? error?.name
+      const errMessage =
+        error?.message ??
+        (typeof error?.toString === "function" ? error.toString() : String(error))
       console.error("[ApiClient.updateDocument] 실제 에러:", {
-        code: error?.code,
-        message: error?.message,
-        stack: error?.stack,
+        code: errCode,
+        message: errMessage,
         collectionName,
         id,
-        data,
+        payloadKeys: data ? Object.keys(data) : [],
       })
       throw new ApiError(
-        `문서를 업데이트하는 중 오류가 발생했습니다. ${error?.message || ""}`,
-        "DOCUMENT_UPDATE_ERROR"
+        `문서를 업데이트하는 중 오류가 발생했습니다. ${errMessage}`,
+        errCode || "DOCUMENT_UPDATE_ERROR"
       )
     }
   }

@@ -6,6 +6,7 @@ import {
   readingTimeToExperience,
   calculateLevel,
 } from "@/utils/experienceSystem"
+import { getKoreaDate, getKoreaDateFromISO } from "@/utils/timeUtils"
 import { UserService } from "./userService"
 
 // Firestore 업데이트용 타입 (created_at, updated_at 제외)
@@ -122,19 +123,29 @@ export class UserStatisticsService {
         ...calculatedStats,
       }
 
+      // Firestore에 안전한 값만 전달 (Date, NaN 등 제거)
+      const safeStats: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(updatedStats)) {
+        if (value === undefined) continue
+        if ((value as unknown) instanceof Date) continue
+        if (typeof value === "number" && (Number.isNaN(value) || !Number.isFinite(value))) continue
+        safeStats[key] = value
+      }
+
       // 문서가 없으면 생성, 있으면 업데이트
       if (!result) {
         await ApiClient.createDocument("userStatistics", user_id, {
-          ...updatedStats,
+          ...safeStats,
+          user_id,
           created_at: ApiClient.getServerTimestamp(),
           updated_at: ApiClient.getServerTimestamp(),
-        })
+        } as any)
       } else {
         // 직접 ApiClient를 사용하여 업데이트
-        await ApiClient.updateDocument<UserStatisticsUpdateData>(
+        await ApiClient.updateDocument<Record<string, unknown>>(
           "userStatistics",
           user_id,
-          updatedStats
+          safeStats
         )
       }
 
@@ -287,36 +298,11 @@ export class UserStatisticsService {
       const totalSessions = readingSessions.length
       const averageSessionTime = Math.round(totalReadingTime / totalSessions)
 
-      // 개선된 날짜 계산 함수: 새벽 시간대 처리 (한국 시간 기준)
-      const getEffectiveDate = (session: ReadingSession): string => {
-        // 한국 시간 기준으로 날짜 계산
-        const startTime = new Date(session.startTime)
-        const koreaTime = new Date(startTime.getTime() + 9 * 60 * 60 * 1000)
-        const hour = koreaTime.getUTCHours()
+      // 한국 시간(KST) 기준 날짜: startTime(UTC ISO) → YYYY-MM-DD (00:00~23:59 KST = 그날)
+      const getEffectiveDate = (session: ReadingSession): string =>
+        getKoreaDateFromISO(session.startTime)
 
-        // 한국 시간 기준으로 년, 월, 일 추출
-        const year = koreaTime.getUTCFullYear()
-        const month = String(koreaTime.getUTCMonth() + 1).padStart(2, "0")
-        const day = String(koreaTime.getUTCDate()).padStart(2, "0")
-
-        // 새벽 0시~1시에 읽은 경우 전날로 계산
-        if (hour >= 0 && hour < 1) {
-          const previousDay = new Date(
-            koreaTime.getTime() - 24 * 60 * 60 * 1000
-          )
-          const prevYear = previousDay.getUTCFullYear()
-          const prevMonth = String(previousDay.getUTCMonth() + 1).padStart(
-            2,
-            "0"
-          )
-          const prevDay = String(previousDay.getUTCDate()).padStart(2, "0")
-          return `${prevYear}-${prevMonth}-${prevDay}`
-        }
-
-        return `${year}-${month}-${day}`
-      }
-
-      // 일일 독서 시간 계산 (개선된 날짜 기준)
+      // 일일 독서 시간 계산 (한국 날짜 기준)
       const dailyReadingTime: { [date: string]: number } = {}
       readingSessions.forEach((session) => {
         const effectiveDate = getEffectiveDate(session)
@@ -333,16 +319,17 @@ export class UserStatisticsService {
       // 가장 긴 독서일 계산 (특정 날짜의 총 독서 시간이 가장 긴 날)
       const longestDayTime = Math.max(...Object.values(dailyReadingTime))
 
-      // 이번 달 독서 시간 계산 (개선된 날짜 기준)
-      const now = new Date()
-      const currentMonth = now.getMonth()
-      const currentYear = now.getFullYear()
+      // 이번 달 독서 시간 계산 (한국 시간 기준 년/월)
+      const koreaTodayStr = getKoreaDate(new Date())
+      const [koreaYearStr, koreaMonthStr] = koreaTodayStr.split("-")
+      const currentYear = parseInt(koreaYearStr!, 10)
+      const currentMonth = parseInt(koreaMonthStr!, 10) - 1 // 0-indexed
       const monthlySessions = readingSessions.filter((session) => {
         const effectiveDate = getEffectiveDate(session)
-        const sessionDate = new Date(effectiveDate)
+        const sessionDate = new Date(effectiveDate + "T12:00:00")
         return (
-          sessionDate.getMonth() === currentMonth &&
-          sessionDate.getFullYear() === currentYear
+          sessionDate.getFullYear() === currentYear &&
+          sessionDate.getMonth() === currentMonth
         )
       })
       const monthlyReadingTime = monthlySessions.reduce(
@@ -383,32 +370,33 @@ export class UserStatisticsService {
         lastDate = date
       }
 
-      // 현재 연속 독서일 계산 (자정 기준)
-      const today = new Date().toISOString().split("T")[0]
+      // 현재 연속 독서일 계산 (한국 날짜 기준)
+      const today = getKoreaDate(new Date())
       let currentReadingStreak = 0
       let checkDate = today
 
       // 연속 독서일 계산
       while (allUniqueDates.includes(checkDate)) {
         currentReadingStreak++
-        const checkDateObj = new Date(checkDate)
+        const checkDateObj = new Date(checkDate + "T12:00:00")
         checkDateObj.setDate(checkDateObj.getDate() - 1)
-        checkDate = checkDateObj.toISOString().split("T")[0]
+        checkDate = checkDateObj.getFullYear() + "-" + String(checkDateObj.getMonth() + 1).padStart(2, "0") + "-" + String(checkDateObj.getDate()).padStart(2, "0")
       }
 
-      // 자정 이후 체크: 오늘 자정이 지났고 아직 오늘 읽지 않았다면 연속이 끊어진 것으로 간주
-      const nowHour = new Date().getHours()
+      // 자정 이후: 한국 시간 기준 오늘 읽지 않았고 어제도 읽지 않았으면 연속 끊김
+      const koreaNow = new Date(Date.now() + 9 * 60 * 60 * 1000)
+      const nowHour = koreaNow.getUTCHours()
       const isAfterMidnight = nowHour >= 0 && nowHour <= 3
 
       if (isAfterMidnight && !allUniqueDates.includes(today)) {
-        // 자정 이후이고 오늘 읽지 않았다면 연속이 끊어진 것으로 간주
-        // 하지만 아직 그날이 끝나지 않았으므로 0으로 설정하지 않고 기존 연속일 유지
-        // 실제로는 다음날 자정이 지나야 연속이 끊어진 것으로 처리
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayStr = yesterday.toISOString().split("T")[0]
-
-        // 어제 읽지 않았다면 연속이 끊어진 것
+        const yesterdayObj = new Date(today + "T12:00:00")
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1)
+        const yesterdayStr =
+          yesterdayObj.getFullYear() +
+          "-" +
+          String(yesterdayObj.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(yesterdayObj.getDate()).padStart(2, "0")
         if (!allUniqueDates.includes(yesterdayStr)) {
           currentReadingStreak = 0
         }
