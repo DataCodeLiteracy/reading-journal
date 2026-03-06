@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useRouter } from "next/navigation"
-import { Home, PenSquare, User, BookOpen } from "lucide-react"
+import { Home, PenSquare, User, BookOpen, Compass } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
 const navigationItems = [
@@ -14,6 +14,11 @@ const navigationItems = [
     label: "독서",
     icon: BookOpen,
     path: "/books",
+  },
+  {
+    label: "탐색",
+    icon: Compass,
+    path: "/explore",
   },
   {
     label: "기록",

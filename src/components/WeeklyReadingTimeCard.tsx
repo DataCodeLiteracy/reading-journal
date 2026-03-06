@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Clock, Calendar } from "lucide-react"
+import { Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ReadingSession } from "@/types/user"
@@ -57,6 +57,7 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
   const [loading, setLoading] = useState(true)
   const [showBonusModal, setShowBonusModal] = useState(false)
   const [bonusExpThisWeek, setBonusExpThisWeek] = useState<number | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
   const bonusCheckedRef = useRef(false)
 
   useEffect(() => {
@@ -162,58 +163,101 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
   return (
     <>
       <div className='rounded-xl border-2 border-accent-theme/30 bg-gradient-to-br from-accent-theme-tertiary/40 to-accent-theme/10 p-4 sm:p-5 shadow-md'>
-        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-          <div className='flex items-center gap-3 min-w-0'>
-            <div className='flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-accent-theme/20'>
-              <Clock className='h-5 w-5 sm:h-6 sm:w-6 accent-theme-primary' />
-            </div>
-            <div className='min-w-0'>
-              <p className='text-sm font-medium text-theme-secondary'>
-                이번 주 독서 시간
-              </p>
-              <p className='mt-0.5 flex items-center gap-1.5 text-xs text-theme-tertiary'>
-                <Calendar className='h-3.5 w-3.5 shrink-0' />
-                <span className='truncate'>{weekLabel} (월~일)</span>
-              </p>
-            </div>
+        {/* 상단: 제목 + 기간 */}
+        <div className='flex items-center gap-3 mb-3'>
+          <div className='flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-accent-theme/20'>
+            <Clock className='h-5 w-5 sm:h-6 sm:w-6 accent-theme-primary' />
           </div>
-          <p className='text-xl sm:text-2xl font-bold text-theme-primary tabular-nums shrink-0'>
-            {formatReadingTimeFromSeconds(totalSeconds)} / {goalHours}시간
-          </p>
+          <div className='min-w-0'>
+            <p className='text-sm font-semibold text-theme-primary'>
+              이번 주 독서 시간
+            </p>
+            <p className='mt-0.5 flex items-center gap-1.5 text-xs text-theme-tertiary'>
+              <Calendar className='h-3.5 w-3.5 shrink-0' />
+              <span className='truncate'>{weekLabel} (월~일)</span>
+            </p>
+          </div>
         </div>
 
-        <div className='mt-3'>
-          <div className='h-2 w-full overflow-hidden rounded-full bg-theme-tertiary'>
+        {/* 시간 강조 표시 */}
+        <div className='flex items-baseline justify-center gap-2 py-2.5 px-4 rounded-lg bg-theme-secondary/80 mb-2.5'>
+          <span className='text-3xl sm:text-4xl font-extrabold text-accent-theme tabular-nums'>
+            {formatReadingTimeFromSeconds(totalSeconds)}
+          </span>
+          <span className='text-lg sm:text-xl font-semibold text-theme-secondary'>
+            / {goalHours}시간
+          </span>
+        </div>
+
+        {/* 프로그레스 바 */}
+        <div className='mb-2.5'>
+          <div className='h-3 w-full overflow-hidden rounded-full bg-theme-tertiary'>
             <div
-              className='h-full rounded-full bg-accent-theme transition-all duration-300'
+              className={`h-full rounded-full transition-all duration-300 ${
+                progressPercent >= 100
+                  ? "bg-green-500"
+                  : "bg-accent-theme"
+              }`}
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <p className='mt-1 text-right text-xs text-theme-tertiary'>
-            {progressPercent.toFixed(0)}%
-          </p>
+          <div className='flex justify-between mt-1.5'>
+            <p className='text-xs text-theme-tertiary'>
+              {progressPercent >= 100 ? "🎉 목표 달성!" : `${Math.round(goalSeconds - totalSeconds > 0 ? (goalSeconds - totalSeconds) / 60 : 0)}분 남음`}
+            </p>
+            <p className='text-xs font-medium text-theme-secondary'>
+              {progressPercent.toFixed(0)}%
+            </p>
+          </div>
         </div>
 
-        <div className='mt-4 space-y-2 rounded-lg bg-theme-primary/50 p-3 text-sm text-theme-secondary'>
-          <p>
-            문해력 향상을 위해, 내용을 이해하고 기억하며 읽어보세요.
-          </p>
-          <p>
-            내용을 이해하며 읽지 않고 시간만 채우는 독서는 문해력 향상에
-            도움되지 않습니다.
-          </p>
-          <p>
-            제대로 이해하며 일주일에 <strong className='text-theme-primary'>{goalHours}시간</strong>만
-            꾸준히 읽어도 문해력이 크게 늘어날 수 있어요.
-          </p>
-          <p>
-            제대로 읽었는지 확인하는 가장 좋은 방법은{" "}
-            <strong className='text-theme-primary'>독서 골든벨</strong>입니다.
-          </p>
-          <p className='text-xs text-theme-tertiary pt-0.5'>
-            목표 달성 시 보너스 경험치(목표시간×20, 이번 주 {goalHours * 20} EXP)를
-            받을 수 있어요.
-          </p>
+        {/* 토글 가능한 설명 영역 */}
+        <div className='rounded-lg bg-theme-primary/50 overflow-hidden'>
+          <button
+            type='button'
+            onClick={() => setIsDetailOpen((o) => !o)}
+            className='w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-theme-tertiary/30 transition-colors'
+          >
+            <p className='text-sm text-theme-secondary'>
+              {isDetailOpen ? (
+                "독서 팁 접기"
+              ) : (
+                <>
+                  이해하며 읽으면 문해력이 크게 향상됩니다
+                  <span className='text-theme-tertiary ml-1'>...</span>
+                </>
+              )}
+            </p>
+            {isDetailOpen ? (
+              <ChevronUp className='h-4 w-4 text-theme-tertiary shrink-0' />
+            ) : (
+              <ChevronDown className='h-4 w-4 text-theme-tertiary shrink-0' />
+            )}
+          </button>
+
+          {isDetailOpen && (
+            <div className='px-3 pb-3 space-y-2 text-sm text-theme-secondary border-t border-theme-tertiary/50'>
+              <p className='pt-2'>
+                문해력 향상을 위해, 내용을 이해하고 기억하며 읽어보세요.
+              </p>
+              <p>
+                내용을 이해하며 읽지 않고 시간만 채우는 독서는 문해력 향상에
+                도움되지 않습니다.
+              </p>
+              <p>
+                제대로 이해하며 일주일에 <strong className='text-theme-primary'>{goalHours}시간</strong>만
+                꾸준히 읽어도 문해력이 크게 늘어날 수 있어요.
+              </p>
+              <p>
+                제대로 읽었는지 확인하는 가장 좋은 방법은{" "}
+                <strong className='text-theme-primary'>독서 골든벨</strong>입니다.
+              </p>
+              <p className='text-xs text-theme-tertiary pt-1'>
+                목표 달성 시 보너스 경험치(목표시간×20, 이번 주 {goalHours * 20} EXP)를
+                받을 수 있어요.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

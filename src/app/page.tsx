@@ -194,7 +194,7 @@ export default function Home() {
               })
               return null
             })()}
-            <div className='grid grid-cols-2 md:grid-cols-3 gap-4 mb-4'>
+            <div className='grid grid-cols-3 gap-y-5 gap-x-6'>
               <div className='text-center'>
                 <div className='flex items-center justify-center mb-2'>
                   <Trophy className='h-6 w-6 text-yellow-500' />

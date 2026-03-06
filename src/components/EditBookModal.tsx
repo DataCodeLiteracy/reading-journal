@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { X, BookOpen } from "lucide-react"
-import { Book } from "@/types/book"
+import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
 
 interface EditBookModalProps {
   isOpen: boolean
@@ -21,6 +21,12 @@ export default function EditBookModal({
   const [author, setAuthor] = useState(book.author || "")
   const [rating, setRating] = useState(book.rating)
   const [publishedDate, setPublishedDate] = useState(book.publishedDate || "")
+  const [level, setLevel] = useState<BookLevel | "">(
+    (book.level as BookLevel) || ""
+  )
+  const [category, setCategory] = useState<BookField | "">(
+    (book.category as BookField) || ""
+  )
 
   useEffect(() => {
     if (isOpen) {
@@ -28,6 +34,8 @@ export default function EditBookModal({
       setAuthor(book.author || "")
       setRating(book.rating)
       setPublishedDate(book.publishedDate || "")
+      setLevel((book.level as BookLevel) || "")
+      setCategory((book.category as BookField) || "")
     }
   }, [isOpen, book])
 
@@ -41,6 +49,8 @@ export default function EditBookModal({
       author: author.trim() || "",
       rating,
       publishedDate: publishedDate.trim() || "",
+      ...(level ? { level } : { level: undefined }),
+      ...(category ? { category } : { category: undefined }),
     }
 
     onSave(updatedBook)
@@ -106,6 +116,42 @@ export default function EditBookModal({
                 MozAppearance: "none",
               }}
             />
+          </div>
+
+          <div className='mb-4'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
+              레벨 (대상 연령/학년, 선택사항)
+            </label>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value as BookLevel | "")}
+              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
+            >
+              <option value=''>선택 안 함</option>
+              {BOOK_LEVELS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className='mb-4'>
+            <label className='block text-sm font-medium text-theme-primary mb-2'>
+              분야 (선택사항)
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as BookField | "")}
+              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
+            >
+              <option value=''>선택 안 함</option>
+              {BOOK_FIELDS.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className='mb-6'>

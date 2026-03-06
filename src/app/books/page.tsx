@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   BookOpen,
   Plus,
@@ -9,9 +9,12 @@ import {
   Trash2,
   AlertCircle,
   Star,
+  Filter,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { Book } from "@/types/book"
+import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
@@ -29,11 +32,9 @@ export default function BooksPage() {
     removeBook,
   } = useData()
 
-  const [books, setBooks] = useState<Book[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
   const [itemsPerPage] = useState(10)
 
   const [activeTab, setActiveTab] = useState<
@@ -41,6 +42,11 @@ export default function BooksPage() {
   >("reading")
 
   const [searchQuery, setSearchQuery] = useState("")
+
+  // 필터
+  const [levelFilter, setLevelFilter] = useState<BookLevel | "">("")
+  const [categoryFilter, setCategoryFilter] = useState<BookField | "">("")
+  const [filterOpen, setFilterOpen] = useState(false)
 
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false)
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
@@ -57,8 +63,39 @@ export default function BooksPage() {
   const getOnHoldBooks = () =>
     allBooks.filter((book) => book.status === "on-hold").length
 
-  // 검색 상태 관리
-  const [isSearching, setIsSearching] = useState(false)
+  // 필터링된 책 목록 (탭 + 검색 + 레벨/분야)
+  const filteredBooks = useMemo(() => {
+    let list = allBooks.filter((book) => book.status === activeTab)
+
+    // 검색어 필터
+    const q = searchQuery.trim().toLowerCase()
+    if (q) {
+      list = list.filter(
+        (book) =>
+          book.title.toLowerCase().includes(q) ||
+          (book.author && book.author.toLowerCase().includes(q))
+      )
+    }
+
+    // 레벨 필터
+    if (levelFilter) {
+      list = list.filter((book) => book.level === levelFilter)
+    }
+
+    // 분야 필터
+    if (categoryFilter) {
+      list = list.filter((book) => book.category === categoryFilter)
+    }
+
+    return list
+  }, [allBooks, activeTab, searchQuery, levelFilter, categoryFilter])
+
+  // 페이지네이션
+  const totalItems = filteredBooks.length
+  const paginatedBooks = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredBooks.slice(start, start + itemsPerPage)
+  }, [filteredBooks, currentPage, itemsPerPage])
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -66,61 +103,10 @@ export default function BooksPage() {
     }
   }, [isLoggedIn, loading, router])
 
+  // 필터 변경 시 페이지 리셋
   useEffect(() => {
-    if (!isLoggedIn || !userUid) return
-
-    const loadBooks = async () => {
-      try {
-        setError(null)
-
-        if (!userUid) {
-          setError("사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.")
-          return
-        }
-
-        console.log("Loading books for user_id:", userUid)
-
-        // 검색어가 있으면 검색 API 사용, 없으면 일반 페이지네이션 API 사용
-        // '읽는 중' 탭일 때는 최근 읽은 기록 순으로 정렬
-        const sortByLastRead = activeTab === "reading"
-        const booksData = searchQuery.trim()
-          ? await BookService.searchUserBooksByStatus(
-              userUid,
-              activeTab,
-              searchQuery,
-              currentPage,
-              itemsPerPage,
-              sortByLastRead
-            )
-          : await BookService.getUserBooksByStatusPaginated(
-              userUid,
-              activeTab,
-              currentPage,
-              itemsPerPage,
-              sortByLastRead
-            )
-
-        console.log("Loaded books data:", {
-          booksCount: booksData.books.length,
-          totalItems: booksData.total,
-          isSearching: !!searchQuery.trim(),
-        })
-
-        setBooks(booksData.books)
-        setTotalItems(booksData.total)
-        setIsSearching(!!searchQuery.trim())
-      } catch (error) {
-        console.error("Error loading books:", error)
-        if (error instanceof ApiError) {
-          setError(error.message)
-        } else {
-          setError("책 목록을 불러오는 중 오류가 발생했습니다.")
-        }
-      }
-    }
-
-    loadBooks()
-  }, [isLoggedIn, userUid, activeTab, currentPage, itemsPerPage, searchQuery])
+    setCurrentPage(1)
+  }, [activeTab, searchQuery, levelFilter, categoryFilter])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -130,8 +116,7 @@ export default function BooksPage() {
     tab: "reading" | "completed" | "want-to-read" | "on-hold"
   ) => {
     setActiveTab(tab)
-    setCurrentPage(1)
-    // 탭 변경 시 검색어는 유지하되, 페이지는 1로 리셋
+    // 탭 변경 시 페이지는 useEffect에서 리셋됨
   }
 
   const handleBookClick = (bookId: string) => {
@@ -170,10 +155,8 @@ export default function BooksPage() {
         setActiveTab("completed")
       }
 
-      setBooks((prev) => [createdBook, ...prev])
       addBook(createdBook)
 
-      setTotalItems((prev) => prev + 1)
       setCurrentPage(1)
     } catch (error) {
       console.error("handleAddBook error:", error)
@@ -195,12 +178,7 @@ export default function BooksPage() {
       setError(null)
       await BookService.updateBookStatus(bookId, newStatus, userUid)
 
-      setBooks((prev) => prev.filter((book) => book.id !== bookId))
       removeBook(bookId)
-
-      if (books.length === 1 && currentPage > 1) {
-        setCurrentPage((prev) => prev - 1)
-      }
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -211,7 +189,7 @@ export default function BooksPage() {
   }
 
   const handleDeleteBook = async (bookId: string) => {
-    const book = books.find((b) => b.id === bookId)
+    const book = allBooks.find((b) => b.id === bookId)
     if (book) {
       setBookToDelete(book)
       setIsDeleteBookModalOpen(true)
@@ -225,14 +203,7 @@ export default function BooksPage() {
       setError(null)
       await BookService.deleteBook(bookToDelete.id)
 
-      setBooks((prev) => prev.filter((book) => book.id !== bookToDelete.id))
       removeBook(bookToDelete.id)
-
-      setTotalItems((prev) => prev - 1)
-
-      if (books.length === 1 && currentPage > 1) {
-        setCurrentPage((prev) => prev - 1)
-      }
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -340,18 +311,12 @@ export default function BooksPage() {
               type='text'
               placeholder='책 제목이나 저자로 검색...'
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setCurrentPage(1) // 검색어 변경 시 페이지를 1로 리셋
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className='w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent'
             />
             {searchQuery && (
               <button
-                onClick={() => {
-                  setSearchQuery("")
-                  setCurrentPage(1)
-                }}
+                onClick={() => setSearchQuery("")}
                 className='absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors'
                 title='검색어 지우기'
               >
@@ -359,6 +324,78 @@ export default function BooksPage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* 필터 토글 */}
+        <div className='bg-theme-secondary rounded-lg mb-4 shadow-sm overflow-hidden'>
+          <button
+            type='button'
+            onClick={() => setFilterOpen((o) => !o)}
+            className='w-full flex items-center justify-between gap-2 pl-4 pr-6 py-3 text-left text-theme-primary font-medium hover:bg-theme-tertiary/50 transition-colors'
+          >
+            <span className='flex items-center gap-2 text-sm'>
+              <Filter className='h-4 w-4' />
+              필터
+              {(levelFilter || categoryFilter) && (
+                <span className='text-xs font-normal text-accent-theme'>
+                  · 적용됨
+                </span>
+              )}
+            </span>
+            {filterOpen ? (
+              <ChevronUp className='h-4 w-4 shrink-0 text-theme-tertiary' />
+            ) : (
+              <ChevronDown className='h-4 w-4 shrink-0 text-theme-tertiary' />
+            )}
+          </button>
+          {filterOpen && (
+            <div className='px-4 pb-4 pt-0 border-t border-theme-tertiary/50'>
+              <div className='grid grid-cols-2 gap-3 pt-3'>
+                <div>
+                  <label className='block text-xs text-theme-tertiary mb-1'>레벨</label>
+                  <select
+                    value={levelFilter}
+                    onChange={(e) => setLevelFilter(e.target.value as BookLevel | "")}
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {BOOK_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className='block text-xs text-theme-tertiary mb-1'>분야</label>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value as BookField | "")}
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {BOOK_FIELDS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {(levelFilter || categoryFilter) && (
+                <button
+                  type='button'
+                  onClick={() => {
+                    setLevelFilter("")
+                    setCategoryFilter("")
+                  }}
+                  className='mt-3 text-xs text-accent-theme hover:underline'
+                >
+                  필터 초기화
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 새 책 추가 버튼 */}
@@ -371,11 +408,11 @@ export default function BooksPage() {
           </button>
         </div>
 
-        {books.length === 0 ? (
+        {paginatedBooks.length === 0 ? (
           <div className='text-center py-12'>
             <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
             <h3 className='text-lg font-medium text-theme-primary mb-2'>
-              {isSearching
+              {searchQuery || levelFilter || categoryFilter
                 ? "검색 결과가 없습니다"
                 : getTotalBooks() === 0
                 ? "아직 등록된 책이 없습니다"
@@ -388,8 +425,8 @@ export default function BooksPage() {
                 : "읽고 싶은 책이 없습니다"}
             </h3>
             <p className='text-theme-secondary mb-4'>
-              {isSearching
-                ? `"${searchQuery}"에 대한 검색 결과가 없습니다. 다른 검색어를 시도해보세요.`
+              {searchQuery || levelFilter || categoryFilter
+                ? "다른 검색어나 필터를 시도해보세요."
                 : getTotalBooks() === 0
                 ? "새로운 책을 추가해보세요!"
                 : activeTab === "reading"
@@ -402,7 +439,7 @@ export default function BooksPage() {
             </p>
             {(getTotalBooks() === 0 ||
               activeTab === "want-to-read" ||
-              isSearching) && (
+              (searchQuery || levelFilter || categoryFilter)) && (
               <button
                 onClick={() => setIsAddBookModalOpen(true)}
                 className='inline-flex items-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white px-4 py-2 rounded-lg transition-colors'
@@ -414,7 +451,7 @@ export default function BooksPage() {
           </div>
         ) : (
           <div className='grid grid-cols-1 gap-3'>
-            {books.map((book: Book) => (
+            {paginatedBooks.map((book: Book) => (
               <div
                 key={book.id}
                 onClick={() => handleBookClick(book.id)}
@@ -480,7 +517,7 @@ export default function BooksPage() {
         )}
 
         {/* 페이지네이션 */}
-        {books.length > 0 && (
+        {paginatedBooks.length > 0 && (
           <div className='mt-8 mb-8 pb-8'>
             <Pagination
               currentPage={currentPage}
@@ -497,6 +534,7 @@ export default function BooksPage() {
         isOpen={isAddBookModalOpen}
         onClose={() => setIsAddBookModalOpen(false)}
         onAddBook={handleAddBook}
+        currentUserId={userUid || undefined}
       />
 
       {/* 책 삭제 확인 모달 */}

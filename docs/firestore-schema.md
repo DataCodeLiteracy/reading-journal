@@ -32,6 +32,8 @@
   - `reviewIsPublic`: boolean (optional)
   - `hasStartedReading`: boolean
   - `completedDate`: string (optional)
+  - `level`: string (optional) - 대상 연령/학년: 유아, 초1~초6, 중1~중3, 고1~고3, 성인
+  - `category`: string (optional) - 분야: 그림책, 동화책, 청소년책, 성인책
   - `created_at`: Timestamp
   - `updated_at`: Timestamp
 
@@ -99,6 +101,49 @@
   - `commentsCount`: number (optional, 기본값: 0)
   - `created_at`: Timestamp
   - `updated_at`: Timestamp
+
+### goldenBellQuizzes (독서 골든벨 퀴즈)
+- 문서 ID: `id` (자동 생성)
+- 필드:
+  - `id`: string
+  - `bookTitle`: string - 책 제목 (같은 제목의 책들이 퀴즈 공유)
+  - `version`: string - 버전 (예: "1.0")
+  - `difficulty`: "easy" | "hard" - 난이도 (쉬움/어려움)
+  - `questions`: array - 문제 배열
+    - `id`: number
+    - `type`: "객관식" | "단답형" | "서술형"
+    - `question`: string
+    - `options`: string[] (객관식일 경우 선택지)
+  - `answers`: array - 답안 배열
+    - `id`: number
+    - `answer`: string
+    - `explanation`: string
+  - `createdBy`: string - 등록한 사용자 ID
+  - `created_at`: Timestamp
+  - `updated_at`: Timestamp
+
+**인덱스:** `bookTitle` (ascending) + `created_at` (descending)
+
+### goldenBellResults (독서 골든벨 결과)
+- 문서 ID: `id` (자동 생성)
+- 필드:
+  - `id`: string
+  - `quizId`: string - 퀴즈 ID
+  - `bookTitle`: string - 책 제목
+  - `difficulty`: "easy" | "hard" - 난이도
+  - `userId`: string - 사용자 ID
+  - `totalQuestions`: number - 총 문제 수
+  - `correctCount`: number - 정답 수
+  - `score`: number - 점수 (0-100)
+  - `answers`: array - 사용자 응답 배열
+    - `questionId`: number
+    - `userAnswer`: string
+    - `isCorrect`: boolean
+  - `completedAt`: Timestamp - 풀이 완료 시간
+  - `created_at`: Timestamp
+  - `updated_at`: Timestamp
+
+**인덱스:** `userId` (ascending) + `completedAt` (descending)
 
 ### goldenBellRequests (독서 골든벨 출제 요청)
 - 문서 ID: `id` (자동 생성)

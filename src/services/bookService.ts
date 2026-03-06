@@ -51,6 +51,39 @@ export class BookService {
     ])
   }
 
+  /** 전체 유저의 책 목록 (탐색 페이지용, 최대 3000건) */
+  static async getAllBooks(limitCount: number = 3000): Promise<Book[]> {
+    const list = await ApiClient.queryDocuments<Book>(
+      "books",
+      [],
+      undefined,
+      "asc",
+      limitCount
+    )
+    return list
+  }
+
+  /**
+   * 제목으로 다른 사용자가 등록한 책이 있는지 확인
+   * 정확히 일치하는 제목의 책이 있으면 반환
+   */
+  static async findBooksByTitle(
+    title: string,
+    excludeUserId?: string
+  ): Promise<Book[]> {
+    const normalizedTitle = title.trim()
+    if (!normalizedTitle) return []
+
+    const books = await ApiClient.queryDocuments<Book>("books", [
+      ["title", "==", normalizedTitle],
+    ])
+
+    if (excludeUserId) {
+      return books.filter((b) => b.user_id !== excludeUserId)
+    }
+    return books
+  }
+
   static async getUserBooksPaginated(
     user_id: string,
     page: number = 1,

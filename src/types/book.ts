@@ -1,5 +1,49 @@
 import { AppDate } from "./firebase"
 
+/** 책의 대상 연령/학년 (레벨) */
+export type BookLevel =
+  | "유아"
+  | "초1"
+  | "초2"
+  | "초3"
+  | "초4"
+  | "초5"
+  | "초6"
+  | "중1"
+  | "중2"
+  | "중3"
+  | "고1"
+  | "고2"
+  | "고3"
+  | "성인"
+
+/** 책의 분야 (장르/대상) */
+export type BookField = "그림책" | "동화책" | "청소년책" | "성인책"
+
+export const BOOK_LEVELS: BookLevel[] = [
+  "유아",
+  "초1",
+  "초2",
+  "초3",
+  "초4",
+  "초5",
+  "초6",
+  "중1",
+  "중2",
+  "중3",
+  "고1",
+  "고2",
+  "고3",
+  "성인",
+]
+
+export const BOOK_FIELDS: BookField[] = [
+  "그림책",
+  "동화책",
+  "청소년책",
+  "성인책",
+]
+
 export interface Book {
   id: string
   user_id: string
@@ -16,8 +60,10 @@ export interface Book {
   completedDate?: string
   rereadCount?: number // 회독 수 (기본값 0)
   currentRereadStartDate?: string // 현재 회독의 시작일 (다시 읽기 시작한 날짜)
-  /** 분야 (노션 CSV 등) */
+  /** 분야: 그림책, 동화책, 청소년책, 성인책 등 */
   category?: string
+  /** 대상 연령/학년 (레벨): 유아, 초1~6, 중1~3, 고1~3, 성인 */
+  level?: BookLevel
   /** 이번 년도에 읽을 책 여부 */
   toReadThisYear?: boolean
   /** 출판사 */

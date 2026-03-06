@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Globe,
   Lock,
+  Bell,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
@@ -244,6 +245,25 @@ export default function MyPage() {
                 </h3>
                 <p className='text-xs text-theme-secondary'>
                   독서 관련 체크리스트 관리
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push("/mypage/golden-bell")}
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left'
+          >
+            <div className='flex items-center gap-3'>
+              <div className='p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg'>
+                <Bell className='h-5 w-5 text-yellow-600 dark:text-yellow-400' />
+              </div>
+              <div>
+                <h3 className='font-semibold text-theme-primary mb-1'>
+                  독서 골든벨
+                </h3>
+                <p className='text-xs text-theme-secondary'>
+                  골든벨 풀이 기록 확인
                 </p>
               </div>
             </div>

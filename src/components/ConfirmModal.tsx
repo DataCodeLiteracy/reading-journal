@@ -15,6 +15,8 @@ interface ConfirmModalProps {
   iconBgColor?: string
   confirmButtonColor?: string
   confirmButtonHoverColor?: string
+  /** false면 "이 작업은 되돌릴 수 없습니다." 문구 숨김 */
+  showSubtitle?: boolean
 }
 
 export default function ConfirmModal({
@@ -30,6 +32,7 @@ export default function ConfirmModal({
   iconBgColor = "bg-red-100 dark:bg-red-900/20",
   confirmButtonColor = "bg-red-500",
   confirmButtonHoverColor = "hover:bg-red-600",
+  showSubtitle = true,
 }: ConfirmModalProps) {
   if (!isOpen) return null
 
@@ -44,9 +47,11 @@ export default function ConfirmModal({
             <h3 className='text-lg font-semibold text-theme-primary'>
               {title}
             </h3>
-            <p className='text-sm text-theme-secondary'>
-              이 작업은 되돌릴 수 없습니다.
-            </p>
+            {showSubtitle && (
+              <p className='text-sm text-theme-secondary'>
+                이 작업은 되돌릴 수 없습니다.
+              </p>
+            )}
           </div>
         </div>
 

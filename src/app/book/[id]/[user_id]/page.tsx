@@ -60,6 +60,9 @@ import { ApiError } from "@/lib/apiClient"
 import { RereadService } from "@/services/rereadService"
 import { Reread } from "@/types/reread"
 import { GoldenBellRequestService } from "@/services/goldenBellRequestService"
+import { GoldenBellService } from "@/services/goldenBellService"
+import { GoldenBellQuizSummary, GoldenBellResult } from "@/types/goldenBell"
+import GoldenBellUploadModal from "@/components/GoldenBellUploadModal"
 
 export default function BookDetailPage({
   params,
@@ -129,6 +132,11 @@ export default function BookDetailPage({
   // 독서 골든벨 출제 요청
   const [goldenBellRequestSent, setGoldenBellRequestSent] = useState(false)
   const [goldenBellRequesting, setGoldenBellRequesting] = useState(false)
+
+  // 독서 골든벨 퀴즈
+  const [goldenBellQuizzes, setGoldenBellQuizzes] = useState<GoldenBellQuizSummary[]>([])
+  const [goldenBellResults, setGoldenBellResults] = useState<GoldenBellResult[]>([])
+  const [isGoldenBellUploadModalOpen, setIsGoldenBellUploadModalOpen] = useState(false)
 
   // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
   // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
@@ -235,6 +243,19 @@ export default function BookDetailPage({
           } else {
             setIsReviewLiked(false)
             setReviewLikesCount(0)
+          }
+
+          // 골든벨 퀴즈 및 결과 로드 (책 제목 기준)
+          try {
+            const quizSummaries = await GoldenBellService.getQuizSummariesByBookTitle(bookData.title)
+            setGoldenBellQuizzes(quizSummaries)
+
+            if (userUid) {
+              const results = await GoldenBellService.getUserResultsByBook(userUid, bookData.title)
+              setGoldenBellResults(results)
+            }
+          } catch (error) {
+            console.error("Error loading golden bell quizzes:", error)
           }
 
           // 체크리스트 데이터 로드 (현재 서비스에서는 사용하지 않음)
@@ -1539,6 +1560,151 @@ export default function BookDetailPage({
           )}
         </div>
 
+        {/* 독서 골든벨 섹션 */}
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
+          <div className='flex items-center justify-between mb-3'>
+            <h3 className='text-lg font-semibold text-theme-primary'>
+              🔔 독서 골든벨
+            </h3>
+            {goldenBellQuizzes.length > 0 && (
+              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
+                {goldenBellQuizzes.length}개 버전
+              </span>
+            )}
+          </div>
+
+          {goldenBellQuizzes.length === 0 ? (
+            <div className='text-center py-6'>
+              <div className='text-4xl mb-4'>🔔</div>
+              <p className='text-theme-secondary mb-4'>
+                아직 골든벨 문제가 없습니다.
+                <br />
+                <span className='text-sm'>JSON 파일로 문제를 등록해보세요!</span>
+              </p>
+              <button
+                onClick={() => setIsGoldenBellUploadModalOpen(true)}
+                className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+              >
+                <Plus className='h-4 w-4' />
+                <span>골든벨 문제 등록하기</span>
+              </button>
+            </div>
+          ) : (
+            <div className='space-y-3'>
+              {goldenBellQuizzes.map((quiz) => (
+                <div
+                  key={quiz.id}
+                  className='bg-theme-tertiary rounded-lg p-4'
+                >
+                  <div className='flex items-center justify-between mb-2'>
+                    <div className='flex items-center gap-2'>
+                      <span
+                        className={`px-2 py-0.5 text-xs font-medium rounded ${
+                          quiz.difficulty === "easy"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                        }`}
+                      >
+                        {quiz.difficulty === "easy" ? "😊 쉬움" : "🔥 어려움"}
+                      </span>
+                    </div>
+                    <span className='text-sm font-medium text-theme-primary'>
+                      총 {quiz.totalQuestions}문제
+                    </span>
+                  </div>
+                  <div className='flex flex-wrap gap-2 text-xs mb-3'>
+                    {quiz.multipleChoiceCount > 0 && (
+                      <span className='px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded'>
+                        객관식 {quiz.multipleChoiceCount}
+                      </span>
+                    )}
+                    {quiz.shortAnswerCount > 0 && (
+                      <span className='px-2 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded'>
+                        단답형 {quiz.shortAnswerCount}
+                      </span>
+                    )}
+                    {quiz.essayCount > 0 && (
+                      <span className='px-2 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded'>
+                        서술형 {quiz.essayCount}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => router.push(`/book/${resolvedParams?.id}/${resolvedParams?.user_id}/golden-bell/${quiz.id}`)}
+                    className='w-full py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm font-medium rounded-lg transition-colors'
+                  >
+                    문제 풀기
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setIsGoldenBellUploadModalOpen(true)}
+                className='w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-theme-tertiary hover:border-accent-theme text-theme-secondary hover:text-accent-theme rounded-lg transition-colors'
+              >
+                <Plus className='h-4 w-4' />
+                <span>다른 버전 등록하기</span>
+              </button>
+            </div>
+          )}
+
+          {/* 내 골든벨 결과 */}
+          {goldenBellResults.length > 0 && (
+            <div className='mt-4 pt-4 border-t border-theme-tertiary'>
+              <h4 className='text-sm font-medium text-theme-primary mb-3'>
+                📊 내 풀이 기록
+              </h4>
+              <div className='space-y-2'>
+                {goldenBellResults.slice(0, 5).map((result) => {
+                  const completedDate = result.completedAt instanceof Date
+                    ? result.completedAt
+                    : new Date(result.completedAt)
+
+                  return (
+                    <div
+                      key={result.id}
+                      className='flex items-center justify-between p-3 bg-theme-tertiary/50 rounded-lg'
+                    >
+                      <div className='flex items-center gap-2'>
+                        <span
+                          className={`px-2 py-0.5 text-xs font-medium rounded ${
+                            result.difficulty === "easy"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                          }`}
+                        >
+                          {result.difficulty === "easy" ? "쉬움" : "어려움"}
+                        </span>
+                        <span className='text-xs text-theme-tertiary'>
+                          {completedDate.toLocaleDateString("ko-KR", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='text-sm text-theme-secondary'>
+                          {result.correctCount}/{result.totalQuestions}
+                        </span>
+                        <span
+                          className={`text-sm font-bold ${
+                            result.score >= 80
+                              ? "text-green-600 dark:text-green-400"
+                              : result.score >= 60
+                                ? "text-blue-600 dark:text-blue-400"
+                                : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {result.score}점
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* 리뷰 섹션 (완독 후) */}
         {isCompleted && (
           <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-4'>
@@ -2015,6 +2181,23 @@ export default function BookDetailPage({
           confirmText='삭제'
           cancelText='취소'
           icon={Trash2}
+        />
+
+        {/* 골든벨 업로드 모달 */}
+        <GoldenBellUploadModal
+          isOpen={isGoldenBellUploadModalOpen}
+          onClose={() => setIsGoldenBellUploadModalOpen(false)}
+          bookTitle={book?.title || ""}
+          userId={userUid || ""}
+          onUploadSuccess={async () => {
+            if (!book) return
+            try {
+              const updatedQuizzes = await GoldenBellService.getQuizSummariesByBookTitle(book.title)
+              setGoldenBellQuizzes(updatedQuizzes)
+            } catch (error) {
+              console.error("Error reloading golden bell quizzes:", error)
+            }
+          }}
         />
       </div>
     </div>
