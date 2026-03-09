@@ -46,7 +46,7 @@ export default function RecordPage() {
         <div className='flex flex-col md:flex-row gap-3'>
           <button
             onClick={() => router.push("/record/quotes")}
-            className='bg-theme-secondary rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left flex-1'
+            className='bg-theme-secondary rounded-lg p-6 shadow-sm border-card hover:shadow-md transition-shadow text-left flex-1'
           >
             <div className='flex items-center gap-3 mb-2'>
               <div className='p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex-shrink-0'>
@@ -61,7 +61,7 @@ export default function RecordPage() {
 
           <button
             onClick={() => router.push("/record/questions")}
-            className='bg-theme-secondary rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left flex-1'
+            className='bg-theme-secondary rounded-lg p-6 shadow-sm border-card hover:shadow-md transition-shadow text-left flex-1'
           >
             <div className='flex items-center gap-3 mb-2'>
               <div className='p-3 bg-green-100 dark:bg-green-900/20 rounded-lg flex-shrink-0'>
@@ -76,7 +76,7 @@ export default function RecordPage() {
 
           <button
             onClick={() => router.push("/record/reviews")}
-            className='bg-theme-secondary rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left flex-1'
+            className='bg-theme-secondary rounded-lg p-6 shadow-sm border-card hover:shadow-md transition-shadow text-left flex-1'
           >
             <div className='flex items-center gap-3 mb-2'>
               <div className='p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex-shrink-0'>
@@ -91,7 +91,7 @@ export default function RecordPage() {
 
           <button
             onClick={() => router.push("/record/critiques")}
-            className='bg-theme-secondary rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left flex-1'
+            className='bg-theme-secondary rounded-lg p-6 shadow-sm border-card hover:shadow-md transition-shadow text-left flex-1'
           >
             <div className='flex items-center gap-3 mb-2'>
               <div className='p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex-shrink-0'>

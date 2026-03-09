@@ -142,7 +142,7 @@ export default function QuotesPage() {
         </header>
 
         {/* 필터 및 검색 섹션 */}
-        <div className='bg-theme-secondary rounded-lg p-4 mb-6 shadow-sm'>
+        <div className='bg-theme-secondary rounded-lg p-4 mb-6 shadow-sm border-card'>
           <div className='space-y-4'>
             {/* 검색 */}
             <div>

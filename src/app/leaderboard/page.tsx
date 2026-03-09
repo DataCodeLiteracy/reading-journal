@@ -183,13 +183,13 @@ export default function LeaderboardPage() {
         </div>
 
         {isLoading ? (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
             <div className='flex items-center justify-center py-12'>
               <div className='animate-spin rounded-full h-8 w-8 border-2 border-accent-theme border-t-transparent' />
             </div>
           </div>
         ) : rankedUsers.length === 0 ? (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
             <div className='text-center py-12'>
               <Trophy className='h-12 w-12 text-gray-400 mx-auto mb-4' />
               <p className='text-theme-secondary'>
@@ -200,7 +200,7 @@ export default function LeaderboardPage() {
             </div>
           </div>
         ) : (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
             <div className='space-y-2'>
               {rankedUsers.map((user, index) => {
                 const rank = getGlobalRank(index)

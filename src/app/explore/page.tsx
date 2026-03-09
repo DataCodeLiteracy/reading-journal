@@ -13,7 +13,13 @@ import {
   Users,
   Plus,
 } from "lucide-react"
-import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
+import {
+  Book,
+  BOOK_LEVELS,
+  BOOK_FIELDS,
+  type BookLevel,
+  type BookField,
+} from "@/types/book"
 import { BookService } from "@/services/bookService"
 import { UserService } from "@/services/userService"
 import Pagination from "@/components/Pagination"
@@ -49,11 +55,13 @@ const SORT_OPTIONS = [
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <p className='text-theme-secondary'>불러오는 중...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
+          <p className='text-theme-secondary'>불러오는 중...</p>
+        </div>
+      }
+    >
       <ExplorePageContent />
     </Suspense>
   )
@@ -79,7 +87,8 @@ function ExplorePageContent() {
   const [levelFilter, setLevelFilter] = useState<BookLevel | "">("")
   const [categoryFilter, setCategoryFilter] = useState<BookField | "">("")
   const [onlyNotMineFilter, setOnlyNotMineFilter] = useState(false)
-  const [sortBy, setSortBy] = useState<typeof SORT_OPTIONS[number]["value"]>("title-asc")
+  const [sortBy, setSortBy] =
+    useState<(typeof SORT_OPTIONS)[number]["value"]>("title-asc")
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedTitle, setExpandedTitle] = useState<string | null>(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
@@ -136,7 +145,7 @@ function ExplorePageContent() {
             } catch {
               names[uid] = uid
             }
-          })
+          }),
         )
         setUserNames(names)
       } catch (e) {
@@ -190,7 +199,7 @@ function ExplorePageContent() {
       list = list.filter(
         (g) =>
           g.title.toLowerCase().includes(q) ||
-          g.author.toLowerCase().includes(q)
+          g.author.toLowerCase().includes(q),
       )
     }
     if (statusFilter) {
@@ -198,27 +207,21 @@ function ExplorePageContent() {
     }
     if (authorFilter) {
       list = list.filter(
-        (g) => g.author.toLowerCase() === authorFilter.toLowerCase()
+        (g) => g.author.toLowerCase() === authorFilter.toLowerCase(),
       )
     }
     if (userIdFilter) {
-      list = list.filter((g) =>
-        g.books.some((b) => b.user_id === userIdFilter)
-      )
+      list = list.filter((g) => g.books.some((b) => b.user_id === userIdFilter))
     }
     if (onlyNotMineFilter && userUid) {
-      list = list.filter((g) =>
-        !g.books.some((b) => b.user_id === userUid)
-      )
+      list = list.filter((g) => !g.books.some((b) => b.user_id === userUid))
     }
     if (levelFilter) {
-      list = list.filter((g) =>
-        g.books.some((b) => b.level === levelFilter)
-      )
+      list = list.filter((g) => g.books.some((b) => b.level === levelFilter))
     }
     if (categoryFilter) {
       list = list.filter((g) =>
-        g.books.some((b) => b.category === categoryFilter)
+        g.books.some((b) => b.category === categoryFilter),
       )
     }
     const minR = minRatingFilter === "" ? 0 : parseFloat(minRatingFilter)
@@ -247,22 +250,46 @@ function ExplorePageContent() {
         break
     }
     return sorted
-  }, [grouped, searchQuery, statusFilter, authorFilter, userIdFilter, onlyNotMineFilter, userUid, levelFilter, categoryFilter, minRatingFilter, sortBy])
+  }, [
+    grouped,
+    searchQuery,
+    statusFilter,
+    authorFilter,
+    userIdFilter,
+    onlyNotMineFilter,
+    userUid,
+    levelFilter,
+    categoryFilter,
+    minRatingFilter,
+    sortBy,
+  ])
 
   const totalItems = filtered.length
   const start = (currentPage - 1) * itemsPerPage
   const paginated = useMemo(
     () => filtered.slice(start, start + itemsPerPage),
-    [filtered, start, itemsPerPage]
+    [filtered, start, itemsPerPage],
   )
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter, authorFilter, userIdFilter, onlyNotMineFilter, levelFilter, categoryFilter, minRatingFilter, sortBy])
+  }, [
+    searchQuery,
+    statusFilter,
+    authorFilter,
+    userIdFilter,
+    onlyNotMineFilter,
+    levelFilter,
+    categoryFilter,
+    minRatingFilter,
+    sortBy,
+  ])
 
   if (!isLoggedIn) return null
 
-  const handleAddBookFromExplore = async (book: Omit<Book, "id" | "user_id">) => {
+  const handleAddBookFromExplore = async (
+    book: Omit<Book, "id" | "user_id">,
+  ) => {
     if (!userUid) return
     try {
       setIsAddingBook(true)
@@ -293,7 +320,8 @@ function ExplorePageContent() {
             📚 전체 책 탐색
           </h1>
           <p className='text-sm text-theme-secondary'>
-            같은 제목으로 등록된 책은 한 번만 표시되고, 등록한 유저를 볼 수 있습니다.
+            같은 제목으로 등록된 책은 한 번만 표시되고, 등록한 유저를 볼 수
+            있습니다.
           </p>
         </header>
 
@@ -340,132 +368,159 @@ function ExplorePageContent() {
           {filterOpen && (
             <div className='px-4 pb-4 pt-0 space-y-3 border-t border-theme-tertiary/50'>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3'>
-            <div>
-              <label className='block text-xs text-theme-tertiary mb-1'>상태</label>
-              <select
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter((e.target.value || "") as Book["status"] | "")
-                }
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-              >
-                <option value=''>전체</option>
-                {(Object.entries(STATUS_LABELS) as [Book["status"], string][]).map(
-                  ([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  )
+                <div>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    상태
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) =>
+                      setStatusFilter(
+                        (e.target.value || "") as Book["status"] | "",
+                      )
+                    }
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {(
+                      Object.entries(STATUS_LABELS) as [
+                        Book["status"],
+                        string,
+                      ][]
+                    ).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    저자
+                  </label>
+                  <select
+                    value={authorFilter}
+                    onChange={(e) => setAuthorFilter(e.target.value)}
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {uniqueAuthors.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    최소 평점
+                  </label>
+                  <select
+                    value={minRatingFilter}
+                    onChange={(e) => setMinRatingFilter(e.target.value)}
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={String(n)}>
+                        {n}점 이상
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    레벨
+                  </label>
+                  <select
+                    value={levelFilter}
+                    onChange={(e) =>
+                      setLevelFilter(e.target.value as BookLevel | "")
+                    }
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {BOOK_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    분야
+                  </label>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) =>
+                      setCategoryFilter(e.target.value as BookField | "")
+                    }
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {BOOK_FIELDS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className='sm:col-span-2'>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    유저별 보기 (이 유저가 등록한 책만)
+                  </label>
+                  <select
+                    value={userIdFilter}
+                    onChange={(e) => setUserIdFilter(e.target.value)}
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    <option value=''>전체</option>
+                    {uniqueUserIds.map((uid) => (
+                      <option key={uid} value={uid}>
+                        {userNames[uid] || uid}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className='sm:col-span-2'>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    정렬
+                  </label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) =>
+                      setSortBy(
+                        e.target
+                          .value as (typeof SORT_OPTIONS)[number]["value"],
+                      )
+                    }
+                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {userUid && (
+                  <div className='sm:col-span-2 flex items-center gap-2'>
+                    <input
+                      type='checkbox'
+                      id='onlyNotMine'
+                      checked={onlyNotMineFilter}
+                      onChange={(e) => setOnlyNotMineFilter(e.target.checked)}
+                      className='rounded border-theme-tertiary text-accent-theme focus:ring-accent-theme'
+                    />
+                    <label
+                      htmlFor='onlyNotMine'
+                      className='text-sm text-theme-primary cursor-pointer'
+                    >
+                      내가 등록하지 않은 책만 보기
+                    </label>
+                  </div>
                 )}
-              </select>
-            </div>
-            <div>
-              <label className='block text-xs text-theme-tertiary mb-1'>저자</label>
-              <select
-                value={authorFilter}
-                onChange={(e) => setAuthorFilter(e.target.value)}
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-              >
-                <option value=''>전체</option>
-                {uniqueAuthors.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className='block text-xs text-theme-tertiary mb-1'>최소 평점</label>
-              <select
-                value={minRatingFilter}
-                onChange={(e) => setMinRatingFilter(e.target.value)}
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-              >
-                <option value=''>전체</option>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={String(n)}>
-                    {n}점 이상
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className='block text-xs text-theme-tertiary mb-1'>레벨</label>
-              <select
-                value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value as BookLevel | "")}
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-              >
-                <option value=''>전체</option>
-                {BOOK_LEVELS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className='block text-xs text-theme-tertiary mb-1'>분야</label>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value as BookField | "")}
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-              >
-                <option value=''>전체</option>
-                {BOOK_FIELDS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className='sm:col-span-2'>
-              <label className='block text-xs text-theme-tertiary mb-1'>
-                유저별 보기 (이 유저가 등록한 책만)
-              </label>
-              <select
-                value={userIdFilter}
-                onChange={(e) => setUserIdFilter(e.target.value)}
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-              >
-                <option value=''>전체</option>
-                {uniqueUserIds.map((uid) => (
-                  <option key={uid} value={uid}>
-                    {userNames[uid] || uid}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className='sm:col-span-2'>
-              <label className='block text-xs text-theme-tertiary mb-1'>정렬</label>
-              <select
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(e.target.value as typeof SORT_OPTIONS[number]["value"])
-                }
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-              >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {userUid && (
-              <div className='sm:col-span-2 flex items-center gap-2'>
-                <input
-                  type='checkbox'
-                  id='onlyNotMine'
-                  checked={onlyNotMineFilter}
-                  onChange={(e) => setOnlyNotMineFilter(e.target.checked)}
-                  className='rounded border-theme-tertiary text-accent-theme focus:ring-accent-theme'
-                />
-                <label htmlFor='onlyNotMine' className='text-sm text-theme-primary cursor-pointer'>
-                  내가 등록하지 않은 책만 보기
-                </label>
-              </div>
-            )}
               </div>
               <p className='text-xs text-theme-tertiary'>
                 총 {filtered.length}권 (제목 기준 중복 제외)
@@ -487,12 +542,14 @@ function ExplorePageContent() {
             {paginated.map((g) => (
               <div
                 key={g.title}
-                className='bg-theme-secondary rounded-lg shadow-sm overflow-hidden'
+                className='bg-theme-secondary rounded-lg shadow-sm border-card overflow-hidden'
               >
                 <div
                   className='p-4 cursor-pointer'
                   onClick={() =>
-                    setExpandedTitle((prev) => (prev === g.title ? null : g.title))
+                    setExpandedTitle((prev) =>
+                      prev === g.title ? null : g.title,
+                    )
                   }
                 >
                   <div className='flex items-start gap-3'>
@@ -511,7 +568,12 @@ function ExplorePageContent() {
                           <Users className='h-3.5 w-3' />
                           {g.userCount}명 등록
                         </span>
-                        <span className='inline-flex items-center gap-0.5' title={g.userCount > 1 ? "여러 유저 평점 평균" : undefined}>
+                        <span
+                          className='inline-flex items-center gap-0.5'
+                          title={
+                            g.userCount > 1 ? "여러 유저 평점 평균" : undefined
+                          }
+                        >
                           <Star className='h-3.5 w-3.5 text-yellow-500 fill-current' />
                           {g.avgRating.toFixed(1)}
                           {g.userCount > 1 && (
@@ -528,26 +590,33 @@ function ExplorePageContent() {
                         ))}
                       </div>
                     </div>
-                    <div className='flex items-center gap-2 shrink-0' onClick={(e) => e.stopPropagation()}>
-                      {userUid && !g.books.some((b) => b.user_id === userUid) && (
-                        <button
-                          type='button'
-                          onClick={() => {
-                            setConfirmAddInitial({
-                              title: g.title,
-                              author: g.author,
-                              publishedDate: g.books[0]?.publishedDate || "",
-                              level: g.books[0]?.level as BookLevel | undefined,
-                              category: g.books[0]?.category as BookField | undefined,
-                            })
-                            setConfirmAddOpen(true)
-                          }}
-                          className='inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-accent-theme text-white hover:bg-accent-theme-secondary transition-colors'
-                        >
-                          <Plus className='h-3.5 w-3.5' />
-                          내 책으로 추가
-                        </button>
-                      )}
+                    <div
+                      className='flex items-center gap-2 shrink-0'
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {userUid &&
+                        !g.books.some((b) => b.user_id === userUid) && (
+                          <button
+                            type='button'
+                            onClick={() => {
+                              setConfirmAddInitial({
+                                title: g.title,
+                                author: g.author,
+                                publishedDate: g.books[0]?.publishedDate || "",
+                                level: g.books[0]?.level as
+                                  | BookLevel
+                                  | undefined,
+                                category: g.books[0]?.category as
+                                  | BookField
+                                  | undefined,
+                              })
+                              setConfirmAddOpen(true)
+                            }}
+                            className='inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-accent-theme text-white hover:bg-accent-theme-secondary transition-colors'
+                          >
+                            <Plus className='h-3.5 w-3.5' />내 책으로 추가
+                          </button>
+                        )}
                       <ChevronDown
                         className={`h-5 w-5 text-theme-tertiary transition-transform ${
                           expandedTitle === g.title ? "rotate-180" : ""
@@ -563,7 +632,10 @@ function ExplorePageContent() {
                     </p>
                     <ul className='space-y-1.5'>
                       {g.books.map((book) => (
-                        <li key={book.id} className='flex items-center justify-between gap-2'>
+                        <li
+                          key={book.id}
+                          className='flex items-center justify-between gap-2'
+                        >
                           <button
                             type='button'
                             onClick={(e) => {
@@ -584,7 +656,9 @@ function ExplorePageContent() {
                                 type='button'
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  router.push(`/book/${book.id}/${book.user_id}`)
+                                  router.push(
+                                    `/book/${book.id}/${book.user_id}`,
+                                  )
                                 }}
                                 className='text-xs px-2 py-1 rounded bg-accent-theme text-white'
                               >

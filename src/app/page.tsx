@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   BookOpen,
   AlertCircle,
@@ -55,41 +55,29 @@ export default function Home() {
     return totalRating / allBooks.length
   }
 
-  const [recentBooks, setRecentBooks] = useState<Book[]>([])
+  const [recentReadingBooks, setRecentReadingBooks] = useState<Book[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
-  // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
-  // const [userChecklist, setUserChecklist] = useState<UserChecklist | null>(null)
-
-  useEffect(() => {
-    if (!loading && !isLoggedIn) {
-      router.push("/login")
-    }
-  }, [isLoggedIn, loading, router])
+  const RECENT_BOOKS_LIMIT = 5
 
   useEffect(() => {
     if (!isLoggedIn || !userUid) return
 
-    const loadRecentBooks = async () => {
+    const loadRecentReading = async () => {
       try {
         setError(null)
-
         if (!userUid) {
           setError("사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.")
           return
         }
-
-        // 최근 읽는 중인 책 5개만 가져오기 (최근 읽은 기록 순으로 정렬)
         const booksData = await BookService.getUserBooksByStatusPaginated(
           userUid,
           "reading",
           1,
-          5,
+          RECENT_BOOKS_LIMIT,
           true
         )
-
-        setRecentBooks(booksData.books)
+        setRecentReadingBooks(booksData.books)
       } catch (error) {
         console.error("Error loading recent books:", error)
         if (error instanceof ApiError) {
@@ -100,8 +88,24 @@ export default function Home() {
       }
     }
 
-    loadRecentBooks()
+    loadRecentReading()
   }, [isLoggedIn, userUid])
+
+  const recentAddedBooks = useMemo(() => {
+    return [...allBooks]
+      .sort((a, b) => {
+        const tA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const tB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return tB - tA
+      })
+      .slice(0, RECENT_BOOKS_LIMIT)
+  }, [allBooks])
+
+  useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      router.push("/login")
+    }
+  }, [isLoggedIn, loading, router])
 
   const handleBookClick = (bookId: string) => {
     router.push(`/book/${bookId}/${userUid || "1"}`)
@@ -178,7 +182,7 @@ export default function Home() {
 
         {/* 사용자 통계 섹션 */}
         {userStatistics && (
-          <div className='mb-6 bg-theme-secondary rounded-lg p-6 shadow-sm'>
+          <div className='mb-6 bg-theme-secondary rounded-lg p-6 shadow-sm border-card'>
             <h2 className='text-lg font-semibold text-theme-primary mb-4'>
               📊 나의 독서 현황
             </h2>
@@ -263,7 +267,7 @@ export default function Home() {
 
         {/* 책 통계 카드 */}
         <div className='grid grid-cols-2 gap-2 mb-6'>
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
             <div className='flex items-center'>
               <BookOpen className='h-5 w-5 accent-theme-primary' />
               <div className='ml-2'>
@@ -277,7 +281,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
             <div className='flex items-center'>
               <Bookmark className='h-5 w-5 text-green-500' />
               <div className='ml-2'>
@@ -291,7 +295,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
             <div className='flex items-center'>
               <CheckCircle className='h-5 w-5 text-green-600' />
               <div className='ml-2'>
@@ -305,7 +309,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
             <div className='flex items-center'>
               <Calendar className='h-5 w-5 text-purple-500' />
               <div className='ml-2'>
@@ -319,7 +323,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
             <div className='flex items-center'>
               <Clock className='h-5 w-5 text-orange-500' />
               <div className='ml-2'>
@@ -333,7 +337,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm'>
+          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
             <div className='flex items-center'>
               <Star className='h-5 w-5 text-yellow-500' />
               <div className='ml-2'>
@@ -349,44 +353,100 @@ export default function Home() {
         </div>
 
         {/* 최근 읽는 중인 책 */}
-        {recentBooks.length > 0 && (
-          <div className='mb-6'>
-            <div className='flex items-center justify-between mb-4'>
-              <h2 className='text-lg font-semibold text-theme-primary'>
-                📖 최근 읽는 중인 책
-              </h2>
-              <button
-                onClick={() => router.push("/books")}
-                className='text-sm text-accent-theme hover:underline'
-              >
-                전체 보기 →
-              </button>
-            </div>
-            <div className='grid grid-cols-1 gap-3'>
-              {recentBooks.map((book: Book) => (
-                <div
-                  key={book.id}
-                  onClick={() => handleBookClick(book.id)}
-                  className='bg-theme-secondary rounded-lg shadow-sm hover:shadow-md transition-shadow p-3 cursor-pointer'
-                >
-                  <div className='flex items-start gap-3'>
-                    <div className='w-14 h-18 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                      <BookOpen className='h-7 w-7 text-gray-400' />
-                    </div>
-                    <div className='flex-1 min-w-0'>
-                      <h3 className='font-semibold text-theme-primary mb-1 truncate'>
-                        {book.title}
-                      </h3>
-                      <p className='text-sm text-theme-secondary truncate'>
-                        {book.author || "저자 미상"}
-                      </p>
-                    </div>
-                  </div>
+        <div className='mb-6'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-lg font-semibold text-theme-primary'>
+              📖 최근 읽는 중인 책
+            </h2>
+            <button
+              onClick={() => router.push("/books?tab=reading")}
+              className='text-sm text-accent-theme hover:underline'
+            >
+              전체 보기 →
+            </button>
+          </div>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card overflow-hidden'>
+            <div className='max-h-[280px] overflow-y-auto px-4'>
+              {recentReadingBooks.length === 0 ? (
+                <div className='py-4 text-center text-theme-tertiary text-sm'>
+                  읽는 중인 책이 없습니다
                 </div>
-              ))}
+              ) : (
+                <div className='divide-y divide-theme-tertiary/80'>
+                  {recentReadingBooks.map((book: Book) => (
+                    <div
+                      key={book.id}
+                      onClick={() => handleBookClick(book.id)}
+                      className='py-3 cursor-pointer hover:bg-theme-tertiary/30 transition-colors first:pt-3 last:pb-3'
+                    >
+                      <div className='flex items-start gap-3'>
+                        <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
+                          <BookOpen className='h-6 w-6 text-theme-tertiary' />
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <h3 className='font-medium text-theme-primary truncate'>
+                            {book.title}
+                          </h3>
+                          <p className='text-sm text-theme-secondary truncate'>
+                            {book.author || "저자 미상"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* 최근 등록한 책 */}
+        <div className='mb-6'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-lg font-semibold text-theme-primary'>
+              📚 최근 등록한 책
+            </h2>
+            <button
+              onClick={() => router.push("/books?tab=want-to-read")}
+              className='text-sm text-accent-theme hover:underline'
+            >
+              전체 보기 →
+            </button>
+          </div>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card overflow-hidden'>
+            <div className='max-h-[280px] overflow-y-auto px-4'>
+              {recentAddedBooks.length === 0 ? (
+                <div className='py-4 text-center text-theme-tertiary text-sm'>
+                  등록한 책이 없습니다
+                </div>
+              ) : (
+                <div className='divide-y divide-theme-tertiary/80'>
+                  {recentAddedBooks.map((book: Book) => (
+                    <div
+                      key={book.id}
+                      onClick={() => handleBookClick(book.id)}
+                      className='py-3 cursor-pointer hover:bg-theme-tertiary/30 transition-colors first:pt-3 last:pb-3'
+                    >
+                      <div className='flex items-start gap-3'>
+                        <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
+                          <BookOpen className='h-6 w-6 text-theme-tertiary' />
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <h3 className='font-medium text-theme-primary truncate'>
+                            {book.title}
+                          </h3>
+                          <p className='text-sm text-theme-secondary truncate'>
+                            {book.author || "저자 미상"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>

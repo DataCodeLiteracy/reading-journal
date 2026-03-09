@@ -82,7 +82,7 @@ export default function GoldenBellResultsPage() {
 
         {/* 통계 요약 */}
         <div className='grid grid-cols-2 gap-3 mb-6'>
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
             <div className='flex items-center gap-2 mb-2'>
               <div className='p-2 rounded-lg bg-accent-theme/10'>
                 <Trophy className='h-4 w-4 text-accent-theme' />
@@ -92,7 +92,7 @@ export default function GoldenBellResultsPage() {
             <p className='text-2xl font-bold text-theme-primary'>{averageScore}점</p>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
             <div className='flex items-center gap-2 mb-2'>
               <div className='p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30'>
                 <TrendingUp className='h-4 w-4 text-yellow-600 dark:text-yellow-400' />
@@ -102,7 +102,7 @@ export default function GoldenBellResultsPage() {
             <p className='text-2xl font-bold text-theme-primary'>{perfectScores}회</p>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
             <div className='flex items-center gap-2 mb-2'>
               <div className='p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30'>
                 <Calendar className='h-4 w-4 text-blue-600 dark:text-blue-400' />
@@ -112,7 +112,7 @@ export default function GoldenBellResultsPage() {
             <p className='text-2xl font-bold text-theme-primary'>{totalQuizzes}회</p>
           </div>
 
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
             <div className='flex items-center gap-2 mb-2'>
               <div className='p-2 rounded-lg bg-green-100 dark:bg-green-900/30'>
                 <BookOpen className='h-4 w-4 text-green-600 dark:text-green-400' />
@@ -124,7 +124,7 @@ export default function GoldenBellResultsPage() {
         </div>
 
         {/* 결과 목록 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm'>
+        <div className='bg-theme-secondary rounded-lg shadow-sm border-card'>
           <div className='p-4 border-b border-theme-tertiary'>
             <h2 className='font-semibold text-theme-primary'>풀이 기록</h2>
           </div>

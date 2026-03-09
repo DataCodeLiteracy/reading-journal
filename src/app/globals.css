@@ -208,6 +208,11 @@ body {
   background-color: var(--backdrop-color);
 }
 
+/* 카드/박스 공통 테두리 - 자연스럽고 깔끔한 구분 */
+.border-card {
+  border: 1px solid color-mix(in srgb, var(--border-primary) 65%, transparent);
+}
+
 /* Fade-in animation for content loading */
 @keyframes fadeIn {
   from {

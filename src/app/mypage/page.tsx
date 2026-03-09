@@ -18,9 +18,12 @@ import {
   Globe,
   Lock,
   Bell,
+  Target,
+  Check,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
+import { useSettings } from "@/contexts/SettingsContext"
 import { Book } from "@/types/book"
 import { UserStatistics } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -31,11 +34,16 @@ import { UserStatisticsService } from "@/services/userStatisticsService"
 export default function MyPage() {
   const router = useRouter()
   const { user, userData, loading, isLoggedIn, userUid, signOut } = useAuth()
-  const { allBooks, userStatistics, isLoading } = useData()
+  const { allBooks, userStatistics, isLoading, refreshAllData } = useData()
+  const { settings, updateSettings } = useSettings()
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false)
   const [isProfilePublic, setIsProfilePublic] = useState(true)
+  const [weeklyGoalInput, setWeeklyGoalInput] = useState("")
+  const [isSavingGoal, setIsSavingGoal] = useState(false)
+  const [goalSaved, setGoalSaved] = useState(false)
+  const [goalError, setGoalError] = useState<string | null>(null)
 
   // 실시간으로 계산하는 함수들
   const getTotalBooks = () => allBooks.length
@@ -63,6 +71,45 @@ export default function MyPage() {
       setIsProfilePublic(userStatistics.isProfilePublic !== false)
     }
   }, [userStatistics])
+
+  useEffect(() => {
+    const fromServer = userStatistics?.weeklyReadingGoalHours
+    const fromLocal = settings.weeklyReadingGoalHours ?? 5
+    const value = fromServer ?? fromLocal
+    setWeeklyGoalInput(String(value))
+  }, [userStatistics?.weeklyReadingGoalHours, settings.weeklyReadingGoalHours])
+
+  const handleSaveWeeklyGoal = async () => {
+    setGoalError(null)
+    const trimmed = weeklyGoalInput.trim()
+    if (trimmed === "") {
+      setGoalError("목표 시간을 입력해주세요.")
+      return
+    }
+    const value = parseInt(trimmed, 10)
+    if (Number.isNaN(value) || value < 1 || value > 168) {
+      setGoalError("1~168 사이의 숫자를 입력해주세요.")
+      return
+    }
+    if (!userUid) return
+    setIsSavingGoal(true)
+    setGoalSaved(false)
+    try {
+      updateSettings({ weeklyReadingGoalHours: value })
+      await UserStatisticsService.createOrUpdateUserStatistics(userUid, {
+        weeklyReadingGoalHours: value,
+      })
+      await refreshAllData()
+      setWeeklyGoalInput(String(value))
+      setGoalSaved(true)
+      setTimeout(() => setGoalSaved(false), 2000)
+    } catch (e) {
+      console.error("Failed to save weekly goal:", e)
+      setGoalError("저장에 실패했습니다.")
+    } finally {
+      setIsSavingGoal(false)
+    }
+  }
 
   const handleLogout = () => {
     setIsLogoutModalOpen(true)
@@ -135,9 +182,69 @@ export default function MyPage() {
           </div>
         )}
 
+        {/* 이번 주 독서 목표 설정 */}
+        {userUid && (
+          <div className='mb-4 bg-theme-secondary rounded-lg p-4 shadow-sm border-card'>
+            <div className='flex items-center gap-3 mb-3'>
+              <div className='p-2 bg-green-100 dark:bg-green-900/20 rounded-lg'>
+                <Target className='h-5 w-5 text-green-600 dark:text-green-400' />
+              </div>
+              <h2 className='text-lg font-semibold text-theme-primary'>
+                이번 주 독서 목표
+              </h2>
+            </div>
+            <p className='text-sm text-theme-secondary mb-3'>
+              주간 목표 독서 시간(시간)을 설정하면 위 카드에 진행률로 표시됩니다.
+            </p>
+            {goalError && (
+              <p className='text-sm text-red-600 dark:text-red-400 mb-2'>
+                {goalError}
+              </p>
+            )}
+            <div className='flex items-center gap-3 flex-wrap'>
+              <div className='relative flex-1 min-w-[6rem] max-w-[8rem]'>
+                <input
+                  type='text'
+                  inputMode='numeric'
+                  value={weeklyGoalInput}
+                  onChange={(e) => {
+                    setWeeklyGoalInput(e.target.value)
+                    if (goalError) setGoalError(null)
+                  }}
+                  placeholder='5'
+                  className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-4 py-2.5 pr-10 text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
+                />
+                <span className='absolute right-3 top-1/2 -translate-y-1/2 text-theme-secondary text-sm'>
+                  시간
+                </span>
+              </div>
+              <span className='text-theme-tertiary text-sm'>/ 주 (월~일)</span>
+              <button
+                onClick={handleSaveWeeklyGoal}
+                disabled={isSavingGoal}
+                className='flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-theme text-white font-medium hover:bg-accent-theme-secondary transition-colors disabled:opacity-50'
+              >
+                {isSavingGoal ? (
+                  <>
+                    <span className='animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent' />
+                    저장 중
+                  </>
+                ) : goalSaved ? (
+                  <>
+                    <Check className='h-4 w-4' />
+                    저장됨
+                  </>
+                ) : (
+                  "저장"
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 사용자 통계 요약 */}
         {!isLoading && userStatistics && (
-          <div className='mb-4 bg-theme-secondary rounded-lg p-4 shadow-sm'>
+          <div className='mb-4 bg-theme-secondary rounded-lg p-4 shadow-sm border-card'>
             <h2 className='text-lg font-semibold text-theme-primary mb-3'>
               📊 독서 통계 요약
             </h2>
@@ -197,7 +304,7 @@ export default function MyPage() {
         <div className='grid grid-cols-1 md:grid-cols-2 gap-3 mb-4'>
           <button
             onClick={() => router.push("/mypage/settings")}
-            className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left'
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
           >
             <div className='flex items-center gap-3'>
               <div className='p-2 bg-accent-theme-tertiary rounded-lg'>
@@ -214,7 +321,7 @@ export default function MyPage() {
 
           <button
             onClick={() => router.push("/mypage/statistics")}
-            className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left'
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
           >
             <div className='flex items-center gap-3'>
               <div className='p-2 bg-green-100 dark:bg-green-900/20 rounded-lg'>
@@ -233,7 +340,7 @@ export default function MyPage() {
 
           <button
             onClick={() => router.push("/mypage/checklists")}
-            className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left'
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
           >
             <div className='flex items-center gap-3'>
               <div className='p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg'>
@@ -252,7 +359,7 @@ export default function MyPage() {
 
           <button
             onClick={() => router.push("/mypage/golden-bell")}
-            className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow text-left'
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
           >
             <div className='flex items-center gap-3'>
               <div className='p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg'>
@@ -298,7 +405,7 @@ export default function MyPage() {
         )}
 
         {/* 프로필 공개 설정 */}
-        <div className='bg-theme-secondary rounded-lg p-4 shadow-sm mb-4'>
+        <div className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card mb-4'>
           <h2 className='text-lg font-semibold text-theme-primary mb-3'>
             프로필 공개 설정
           </h2>
@@ -348,7 +455,7 @@ export default function MyPage() {
         </div>
 
         {/* 계정 관리 */}
-        <div className='bg-theme-secondary rounded-lg p-4 shadow-sm'>
+        <div className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card'>
           <h2 className='text-lg font-semibold text-theme-primary mb-3'>
             계정 관리
           </h2>

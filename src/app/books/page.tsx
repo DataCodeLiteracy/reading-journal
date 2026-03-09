@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, Suspense } from "react"
 import {
   BookOpen,
   Plus,
@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -24,7 +24,25 @@ import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
 
 export default function BooksPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
+          <div className='text-center'>
+            <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
+            <p className='text-theme-secondary'>로딩 중...</p>
+          </div>
+        </div>
+      }
+    >
+      <BooksPageContent />
+    </Suspense>
+  )
+}
+
+function BooksPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading, isLoggedIn, userUid } = useAuth()
   const {
     allBooks,
@@ -40,6 +58,18 @@ export default function BooksPage() {
   const [activeTab, setActiveTab] = useState<
     "reading" | "completed" | "want-to-read" | "on-hold"
   >("reading")
+
+  const getDefaultSortForTab = (
+    tab: "reading" | "completed" | "want-to-read" | "on-hold"
+  ): "recently_added" | "recently_updated" | "recently_read" =>
+    tab === "want-to-read" ? "recently_added" : "recently_read"
+
+  const [sortOrder, setSortOrder] = useState<
+    "recently_added" | "recently_updated" | "recently_read"
+  >("recently_read")
+
+  const [booksByLastRead, setBooksByLastRead] = useState<Book[]>([])
+  const [loadingLastReadSort, setLoadingLastReadSort] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -63,9 +93,68 @@ export default function BooksPage() {
   const getOnHoldBooks = () =>
     allBooks.filter((book) => book.status === "on-hold").length
 
-  // 필터링된 책 목록 (탭 + 검색 + 레벨/분야)
+  // URL ?tab= 에서 탭 복원 (전체 보기 등에서 진입 시)
+  useEffect(() => {
+    const tab = searchParams.get("tab")
+    if (
+      tab === "reading" ||
+      tab === "completed" ||
+      tab === "want-to-read" ||
+      tab === "on-hold"
+    ) {
+      setActiveTab(tab)
+      setSortOrder(getDefaultSortForTab(tab))
+    }
+  }, [searchParams])
+
+  // "최근 읽은 순"일 때 API로 정렬된 목록 로드 (읽는 중/완독/보류)
+  useEffect(() => {
+    const useLastRead =
+      (activeTab === "reading" || activeTab === "completed" || activeTab === "on-hold") &&
+      sortOrder === "recently_read" &&
+      !!userUid
+    if (!useLastRead) {
+      setBooksByLastRead([])
+      return
+    }
+    let cancelled = false
+    setLoadingLastReadSort(true)
+    BookService.getUserBooksByStatusSortedByLastRead(userUid, activeTab)
+      .then((books) => {
+        if (!cancelled) setBooksByLastRead(books)
+      })
+      .catch(() => {
+        if (!cancelled) setBooksByLastRead([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLastReadSort(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, sortOrder, userUid])
+
+  // 필터링된 책 목록 (탭 + 검색 + 레벨/분야 + 정렬)
   const filteredBooks = useMemo(() => {
-    let list = allBooks.filter((book) => book.status === activeTab)
+    let list: Book[]
+
+    const useLastReadList =
+      (activeTab === "reading" || activeTab === "completed" || activeTab === "on-hold") &&
+      sortOrder === "recently_read" &&
+      booksByLastRead.length >= 0
+
+    if (useLastReadList && booksByLastRead.length > 0) {
+      list = [...booksByLastRead]
+    } else {
+      list = allBooks.filter((book) => book.status === activeTab)
+      const getTime = (b: Book) => {
+        if (sortOrder === "recently_added") {
+          return (b.created_at ? new Date(b.created_at).getTime() : 0)
+        }
+        return (b.updated_at ? new Date(b.updated_at).getTime() : b.created_at ? new Date(b.created_at).getTime() : 0)
+      }
+      list.sort((a, b) => getTime(b) - getTime(a))
+    }
 
     // 검색어 필터
     const q = searchQuery.trim().toLowerCase()
@@ -88,7 +177,7 @@ export default function BooksPage() {
     }
 
     return list
-  }, [allBooks, activeTab, searchQuery, levelFilter, categoryFilter])
+  }, [allBooks, activeTab, searchQuery, levelFilter, categoryFilter, sortOrder, booksByLastRead])
 
   // 페이지네이션
   const totalItems = filteredBooks.length
@@ -103,10 +192,10 @@ export default function BooksPage() {
     }
   }, [isLoggedIn, loading, router])
 
-  // 필터 변경 시 페이지 리셋
+  // 필터/정렬 변경 시 페이지 리셋
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab, searchQuery, levelFilter, categoryFilter])
+  }, [activeTab, searchQuery, levelFilter, categoryFilter, sortOrder])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -116,7 +205,7 @@ export default function BooksPage() {
     tab: "reading" | "completed" | "want-to-read" | "on-hold"
   ) => {
     setActiveTab(tab)
-    // 탭 변경 시 페이지는 useEffect에서 리셋됨
+    setSortOrder(getDefaultSortForTab(tab))
   }
 
   const handleBookClick = (bookId: string) => {
@@ -238,7 +327,7 @@ export default function BooksPage() {
             <h1 className='text-3xl font-bold text-theme-primary'>
               📚 내 책 목록
             </h1>
-            <div className='bg-theme-secondary rounded-lg px-4 py-2 shadow-sm'>
+            <div className='bg-theme-secondary rounded-lg px-4 py-2 shadow-sm border-card'>
               <p className='text-sm text-theme-secondary'>
                 총 <span className='font-bold text-theme-primary text-lg'>{getTotalBooks()}</span>권
               </p>
@@ -258,7 +347,7 @@ export default function BooksPage() {
           </div>
         )}
 
-        <div className='flex space-x-1 bg-theme-secondary rounded-lg p-1 mb-4 shadow-sm'>
+        <div className='flex space-x-1 bg-theme-secondary rounded-lg p-1 mb-4 shadow-sm border-card'>
           {[
             {
               key: "reading",
@@ -326,8 +415,31 @@ export default function BooksPage() {
           </div>
         </div>
 
+        {/* 정렬 */}
+        <div className='mb-4'>
+          <label className='block text-xs text-theme-tertiary mb-1'>정렬</label>
+          <select
+            value={sortOrder}
+            onChange={(e) =>
+              setSortOrder(
+                e.target.value as
+                  | "recently_added"
+                  | "recently_updated"
+                  | "recently_read"
+              )
+            }
+            className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
+          >
+            <option value='recently_added'>최근 등록한 순</option>
+            <option value='recently_updated'>최근 수정한 순</option>
+            {(activeTab === "reading" || activeTab === "completed" || activeTab === "on-hold") && (
+              <option value='recently_read'>최근 읽은 순</option>
+            )}
+          </select>
+        </div>
+
         {/* 필터 토글 */}
-        <div className='bg-theme-secondary rounded-lg mb-4 shadow-sm overflow-hidden'>
+        <div className='bg-theme-secondary rounded-lg mb-4 shadow-sm border-card overflow-hidden'>
           <button
             type='button'
             onClick={() => setFilterOpen((o) => !o)}
@@ -455,7 +567,7 @@ export default function BooksPage() {
               <div
                 key={book.id}
                 onClick={() => handleBookClick(book.id)}
-                className='bg-theme-secondary rounded-lg shadow-sm hover:shadow-md transition-shadow p-3 cursor-pointer relative group'
+                className='bg-theme-secondary rounded-lg shadow-sm border-card hover:shadow-md transition-shadow p-3 cursor-pointer relative group'
               >
                 <div className='flex items-start gap-3'>
                   <div className='w-14 h-18 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
