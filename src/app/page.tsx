@@ -16,6 +16,7 @@ import {
   Zap,
   Timer,
   Flame,
+  ChevronRight,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -372,26 +373,25 @@ export default function Home() {
                   읽는 중인 책이 없습니다
                 </div>
               ) : (
-                <div className='divide-y divide-theme-tertiary/80'>
+                <div>
                   {recentReadingBooks.map((book: Book) => (
                     <div
                       key={book.id}
                       onClick={() => handleBookClick(book.id)}
-                      className='py-3 cursor-pointer hover:bg-theme-tertiary/30 transition-colors first:pt-3 last:pb-3'
+                      className='flex items-center gap-3 py-3 px-3 -mx-1 rounded-lg cursor-pointer hover:bg-theme-tertiary/40 active:bg-theme-tertiary/50 transition-colors first:pt-3 last:pb-3 border border-transparent hover:border-theme-tertiary/50'
                     >
-                      <div className='flex items-start gap-3'>
-                        <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                          <BookOpen className='h-6 w-6 text-theme-tertiary' />
-                        </div>
-                        <div className='flex-1 min-w-0'>
-                          <h3 className='font-medium text-theme-primary truncate'>
-                            {book.title}
-                          </h3>
-                          <p className='text-sm text-theme-secondary truncate'>
-                            {book.author || "저자 미상"}
-                          </p>
-                        </div>
+                      <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
+                        <BookOpen className='h-6 w-6 text-theme-tertiary' />
                       </div>
+                      <div className='flex-1 min-w-0'>
+                        <h3 className='font-medium text-theme-primary truncate'>
+                          {book.title}
+                        </h3>
+                        <p className='text-sm text-theme-secondary truncate'>
+                          {book.author || "저자 미상"}
+                        </p>
+                      </div>
+                      <ChevronRight className='h-5 w-5 text-theme-tertiary shrink-0' />
                     </div>
                   ))}
                 </div>
@@ -420,26 +420,25 @@ export default function Home() {
                   등록한 책이 없습니다
                 </div>
               ) : (
-                <div className='divide-y divide-theme-tertiary/80'>
+                <div>
                   {recentAddedBooks.map((book: Book) => (
                     <div
                       key={book.id}
                       onClick={() => handleBookClick(book.id)}
-                      className='py-3 cursor-pointer hover:bg-theme-tertiary/30 transition-colors first:pt-3 last:pb-3'
+                      className='flex items-center gap-3 py-3 px-3 -mx-1 rounded-lg cursor-pointer hover:bg-theme-tertiary/40 active:bg-theme-tertiary/50 transition-colors first:pt-3 last:pb-3 border border-transparent hover:border-theme-tertiary/50'
                     >
-                      <div className='flex items-start gap-3'>
-                        <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                          <BookOpen className='h-6 w-6 text-theme-tertiary' />
-                        </div>
-                        <div className='flex-1 min-w-0'>
-                          <h3 className='font-medium text-theme-primary truncate'>
-                            {book.title}
-                          </h3>
-                          <p className='text-sm text-theme-secondary truncate'>
-                            {book.author || "저자 미상"}
-                          </p>
-                        </div>
+                      <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
+                        <BookOpen className='h-6 w-6 text-theme-tertiary' />
                       </div>
+                      <div className='flex-1 min-w-0'>
+                        <h3 className='font-medium text-theme-primary truncate'>
+                          {book.title}
+                        </h3>
+                        <p className='text-sm text-theme-secondary truncate'>
+                          {book.author || "저자 미상"}
+                        </p>
+                      </div>
+                      <ChevronRight className='h-5 w-5 text-theme-tertiary shrink-0' />
                     </div>
                   ))}
                 </div>
