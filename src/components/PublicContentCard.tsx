@@ -145,19 +145,22 @@ export default function PublicContentCard({ content }: PublicContentCardProps) {
 
       {/* 좋아요/댓글 수 */}
       <div className='flex items-center gap-4 pt-3 border-t border-theme-tertiary'>
-        <button
-          onClick={handleToggleLike}
-          disabled={!userUid || isOwner || isTogglingLike}
-          className={`flex items-center gap-1 transition-colors ${
-            isLiked
-              ? "text-red-500 hover:text-red-600"
-              : "text-theme-secondary hover:text-red-500"
-          } ${!userUid || isOwner ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-          title={isOwner ? "본인의 콘텐츠에는 좋아요를 누를 수 없습니다" : isLiked ? "좋아요 취소" : "좋아요"}
-        >
-          <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-          <span className='text-xs'>{likesCount}</span>
-        </button>
+        {isOwner ? (
+          <span className='flex items-center gap-1 text-theme-secondary' title='본인 게시물'>
+            <Heart className='h-4 w-4 text-red-500 fill-red-500' />
+            <span className='text-xs'>{likesCount}</span>
+          </span>
+        ) : (
+          <button
+            onClick={handleToggleLike}
+            disabled={!userUid || isTogglingLike}
+            className={`flex items-center gap-1 transition-colors text-theme-secondary ${!userUid ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+            title={isLiked ? "좋아요 취소" : "좋아요"}
+          >
+            <Heart className={`h-4 w-4 ${isLiked ? "text-red-500 fill-red-500" : "text-red-500"}`} />
+            <span className='text-xs'>{likesCount}</span>
+          </button>
+        )}
         <div className='flex items-center gap-1 text-theme-secondary'>
           <MessageSquare className='h-4 w-4' />
           <span className='text-xs'>{content.commentsCount || 0}</span>

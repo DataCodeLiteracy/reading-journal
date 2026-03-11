@@ -356,21 +356,23 @@ export default function BookQuotesPage({
           </div>
         ) : (
           <>
-            <div className='space-y-3'>
+            <div className='space-y-3 divide-y divide-theme-tertiary'>
               {paginatedQuotes.map((quote) => (
-                <QuoteCard
-                  key={quote.id}
-                  quote={quote}
-                  bookTitle={book.title}
-                  onEdit={(q) => {
-                    setEditingQuote(q)
-                    setIsQuoteModalOpen(true)
-                  }}
-                  onDelete={(quoteId) => {
-                    setQuoteToDelete(quoteId)
-                    setIsDeleteQuoteModalOpen(true)
-                  }}
-                />
+                <div key={quote.id} className='pt-3 first:pt-0'>
+                  <QuoteCard
+                    quote={quote}
+                    bookTitle={book.title}
+                    detailHref={resolvedParams ? `/book/${resolvedParams.id}/${resolvedParams.user_id}/quotes/${quote.id}` : undefined}
+                    onEdit={(q) => {
+                      setEditingQuote(q)
+                      setIsQuoteModalOpen(true)
+                    }}
+                    onDelete={(quoteId) => {
+                      setQuoteToDelete(quoteId)
+                      setIsDeleteQuoteModalOpen(true)
+                    }}
+                  />
+                </div>
               ))}
             </div>
             <Pagination
@@ -439,7 +441,7 @@ export default function BookQuotesPage({
             }
           }}
           title='구절 기록 삭제'
-          message='이 구절 기록을 삭제하시겠습니까?'
+          message='이 구절 기록을 삭제하시겠습니까? 삭제하면 달린 생각(댓글)도 모두 삭제됩니다.'
           confirmText='삭제'
           cancelText='취소'
           icon={Trash2}

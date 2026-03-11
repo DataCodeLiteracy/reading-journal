@@ -109,6 +109,31 @@ export class LikeService {
   }
 
   /**
+   * 특정 콘텐츠에 달린 모든 좋아요 삭제 (게시물 삭제 시 연쇄 삭제용)
+   */
+  static async deleteAllLikesForContent(
+    contentType: ContentType,
+    contentId: string
+  ): Promise<void> {
+    try {
+      const likes = await ApiClient.queryDocuments<Like>("likes", [
+        ["contentType", "==", contentType],
+        ["contentId", "==", contentId],
+      ])
+      for (const like of likes) {
+        try {
+          await this.removeLike(like.user_id, contentType, contentId)
+        } catch (e) {
+          console.error("LikeService.deleteAllLikesForContent removeLike error:", e)
+        }
+      }
+    } catch (error) {
+      console.error("LikeService.deleteAllLikesForContent error:", error)
+      throw error
+    }
+  }
+
+  /**
    * 콘텐츠의 likesCount 증가
    */
   private static async incrementLikesCount(
@@ -245,6 +270,8 @@ export class LikeService {
         return "bookQuestions"
       case "answer":
         return "questionAnswers"
+      case "comment":
+        return "comments"
       default:
         throw new Error(`Unknown contentType: ${contentType}`)
     }

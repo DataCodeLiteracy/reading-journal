@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { X, BookOpen, Lock, Globe } from "lucide-react"
 import { Quote } from "@/types/content"
+import { PURPOSE_LABELS } from "@/utils/quoteDisplay"
 
 interface QuoteModalProps {
   isOpen: boolean
@@ -12,6 +13,23 @@ interface QuoteModalProps {
   bookTitle?: string
   existingQuote?: Quote | null
 }
+
+function parseGeneralThoughts(raw: string | undefined): { reason: string; purposes: string[] } {
+  if (!raw || typeof raw !== "string") return { reason: "", purposes: [] }
+  const s = raw.trim()
+  const parts = s.split(/\s*\/\s*/)
+  const reason = parts[0]?.trim() ?? ""
+  const tagStr = parts.slice(1).join(" / ").trim()
+  const purposes = tagStr
+    ? tagStr
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter((k) => PURPOSE_LABELS[k])
+    : []
+  return { reason, purposes }
+}
+
+const PURPOSE_OPTIONS = Object.entries(PURPOSE_LABELS).map(([value, label]) => ({ value, label }))
 
 export default function QuoteModal({
   isOpen,
@@ -23,7 +41,8 @@ export default function QuoteModal({
 }: QuoteModalProps) {
   const [quoteText, setQuoteText] = useState("")
   const [thoughts, setThoughts] = useState("")
-  const [generalThoughts, setGeneralThoughts] = useState("")
+  const [generalThoughtsReason, setGeneralThoughtsReason] = useState("")
+  const [generalThoughtsPurposes, setGeneralThoughtsPurposes] = useState<string[]>([])
   const [page, setPage] = useState<number | "">("")
   const [isPublic, setIsPublic] = useState(false)
   const quoteTextRef = useRef<HTMLTextAreaElement>(null)
@@ -33,13 +52,16 @@ export default function QuoteModal({
       if (existingQuote) {
         setQuoteText(existingQuote.quoteText || "")
         setThoughts(existingQuote.thoughts || "")
-        setGeneralThoughts(existingQuote.generalThoughts || "")
+        const { reason, purposes } = parseGeneralThoughts(existingQuote.generalThoughts)
+        setGeneralThoughtsReason(reason)
+        setGeneralThoughtsPurposes(purposes)
         setPage(existingQuote.page ?? "")
         setIsPublic(existingQuote.isPublic || false)
       } else {
         setQuoteText("")
         setThoughts("")
-        setGeneralThoughts("")
+        setGeneralThoughtsReason("")
+        setGeneralThoughtsPurposes([])
         setPage("")
         setIsPublic(false)
       }
@@ -57,12 +79,17 @@ export default function QuoteModal({
       return
     }
 
+    const reason = generalThoughtsReason.trim()
+    const purposeStr = generalThoughtsPurposes.length ? generalThoughtsPurposes.join(", ") : ""
+    const generalThoughtsValue =
+      reason || purposeStr ? (reason && purposeStr ? `${reason} / ${purposeStr}` : reason || purposeStr) : undefined
+
     const quoteData: Omit<Quote, "id" | "created_at" | "updated_at" | "likesCount" | "commentsCount"> = {
       bookId,
       user_id: "", // 부모 컴포넌트에서 설정
       quoteText: quoteText.trim(),
       thoughts: thoughts.trim() || undefined,
-      generalThoughts: generalThoughts.trim() || undefined,
+      generalThoughts: generalThoughtsValue,
       page: page === "" || Number.isNaN(Number(page)) ? undefined : Number(page),
       isPublic,
     }
@@ -74,7 +101,8 @@ export default function QuoteModal({
   const handleClose = () => {
     setQuoteText("")
     setThoughts("")
-    setGeneralThoughts("")
+    setGeneralThoughtsReason("")
+    setGeneralThoughtsPurposes([])
     setPage("")
     setIsPublic(false)
     onClose()
@@ -168,12 +196,43 @@ export default function QuoteModal({
                 책 읽는 중 느낀 점
               </label>
               <textarea
-                value={generalThoughts}
-                onChange={(e) => setGeneralThoughts(e.target.value)}
+                value={generalThoughtsReason}
+                onChange={(e) => setGeneralThoughtsReason(e.target.value)}
                 placeholder='구절과 무관하게 책을 읽다가 느낀 점이나 생각을 적어보세요...'
                 className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent resize-none'
-                rows={4}
+                rows={3}
               />
+              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1 mb-2'>
+                구절과 무관하게 책을 읽다가 느낀 점을 자유롭게 적어주세요.
+              </p>
+              <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                목적 (선택)
+              </label>
+              <div className='flex flex-wrap gap-x-4 gap-y-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
+                {PURPOSE_OPTIONS.map(({ value, label }) => (
+                  <label
+                    key={value}
+                    className='flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200'
+                  >
+                    <input
+                      type='checkbox'
+                      checked={generalThoughtsPurposes.includes(value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setGeneralThoughtsPurposes((prev) => [...prev, value])
+                        } else {
+                          setGeneralThoughtsPurposes((prev) => prev.filter((p) => p !== value))
+                        }
+                      }}
+                      className='rounded border-gray-300 dark:border-gray-600 text-accent-theme focus:ring-accent-theme'
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                해당하는 목적을 선택하세요 (여러 개 선택 가능).
+              </p>
             </div>
 
             {/* 공개 설정 */}

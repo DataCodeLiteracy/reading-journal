@@ -55,10 +55,14 @@ export class QuestionService {
   }
 
   /**
-   * 질문 삭제
+   * 질문 삭제 (관련 댓글·좋아요 연쇄 삭제)
    */
   static async deleteQuestion(questionId: string): Promise<void> {
     try {
+      const { CommentService } = await import("./commentService")
+      const { LikeService } = await import("./likeService")
+      await CommentService.deleteAllCommentsForContent("question", questionId)
+      await LikeService.deleteAllLikesForContent("question", questionId)
       await ApiClient.deleteDocument("bookQuestions", questionId)
     } catch (error) {
       console.error("Error deleting question:", error)

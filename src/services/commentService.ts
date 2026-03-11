@@ -100,22 +100,43 @@ export class CommentService {
     contentId: string
   ): Promise<void> {
     try {
-      // 댓글 작성자 확인
       const comment = await this.getComment(commentId)
       if (!comment) {
         throw new Error("댓글을 찾을 수 없습니다.")
       }
 
-      // 댓글 삭제
+      // 댓글에 달린 좋아요 먼저 삭제
+      const { LikeService } = await import("./likeService")
+      await LikeService.deleteAllLikesForContent("comment", commentId)
+
       await ApiClient.deleteDocument("comments", commentId)
 
-      // 콘텐츠의 commentsCount 감소
       await this.decrementCommentsCount(contentType, contentId)
-
-      // 댓글 작성자의 totalCommentsWritten 감소
       await this.decrementUserCommentsWritten(comment.user_id)
     } catch (error) {
       console.error("CommentService.deleteComment error:", error)
+      throw error
+    }
+  }
+
+  /**
+   * 특정 콘텐츠의 모든 댓글 삭제 (게시물 삭제 시 연쇄 삭제용)
+   */
+  static async deleteAllCommentsForContent(
+    contentType: ContentType,
+    contentId: string
+  ): Promise<void> {
+    try {
+      const comments = await this.getContentComments(contentType, contentId)
+      for (const c of comments) {
+        try {
+          await this.deleteComment(c.id, contentType, contentId)
+        } catch (e) {
+          console.error("CommentService.deleteAllCommentsForContent deleteComment error:", e)
+        }
+      }
+    } catch (error) {
+      console.error("CommentService.deleteAllCommentsForContent error:", error)
       throw error
     }
   }

@@ -96,10 +96,14 @@ export class CritiqueService {
   }
 
   /**
-   * 서평 삭제
+   * 서평 삭제 (관련 댓글·좋아요 연쇄 삭제)
    */
   static async deleteCritique(critiqueId: string): Promise<void> {
     try {
+      const { CommentService } = await import("./commentService")
+      const { LikeService } = await import("./likeService")
+      await CommentService.deleteAllCommentsForContent("critique", critiqueId)
+      await LikeService.deleteAllLikesForContent("critique", critiqueId)
       await ApiClient.deleteDocument("critiques", critiqueId)
     } catch (error) {
       console.error("CritiqueService.deleteCritique error:", error)

@@ -229,6 +229,35 @@ body {
   animation: fadeIn 0.5s ease-out forwards;
 }
 
+/* Record list loading overlay */
+@keyframes recordLoadingIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes recordLoadingCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-record-loading-in {
+  animation: recordLoadingIn 0.2s ease-out forwards;
+}
+
+.animate-record-loading-card-in {
+  animation: recordLoadingCardIn 0.25s ease-out forwards;
+}
+
 /* Native date input: keep calendar popup visible (z-index) and readable (color-scheme) */
 input[type="date"] {
   position: relative;

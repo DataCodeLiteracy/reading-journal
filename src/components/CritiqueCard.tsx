@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Critique } from "@/types/content"
-import { PenSquare, Trash2, Lock, Globe, Heart, MessageSquare } from "lucide-react"
+import { PenSquare, Trash2, Lock, Globe, Heart, MessageSquare, ChevronRight } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { LikeService } from "@/services/likeService"
 import { CritiqueService } from "@/services/critiqueService"
@@ -14,6 +15,10 @@ interface CritiqueCardProps {
   onEdit?: (critique: Critique) => void
   onDelete?: (critiqueId: string) => void
   showBookTitle?: boolean
+  /** 목록에서 사용 시 false로 두고 상세 페이지에서만 의견 표시 */
+  showCommentSection?: boolean
+  /** 목록에서 카드 클릭 시 이동할 상세 페이지 URL */
+  detailHref?: string
 }
 
 export default function CritiqueCard({
@@ -22,7 +27,10 @@ export default function CritiqueCard({
   onEdit,
   onDelete,
   showBookTitle = false,
+  showCommentSection = true,
+  detailHref,
 }: CritiqueCardProps) {
+  const router = useRouter()
   const { userUid } = useAuth()
   const isOwner = userUid === critique.user_id
   const [isLiked, setIsLiked] = useState(false)
@@ -66,7 +74,22 @@ export default function CritiqueCard({
   }
 
   return (
-    <div className='bg-theme-secondary rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow'>
+    <div
+      role={detailHref ? "button" : undefined}
+      tabIndex={detailHref ? 0 : undefined}
+      onClick={(e) => {
+        if (detailHref && !(e.target as HTMLElement).closest("button")) {
+          router.push(detailHref)
+        }
+      }}
+      onKeyDown={(e) => {
+        if (detailHref && (e.key === "Enter" || e.key === " ") && !(e.target as HTMLElement).closest("button")) {
+          e.preventDefault()
+          router.push(detailHref)
+        }
+      }}
+      className={`rounded-lg border transition-shadow p-4 ${detailHref ? "border-theme-tertiary hover:border-accent-theme/50 hover:shadow-md hover:bg-theme-tertiary/50 active:opacity-95 bg-theme-secondary cursor-pointer" : "border-theme-tertiary bg-theme-secondary shadow-sm hover:shadow-md"}`}
+    >
       {/* 헤더 */}
       <div className='flex items-start justify-between mb-3'>
         <div className='flex-1 min-w-0'>
@@ -98,7 +121,7 @@ export default function CritiqueCard({
           <div className='flex items-center gap-2 flex-shrink-0'>
             {onEdit && (
               <button
-                onClick={() => onEdit(critique)}
+                onClick={(e) => { e.stopPropagation(); onEdit(critique) }}
                 className='p-1 text-theme-secondary hover:text-blue-500 transition-colors'
                 title='수정'
               >
@@ -107,20 +130,24 @@ export default function CritiqueCard({
             )}
             {onDelete && (
               <button
-                onClick={() => onDelete(critique.id)}
+                onClick={(e) => { e.stopPropagation(); onDelete(critique.id) }}
                 className='p-1 text-theme-secondary hover:text-red-500 transition-colors'
                 title='삭제'
               >
                 <Trash2 className='h-4 w-4' />
               </button>
             )}
+            {detailHref && <ChevronRight className='h-4 w-4 text-theme-tertiary' />}
           </div>
+        )}
+        {detailHref && !(isOwner && (onEdit || onDelete)) && (
+          <ChevronRight className='h-4 w-4 text-theme-tertiary flex-shrink-0' />
         )}
       </div>
 
       {/* 서평 내용 */}
       <div className='mb-3'>
-        <p className='text-sm text-theme-primary whitespace-pre-wrap leading-relaxed'>
+        <p className={`text-sm text-theme-primary whitespace-pre-wrap leading-relaxed ${detailHref ? "line-clamp-3" : ""}`}>
           {critique.content}
         </p>
       </div>
@@ -129,30 +156,38 @@ export default function CritiqueCard({
       {critique.isPublic && (
         <>
           <div className='flex items-center gap-4 pt-3 border-t border-theme-tertiary'>
-            <button
-              onClick={handleToggleLike}
-              disabled={!userUid || isOwner || isTogglingLike}
-              className={`flex items-center gap-1 transition-colors ${
-                isLiked
-                  ? "text-red-500 hover:text-red-600"
-                  : "text-theme-secondary hover:text-red-500"
-              } ${!userUid || isOwner ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-              title={isOwner ? "본인의 콘텐츠에는 좋아요를 누를 수 없습니다" : isLiked ? "좋아요 취소" : "좋아요"}
-            >
-              <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-              <span className='text-xs'>{likesCount}</span>
-            </button>
+                {isOwner ? (
+                  <span className='flex items-center gap-1 text-theme-secondary' title='본인 게시물'>
+                    <Heart className='h-4 w-4 text-red-500 fill-red-500' />
+                    <span className='text-xs'>{likesCount}</span>
+                  </span>
+                ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleToggleLike()
+                }}
+                disabled={!userUid || isTogglingLike}
+                className={`flex items-center gap-1 transition-colors text-theme-secondary ${!userUid ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                title={isLiked ? "좋아요 취소" : "좋아요"}
+              >
+                <Heart className={`h-4 w-4 ${isLiked ? "text-red-500 fill-red-500" : "text-red-500"}`} />
+                <span className='text-xs'>{likesCount}</span>
+              </button>
+            )}
             <div className='flex items-center gap-1 text-theme-secondary'>
               <MessageSquare className='h-4 w-4' />
               <span className='text-xs'>{critique.commentsCount || 0}</span>
             </div>
           </div>
-          <CommentSection
-            contentType='critique'
-            contentId={critique.id}
-            isPublic={critique.isPublic}
-            initialCommentsCount={critique.commentsCount || 0}
-          />
+          {showCommentSection && (
+            <CommentSection
+              contentType='critique'
+              contentId={critique.id}
+              isPublic={critique.isPublic}
+              initialCommentsCount={critique.commentsCount || 0}
+            />
+          )}
         </>
       )}
     </div>

@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { RecordService, RecordContent } from "@/services/recordService"
 import { Book } from "@/types/book"
 import RecordContentCard from "@/components/RecordContentCard"
+import RecordListLoading from "@/components/RecordListLoading"
 import Pagination from "@/components/Pagination"
 
 export default function CritiquesPage() {
@@ -24,7 +25,7 @@ export default function CritiquesPage() {
   // 페이지네이션
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const [itemsPerPage] = useState(20)
+  const [itemsPerPage] = useState(10)
 
   // 책 목록 (필터용)
   const [availableBooks, setAvailableBooks] = useState<Book[]>([])
@@ -104,14 +105,7 @@ export default function CritiquesPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center pb-20'>
-        <div className='text-center'>
-          <Star className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <RecordListLoading variant='auth' />
   }
 
   if (!isLoggedIn) {
@@ -156,7 +150,7 @@ export default function CritiquesPage() {
                   placeholder='서평 내용, 책 제목, 저자, 사용자 이름으로 검색...'
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className='w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent'
+                  className='w-full pl-10 pr-10 py-2 border border-theme-tertiary rounded-lg bg-theme-primary text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
                 />
                 {searchQuery && (
                   <button
@@ -179,7 +173,7 @@ export default function CritiquesPage() {
                 <select
                   value={selectedBookId}
                   onChange={(e) => handleBookFilterChange(e.target.value)}
-                  className='w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent'
+                  className='w-full pl-10 pr-10 py-2 border border-theme-tertiary rounded-lg bg-theme-primary text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
                 >
                   <option value=''>전체 책</option>
                   {availableBooks.map((book) => (
@@ -230,10 +224,7 @@ export default function CritiquesPage() {
 
         {/* 기록 목록 */}
         {isLoading ? (
-          <div className='text-center py-12'>
-            <Star className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-            <p className='text-theme-secondary'>서평을 불러오는 중...</p>
-          </div>
+          <RecordListLoading variant='critiques' />
         ) : records.length === 0 ? (
           <div className='text-center py-12'>
             <Star className='h-12 w-12 text-gray-400 mx-auto mb-4' />

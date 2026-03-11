@@ -169,13 +169,10 @@ export class RecordService {
         let questions: (BookQuestion & { user_id?: string })[] = []
         
         if (showOnlyMine && userUid) {
-          // 내 데이터만 보기: 내 책의 모든 질문 (공개 여부와 관계없이)
+          // 내 데이터만 보기: 내 책의 모든 질문 (해당 책 소유자 기준)
           for (const bookId of targetBookIds) {
             const bookQuestions = await QuestionService.getBookQuestions(bookId)
-            const myBookQuestions = bookQuestions.filter(
-              (q) => (q as BookQuestion & { user_id?: string }).user_id === userUid
-            )
-            questions = [...questions, ...myBookQuestions]
+            questions = [...questions, ...bookQuestions]
           }
         } else {
           // 전체 보기: 공개된 질문만
@@ -186,11 +183,11 @@ export class RecordService {
         }
 
         for (const question of questions) {
-          if (!question.user_id) continue
-          // 공개된 책의 질문만 포함 (전체 보기인 경우)
+          const qUserId = (question as BookQuestion & { user_id?: string }).user_id
+          // 전체 보기: 해당 질문이 공개된 책에 속해야 함
           if (!showOnlyMine && !targetBookIds.includes(question.bookId)) continue
-          // 내 데이터만 보기인 경우 필터링
-          if (showOnlyMine && userUid && question.user_id !== userUid) continue
+          // 내 기록만: 내 책의 질문만 (작성자 필터 없음)
+          if (showOnlyMine && userUid && !targetBookIds.includes(question.bookId)) continue
 
           const book = targetBooks.find((b) => b.id === question.bookId)
           if (book) {
@@ -200,7 +197,7 @@ export class RecordService {
               bookId: question.bookId,
               bookTitle: book.title,
               bookAuthor: book.author,
-              user_id: question.user_id,
+              user_id: qUserId || book.user_id,
               userName: "",
               title: question.questionText,
               content: question.questionText,

@@ -86,10 +86,14 @@ export class QuoteService {
   }
 
   /**
-   * 구절 기록 삭제
+   * 구절 기록 삭제 (관련 댓글·좋아요 연쇄 삭제)
    */
   static async deleteQuote(quoteId: string): Promise<void> {
     try {
+      const { CommentService } = await import("./commentService")
+      const { LikeService } = await import("./likeService")
+      await CommentService.deleteAllCommentsForContent("quote", quoteId)
+      await LikeService.deleteAllLikesForContent("quote", quoteId)
       await ApiClient.deleteDocument("quotes", quoteId)
     } catch (error) {
       console.error("QuoteService.deleteQuote error:", error)

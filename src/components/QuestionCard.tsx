@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { BookQuestion } from "@/types/question"
-import { HelpCircle, Edit, Trash2, Heart, MessageSquare, Lock, Globe } from "lucide-react"
+import { HelpCircle, Edit, Trash2, Heart, MessageSquare, Lock, Globe, ChevronRight } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { LikeService } from "@/services/likeService"
 import { QuestionService } from "@/services/questionService"
@@ -14,6 +15,10 @@ interface QuestionCardProps {
   onDelete?: (questionId: string) => void
   showChapterPath?: boolean
   showActions?: boolean
+  /** 링크 시 상세 페이지로 이동, 클릭 가능 표시(> 아이콘) */
+  detailHref?: string
+  /** 상세 페이지에서 카드 밖에 답변 영역을 둘 때 false */
+  showCommentSection?: boolean
 }
 
 export default function QuestionCard({
@@ -22,6 +27,8 @@ export default function QuestionCard({
   onDelete,
   showChapterPath = true,
   showActions = false,
+  detailHref,
+  showCommentSection = true,
 }: QuestionCardProps) {
   const { userUid } = useAuth()
   const isOwner = userUid === (question as any).user_id
@@ -97,101 +104,235 @@ export default function QuestionCard({
   }
 
   return (
-    <div className='bg-theme-secondary rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow'>
-      <div className='flex items-start gap-3'>
-        <div className='p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full flex-shrink-0'>
-          <HelpCircle className='h-5 w-5 text-blue-500' />
-        </div>
+    <div className={`rounded-lg border transition-shadow ${detailHref ? "border-theme-tertiary hover:border-accent-theme/50 hover:shadow-md bg-theme-secondary" : "bg-theme-secondary shadow-sm hover:shadow-md"} p-4`}>
+      {detailHref ? (
+        <div className='flex items-start gap-3 flex-wrap'>
+          <Link href={detailHref} className='flex-1 min-w-0 flex items-start gap-3 group'>
+            <div className='p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full flex-shrink-0'>
+              <HelpCircle className='h-5 w-5 text-blue-500' />
+            </div>
 
-        <div className='flex-1 min-w-0'>
-          {showChapterPath && question.chapterPath.length > 0 && (
-            <div className='text-xs text-theme-secondary mb-2'>
-              {question.chapterPath.join(" > ")}
+            <div className='flex-1 min-w-0'>
+              {showChapterPath && question.chapterPath.length > 0 && (
+                <div className='text-xs text-theme-secondary mb-2'>
+                  {question.chapterPath.join(" > ")}
+                </div>
+              )}
+
+              <p className='text-theme-primary font-medium mb-2'>
+                {question.questionText}
+              </p>
+
+              <div className='flex items-center gap-2 flex-wrap'>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${getDifficultyColor(
+                    question.difficulty
+                  )}`}
+                >
+                  {question.difficulty === "easy"
+                    ? "쉬움"
+                    : question.difficulty === "medium"
+                      ? "보통"
+                      : "어려움"}
+                </span>
+                <span className='text-xs text-theme-secondary px-2 py-1 bg-theme-tertiary rounded-full'>
+                  {getQuestionTypeLabel(question.questionType)}
+                </span>
+                {isPublic && (
+                  <>
+                    <Globe className='h-3 w-3 text-blue-500' />
+                    <span className='text-xs text-theme-tertiary'>공개</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </Link>
+          {showActions && (onEdit || onDelete) && (
+            <div
+              className='flex items-center gap-2 flex-shrink-0'
+              onClick={(e) => e.stopPropagation()}
+            >
+              {onEdit && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onEdit(question)
+                  }}
+                  className='p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors'
+                  title='질문 수정'
+                >
+                  <Edit className='h-4 w-4' />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onDelete(question.id)
+                  }}
+                  className='p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
+                  title='질문 삭제'
+                >
+                  <Trash2 className='h-4 w-4' />
+                </button>
+              )}
             </div>
           )}
-
-          <p className='text-theme-primary font-medium mb-2'>
-            {question.questionText}
-          </p>
-
-          <div className='flex items-center gap-2 flex-wrap'>
-            <span
-              className={`text-xs px-2 py-1 rounded-full ${getDifficultyColor(
-                question.difficulty
-              )}`}
-            >
-              {question.difficulty === "easy"
-                ? "쉬움"
-                : question.difficulty === "medium"
-                  ? "보통"
-                  : "어려움"}
-            </span>
-            <span className='text-xs text-theme-secondary px-2 py-1 bg-theme-tertiary rounded-full'>
-              {getQuestionTypeLabel(question.questionType)}
-            </span>
-            {isPublic && (
+          {detailHref && <ChevronRight className='h-5 w-5 text-theme-tertiary flex-shrink-0' />}
+          {/* 좋아요/생각 수 - 목록에서 항상 표시 (공개만 좋아요 버튼) */}
+          <div
+            className='flex items-center gap-4 mt-3 pt-3 border-t border-theme-tertiary w-full shrink-0 basis-full'
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isPublic ? (
               <>
-                <Globe className='h-3 w-3 text-blue-500' />
-                <span className='text-xs text-theme-tertiary'>공개</span>
-              </>
-            )}
-          </div>
-
-          {/* 좋아요/댓글 수 (공개된 경우만) */}
-          {isPublic && (
-            <>
-              <div className='flex items-center gap-4 mt-3 pt-3 border-t border-theme-tertiary'>
-                <button
-                  onClick={handleToggleLike}
-                  disabled={!userUid || isOwner || isTogglingLike}
-                  className={`flex items-center gap-1 transition-colors ${
-                    isLiked
-                      ? "text-red-500 hover:text-red-600"
-                      : "text-theme-secondary hover:text-red-500"
-                  } ${!userUid || isOwner ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-                  title={isOwner ? "본인의 콘텐츠에는 좋아요를 누를 수 없습니다" : isLiked ? "좋아요 취소" : "좋아요"}
-                >
-                  <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-                  <span className='text-xs'>{likesCount}</span>
-                </button>
+                {isOwner ? (
+                  <span className='flex items-center gap-1 text-theme-secondary text-xs' title='본인 게시물'>
+                    <Heart className='h-4 w-4 text-red-500 fill-red-500' />
+                    <span className='text-xs'>{likesCount}</span>
+                  </span>
+                ) : (
+                  <button
+                    type='button'
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleToggleLike(e)
+                    }}
+                    disabled={!userUid || isTogglingLike}
+                    className={`flex items-center gap-1 text-xs transition-colors text-theme-secondary ${
+                      !userUid ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                    }`}
+                    title={isLiked ? "좋아요 취소" : "좋아요"}
+                  >
+                    <Heart className={`h-4 w-4 ${isLiked ? "text-red-500 fill-red-500" : "text-red-500"}`} />
+                    <span className='text-xs'>{likesCount}</span>
+                  </button>
+                )}
                 <div className='flex items-center gap-1 text-theme-secondary'>
                   <MessageSquare className='h-4 w-4' />
                   <span className='text-xs'>{(question as any).commentsCount || 0}</span>
                 </div>
-              </div>
-              <CommentSection
-                contentType='question'
-                contentId={question.id}
-                isPublic={isPublic}
-                initialCommentsCount={(question as any).commentsCount || 0}
-              />
-            </>
-          )}
-        </div>
-
-        {showActions && (onEdit || onDelete) && (
-          <div className='flex items-center gap-2 flex-shrink-0'>
-            {onEdit && (
-              <button
-                onClick={() => onEdit(question)}
-                className='p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors'
-                title='질문 수정'
-              >
-                <Edit className='h-4 w-4' />
-              </button>
-            )}
-            {onDelete && (
-              <button
-                onClick={() => onDelete(question.id)}
-                className='p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
-                title='질문 삭제'
-              >
-                <Trash2 className='h-4 w-4' />
-              </button>
+              </>
+            ) : (
+              <>
+                <span className='flex items-center gap-1 text-theme-secondary text-xs'>
+                  <Heart className='h-4 w-4 text-red-500 fill-red-500' />
+                  <span className='text-xs'>{likesCount}</span>
+                </span>
+                <div className='flex items-center gap-1 text-theme-secondary'>
+                  <MessageSquare className='h-4 w-4' />
+                  <span className='text-xs'>{(question as any).commentsCount || 0}</span>
+                </div>
+              </>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className='flex items-start gap-3'>
+            <div className='p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full flex-shrink-0'>
+              <HelpCircle className='h-5 w-5 text-blue-500' />
+            </div>
+
+            <div className='flex-1 min-w-0'>
+              {showChapterPath && question.chapterPath.length > 0 && (
+                <div className='text-xs text-theme-secondary mb-2'>
+                  {question.chapterPath.join(" > ")}
+                </div>
+              )}
+
+              <p className='text-theme-primary font-medium mb-2'>
+                {question.questionText}
+              </p>
+
+              <div className='flex items-center gap-2 flex-wrap'>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${getDifficultyColor(
+                    question.difficulty
+                  )}`}
+                >
+                  {question.difficulty === "easy"
+                    ? "쉬움"
+                    : question.difficulty === "medium"
+                      ? "보통"
+                      : "어려움"}
+                </span>
+                <span className='text-xs text-theme-secondary px-2 py-1 bg-theme-tertiary rounded-full'>
+                  {getQuestionTypeLabel(question.questionType)}
+                </span>
+                {isPublic && (
+                  <>
+                    <Globe className='h-3 w-3 text-blue-500' />
+                    <span className='text-xs text-theme-tertiary'>공개</span>
+                  </>
+                )}
+              </div>
+
+              {/* 좋아요/댓글 수 (공개된 경우만) */}
+              {isPublic && (
+                <>
+                  <div className='flex items-center gap-4 mt-3 pt-3 border-t border-theme-tertiary'>
+                    {isOwner ? (
+                      <span className='flex items-center gap-1 text-theme-secondary' title='본인 게시물'>
+                        <Heart className='h-4 w-4 text-red-500 fill-red-500' />
+                        <span className='text-xs'>{likesCount}</span>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={handleToggleLike}
+                        disabled={!userUid || isTogglingLike}
+                        className={`flex items-center gap-1 transition-colors text-theme-secondary ${
+                          !userUid ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                        }`}
+                        title={isLiked ? "좋아요 취소" : "좋아요"}
+                      >
+                        <Heart className={`h-4 w-4 ${isLiked ? "text-red-500 fill-red-500" : "text-red-500"}`} />
+                        <span className='text-xs'>{likesCount}</span>
+                      </button>
+                    )}
+                    <div className='flex items-center gap-1 text-theme-secondary'>
+                      <MessageSquare className='h-4 w-4' />
+                      <span className='text-xs'>{(question as any).commentsCount || 0}</span>
+                    </div>
+                  </div>
+                  {showCommentSection && (
+                    <CommentSection
+                      contentType='question'
+                      contentId={question.id}
+                      isPublic={isPublic}
+                      initialCommentsCount={(question as any).commentsCount || 0}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+
+            {showActions && (onEdit || onDelete) && (
+              <div className='flex items-center gap-2 flex-shrink-0'>
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(question)}
+                    className='p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors'
+                    title='질문 수정'
+                  >
+                    <Edit className='h-4 w-4' />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(question.id)}
+                    className='p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
+                    title='질문 삭제'
+                  >
+                    <Trash2 className='h-4 w-4' />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

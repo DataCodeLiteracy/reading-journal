@@ -3,7 +3,7 @@
  * generalThoughts에 저장된 목적(purpose) 영문 값을 한글로 매핑해 화면에만 사용
  */
 
-const PURPOSE_LABELS: Record<string, string> = {
+export const PURPOSE_LABELS: Record<string, string> = {
   core_message: "핵심 메시지",
   perspective_shift: "시각 전환",
   deep_reflection: "깊은 성찰",

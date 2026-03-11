@@ -7,13 +7,15 @@ import {
   Send,
   Trash2,
   Edit,
-  X,
   User as UserIcon,
+  Heart,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { CommentService } from "@/services/commentService"
+import { LikeService } from "@/services/likeService"
 import { UserService } from "@/services/userService"
 import { User } from "@/types/user"
+import ConfirmModal from "@/components/ConfirmModal"
 
 interface CommentSectionProps {
   contentType: ContentType
@@ -36,6 +38,9 @@ export default function CommentSection({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [commentLikeState, setCommentLikeState] = useState<Record<string, { isLiked: boolean; count: number }>>({})
+  const [togglingLikeCommentId, setTogglingLikeCommentId] = useState<string | null>(null)
+  const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null)
 
   // 댓글 목록 로드
   useEffect(() => {
@@ -63,6 +68,24 @@ export default function CommentSection({
           }
         }
         setCommentAuthors(authors)
+
+        // 댓글별 좋아요 상태 초기화 및 현재 유저 좋아요 여부 로드
+        const nextLikeState: Record<string, { isLiked: boolean; count: number }> = {}
+        for (const c of loadedComments) {
+          nextLikeState[c.id] = { isLiked: false, count: c.likesCount || 0 }
+        }
+        if (userUid) {
+          await Promise.all(
+            loadedComments.map(async (c) => {
+              const like = await LikeService.getUserLike(userUid, "comment", c.id)
+              nextLikeState[c.id] = {
+                isLiked: !!like,
+                count: c.likesCount || 0,
+              }
+            })
+          )
+        }
+        setCommentLikeState(nextLikeState)
       } catch (error) {
         console.error("Error loading comments:", error)
       } finally {
@@ -71,7 +94,7 @@ export default function CommentSection({
     }
 
     loadComments()
-  }, [contentType, contentId, isPublic])
+  }, [contentType, contentId, isPublic, userUid])
 
   const handleSubmitComment = async () => {
     if (!userUid || !newComment.trim() || isSubmitting) return
@@ -92,6 +115,10 @@ export default function CommentSection({
         contentId
       )
       setComments(updatedComments)
+      setCommentLikeState((prev) => ({
+        ...prev,
+        [commentId]: { isLiked: false, count: 0 },
+      }))
 
       // 새 댓글 작성자 정보 추가
       const currentUser = await UserService.getUser(userUid)
@@ -105,7 +132,15 @@ export default function CommentSection({
       setNewComment("")
     } catch (error) {
       console.error("Error submitting comment:", error)
-      alert("댓글 작성 중 오류가 발생했습니다.")
+      const msg =
+        contentType === "question"
+          ? "생각을 남기는 중 오류가 발생했습니다."
+          : contentType === "quote"
+            ? "생각을 남기는 중 오류가 발생했습니다."
+            : contentType === "review" || contentType === "critique"
+              ? "의견을 남기는 중 오류가 발생했습니다."
+              : "댓글 작성 중 오류가 발생했습니다."
+      alert(msg)
     } finally {
       setIsSubmitting(false)
     }
@@ -129,30 +164,74 @@ export default function CommentSection({
       setEditingContent("")
     } catch (error) {
       console.error("Error editing comment:", error)
-      alert("댓글 수정 중 오류가 발생했습니다.")
+      const msg =
+        contentType === "question"
+          ? "생각 수정 중 오류가 발생했습니다."
+          : contentType === "quote"
+            ? "생각 수정 중 오류가 발생했습니다."
+            : contentType === "review" || contentType === "critique"
+              ? "의견 수정 중 오류가 발생했습니다."
+              : "댓글 수정 중 오류가 발생했습니다."
+      alert(msg)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!confirm("댓글을 삭제하시겠습니까?") || isSubmitting) return
+  const shortLabel =
+    contentType === "question"
+      ? "생각"
+      : contentType === "quote"
+        ? "생각"
+        : contentType === "review" || contentType === "critique"
+          ? "의견"
+          : "댓글"
+
+  const confirmDeleteComment = async () => {
+    if (!commentToDeleteId) return
 
     try {
       setIsSubmitting(true)
-      await CommentService.deleteComment(commentId, contentType, contentId)
+      await CommentService.deleteComment(commentToDeleteId, contentType, contentId)
 
-      // 댓글 목록 새로고침
       const updatedComments = await CommentService.getContentComments(
         contentType,
         contentId
       )
       setComments(updatedComments)
+      setCommentToDeleteId(null)
     } catch (error) {
       console.error("Error deleting comment:", error)
-      alert("댓글 삭제 중 오류가 발생했습니다.")
+      alert(`${shortLabel} 삭제 중 오류가 발생했습니다.`)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleToggleCommentLike = async (commentId: string) => {
+    if (!userUid || togglingLikeCommentId) return
+    const current = commentLikeState[commentId]
+    if (!current) return
+
+    setTogglingLikeCommentId(commentId)
+    try {
+      if (current.isLiked) {
+        await LikeService.removeLike(userUid, "comment", commentId)
+        setCommentLikeState((prev) => ({
+          ...prev,
+          [commentId]: { isLiked: false, count: Math.max(0, (prev[commentId]?.count ?? 0) - 1) },
+        }))
+      } else {
+        await LikeService.addLike(userUid, "comment", commentId)
+        setCommentLikeState((prev) => ({
+          ...prev,
+          [commentId]: { isLiked: true, count: (prev[commentId]?.count ?? 0) + 1 },
+        }))
+      }
+    } catch (error) {
+      console.error("Error toggling comment like:", error)
+    } finally {
+      setTogglingLikeCommentId(null)
     }
   }
 
@@ -160,22 +239,55 @@ export default function CommentSection({
     return null
   }
 
+  const label =
+    contentType === "question"
+      ? "생각"
+      : contentType === "quote"
+        ? "생각"
+        : contentType === "review"
+          ? "의견"
+          : contentType === "critique"
+            ? "서평에 대한 의견"
+            : "댓글"
+
+  const writeGuide =
+    contentType === "question"
+      ? "질문을 읽고 떠오른 생각, 책 내용과 연결한 이해, 또는 자신만의 해석을 자유롭게 적어보세요. 여러 번 나눠 써도 좋습니다."
+      : contentType === "quote"
+        ? "이 구절이 왜 인상 깊었는지, 어떤 생각이나 감정이 들었는지, 다른 책·경험과 연결된다면 함께 적어보세요."
+        : null
+
   return (
     <div className='mt-4 pt-4 border-t border-theme-tertiary'>
       <div className='flex items-center gap-2 mb-3'>
         <MessageSquare className='h-4 w-4 text-theme-secondary' />
         <h4 className='text-sm font-semibold text-theme-primary'>
-          댓글 {comments.length}개
+          {label} {comments.length}개
         </h4>
       </div>
 
-      {/* 댓글 작성 폼 */}
+      {/* 댓글/답변 작성 폼 */}
       {userUid && (
         <div className='mb-4'>
+          {writeGuide && (
+            <p className='text-xs text-theme-secondary mb-2 px-1'>
+              {writeGuide}
+            </p>
+          )}
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder='댓글을 입력하세요...'
+            placeholder={
+              contentType === "question"
+                ? "생각을 남겨보세요..."
+                : contentType === "quote"
+                  ? "이 구절에 대한 생각을 남겨보세요..."
+                  : contentType === "review"
+                    ? "이 리뷰에 대한 의견을 남겨보세요..."
+                    : contentType === "critique"
+                      ? "이 서평에 대한 의견을 남겨보세요..."
+                      : "댓글을 입력하세요..."
+            }
             className='w-full px-3 py-2 border border-theme-tertiary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary resize-none'
             rows={3}
           />
@@ -186,23 +298,37 @@ export default function CommentSection({
               className='flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary disabled:bg-theme-tertiary disabled:cursor-not-allowed text-white rounded-lg transition-colors'
             >
               <Send className='h-4 w-4' />
-              <span>댓글 작성</span>
+              <span>{contentType === "question" ? "생각 남기기" : contentType === "quote" ? "생각 남기기" : contentType === "review" ? "의견 남기기" : contentType === "critique" ? "서평에 대한 의견 남기기" : `${label} 작성`}</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* 댓글 목록 */}
+      {/* 댓글/답변 목록 */}
       {isLoading ? (
         <div className='text-center py-4'>
-          <p className='text-sm text-theme-secondary'>댓글을 불러오는 중...</p>
+          <p className='text-sm text-theme-secondary'>
+            {label}을 불러오는 중...
+          </p>
         </div>
       ) : comments.length === 0 ? (
         <div className='text-center py-4'>
           <p className='text-sm text-theme-secondary'>
             {userUid
-              ? "첫 댓글을 작성해보세요!"
-              : "로그인 후 댓글을 작성할 수 있습니다."}
+              ? (contentType === "question"
+                  ? "첫 생각을 남겨보세요!"
+                  : contentType === "quote"
+                    ? "첫 생각을 남겨보세요!"
+                    : contentType === "review" || contentType === "critique"
+                      ? "첫 의견을 남겨보세요!"
+                      : "첫 댓글을 작성해보세요!")
+              : (contentType === "question"
+                  ? "로그인 후 생각을 남길 수 있습니다."
+                  : contentType === "quote"
+                    ? "로그인 후 생각을 남길 수 있습니다."
+                    : contentType === "review" || contentType === "critique"
+                      ? "로그인 후 의견을 남길 수 있습니다."
+                      : "로그인 후 댓글을 작성할 수 있습니다.")}
           </p>
         </div>
       ) : (
@@ -283,13 +409,34 @@ export default function CommentSection({
                             <Edit className='h-3 w-3' />
                           </button>
                           <button
-                            onClick={() => handleDeleteComment(comment.id)}
+                            onClick={() => {
+                              setCommentToDeleteId(comment.id)
+                            }}
                             className='p-1 text-theme-secondary hover:text-red-500 transition-colors'
                             title='삭제'
                           >
                             <Trash2 className='h-3 w-3' />
                           </button>
                         </div>
+                      )}
+                      {/* 좋아요: 비소유자는 버튼, 소유자는 개수만 표시 */}
+                      {!isOwner && userUid ? (
+                        <button
+                          onClick={() => handleToggleCommentLike(comment.id)}
+                          disabled={togglingLikeCommentId === comment.id}
+                          className='flex items-center gap-1 px-2 py-1 rounded text-theme-secondary hover:bg-theme-secondary transition-colors disabled:opacity-50'
+                          title={commentLikeState[comment.id]?.isLiked ? "좋아요 취소" : "좋아요"}
+                        >
+                          <Heart
+                            className={`h-3.5 w-3.5 ${commentLikeState[comment.id]?.isLiked ? "text-red-500 fill-red-500" : "text-red-500"}`}
+                          />
+                          <span className='text-xs'>{commentLikeState[comment.id]?.count ?? 0}</span>
+                        </button>
+                      ) : (
+                        <span className='flex items-center gap-1 px-2 py-1 text-theme-secondary'>
+                          <Heart className='h-3.5 w-3.5 text-red-500 fill-red-500' />
+                          <span className='text-xs'>{commentLikeState[comment.id]?.count ?? 0}</span>
+                        </span>
                       )}
                     </div>
                     <p className='text-sm text-theme-primary whitespace-pre-wrap'>
@@ -302,6 +449,17 @@ export default function CommentSection({
           })}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!commentToDeleteId}
+        onClose={() => setCommentToDeleteId(null)}
+        onConfirm={confirmDeleteComment}
+        title={`${shortLabel} 삭제`}
+        message={`이 ${shortLabel}을 삭제하시겠습니까?`}
+        confirmText='삭제'
+        cancelText='취소'
+        icon={Trash2}
+      />
     </div>
   )
 }

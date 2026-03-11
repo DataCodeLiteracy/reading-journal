@@ -17,13 +17,9 @@ import { Book } from "@/types/book"
 import { BookQuestion, QuestionGroup } from "@/types/question"
 import { BookService } from "@/services/bookService"
 import { QuestionService } from "@/services/questionService"
-import { AnswerService } from "@/services/answerService"
 import { useAuth } from "@/contexts/AuthContext"
 import QuestionTree from "@/components/QuestionTree"
 import QuestionCard from "@/components/QuestionCard"
-import AnswerList from "@/components/AnswerList"
-import AnswerForm from "@/components/AnswerForm"
-import AudioRecorder from "@/components/AudioRecorder"
 import QuestionAddModal from "@/components/QuestionAddModal"
 import QuestionEditModal from "@/components/QuestionEditModal"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -52,10 +48,6 @@ export default function QuestionsPage({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [questionToDelete, setQuestionToDelete] = useState<string | null>(null)
   const [questionToEdit, setQuestionToEdit] = useState<BookQuestion | null>(null)
-  const [selectedQuestion, setSelectedQuestion] = useState<BookQuestion | null>(
-    null
-  )
-  const [answerMode, setAnswerMode] = useState<"text" | "audio" | null>(null)
 
   const [searchText, setSearchText] = useState("")
   const [sortOrder, setSortOrder] = useState<"recent" | "oldest">("recent")
@@ -170,7 +162,11 @@ export default function QuestionsPage({
   }, [currentPage, totalPages])
 
   const handleQuestionClick = (question: BookQuestion): void => {
-    setSelectedQuestion(question)
+    if (resolvedParams) {
+      router.push(
+        `/book/${resolvedParams.id}/${resolvedParams.user_id}/questions/${question.id}`
+      )
+    }
   }
 
   const handleQuestionEdit = (question: BookQuestion): void => {
@@ -225,14 +221,6 @@ export default function QuestionsPage({
       setQuestions(updatedQuestions)
       const groups = QuestionService.groupQuestionsByChapter(updatedQuestions)
       setQuestionGroups(groups)
-
-      // 선택된 질문도 업데이트
-      if (selectedQuestion && selectedQuestion.id === questionId) {
-        const updatedQuestion = updatedQuestions.find((q) => q.id === questionId)
-        if (updatedQuestion) {
-          setSelectedQuestion(updatedQuestion)
-        }
-      }
     } catch (error) {
       console.error("Error updating question:", error)
       throw error
@@ -476,6 +464,7 @@ export default function QuestionsPage({
                       onDelete={handleQuestionDelete}
                       showChapterPath={true}
                       showActions={true}
+                      detailHref={resolvedParams ? `/book/${resolvedParams.id}/${resolvedParams.user_id}/questions/${question.id}` : undefined}
                     />
                   ))}
                 </div>
@@ -490,129 +479,6 @@ export default function QuestionsPage({
             </>
           )}
         </div>
-
-        {/* 선택된 질문 상세 (추후 구현) */}
-        {selectedQuestion && (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-theme-primary'>
-                질문 상세
-              </h3>
-              <button
-                onClick={() => setSelectedQuestion(null)}
-                className='p-2 text-theme-secondary hover:bg-theme-tertiary rounded-full transition-colors'
-              >
-                <X className='h-4 w-4' />
-              </button>
-            </div>
-            <QuestionCard
-              question={selectedQuestion}
-              showChapterPath={true}
-              showActions={false}
-            />
-
-            {/* 답변 섹션 */}
-            {resolvedParams && userUid && (
-              <div className='mt-6 space-y-4'>
-                <div className='flex items-center justify-between'>
-                  <h4 className='text-md font-semibold text-theme-primary'>
-                    답변 목록
-                  </h4>
-                  <div className='flex gap-2'>
-                    <button
-                      onClick={() => setAnswerMode(answerMode === "text" ? null : "text")}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                        answerMode === "text"
-                          ? "bg-accent-theme text-white"
-                          : "bg-theme-tertiary text-theme-primary hover:bg-theme-tertiary/80"
-                      }`}
-                    >
-                      텍스트 답변
-                    </button>
-                    <button
-                      onClick={() => setAnswerMode(answerMode === "audio" ? null : "audio")}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                        answerMode === "audio"
-                          ? "bg-accent-theme text-white"
-                          : "bg-theme-tertiary text-theme-primary hover:bg-theme-tertiary/80"
-                      }`}
-                    >
-                      오디오 답변
-                    </button>
-                  </div>
-                </div>
-
-                {/* 답변 목록 */}
-                <AnswerList
-                  questionId={selectedQuestion.id}
-                  userId={userUid}
-                  onAnswerDeleted={() => {
-                    // AnswerList 내부에서 자동으로 loadAnswers() 호출됨
-                  }}
-                  showActions={true}
-                />
-
-                {/* 텍스트 답변 작성 폼 */}
-                {answerMode === "text" && (
-                  <div className='bg-theme-tertiary rounded-lg p-4'>
-                    <AnswerForm
-                      questionId={selectedQuestion.id}
-                      onSubmit={async (answerText: string): Promise<void> => {
-                        if (!resolvedParams || !userUid) return
-
-                        try {
-                          await AnswerService.createTextAnswer(
-                            selectedQuestion.id,
-                            resolvedParams.id,
-                            userUid,
-                            answerText
-                          )
-                          setAnswerMode(null)
-                          // 답변 목록은 AnswerList 내부에서 자동 새로고침됨
-                        } catch (error) {
-                          console.error("Error creating text answer:", error)
-                          throw error
-                        }
-                      }}
-                      onCancel={() => setAnswerMode(null)}
-                      placeholder='답변을 입력하세요...'
-                    />
-                  </div>
-                )}
-
-                {/* 오디오 답변 작성 폼 */}
-                {answerMode === "audio" && (
-                  <div className='bg-theme-tertiary rounded-lg p-4'>
-                    <AudioRecorder
-                      onRecordingComplete={async (
-                        audioBlob: Blob,
-                        transcript?: string
-                      ): Promise<void> => {
-                        if (!resolvedParams || !userUid) return
-
-                        try {
-                          await AnswerService.createAudioAnswer(
-                            selectedQuestion.id,
-                            resolvedParams.id,
-                            userUid,
-                            audioBlob,
-                            transcript
-                          )
-                          setAnswerMode(null)
-                          // 답변 목록은 AnswerList 내부에서 자동 새로고침됨
-                        } catch (error) {
-                          console.error("Error creating audio answer:", error)
-                          throw error
-                        }
-                      }}
-                      onCancel={() => setAnswerMode(null)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* 질문 추가 모달 */}
         {resolvedParams && (
@@ -647,7 +513,7 @@ export default function QuestionsPage({
           }}
           onConfirm={confirmDeleteQuestion}
           title='질문 삭제'
-          message='이 질문을 삭제하시겠습니까?'
+          message='이 질문을 삭제하시겠습니까? 삭제하면 달린 생각(댓글)도 모두 삭제됩니다.'
           confirmText='삭제'
           cancelText='취소'
           icon={Trash2}

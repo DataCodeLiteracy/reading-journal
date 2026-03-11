@@ -44,8 +44,8 @@ export interface Critique {
 export interface Like {
   id: string
   user_id: string // 좋아요를 누른 사용자
-  contentType: "quote" | "critique" | "review" | "question" | "answer"
-  contentId: string // 좋아요 대상 콘텐츠 ID
+  contentType: "quote" | "critique" | "review" | "question" | "answer" | "comment"
+  contentId: string // 좋아요 대상 콘텐츠 ID (게시물 또는 댓글 ID)
   created_at?: Date
 }
 
@@ -60,7 +60,7 @@ export interface Comment {
   contentId: string // 댓글 대상 콘텐츠 ID
   content: string // 댓글 내용
   isPublic: boolean // 댓글 공개 여부 (기본값: true)
-  likesCount: number // 댓글에 대한 좋아요 수
+  likesCount: number // 댓글에 대한 좋아요 수 (캐시)
   created_at?: Date
   updated_at?: Date
 }
@@ -69,7 +69,7 @@ export interface Comment {
  * 콘텐츠 타입 통합
  * 탐색 페이지 등에서 사용할 통합 타입
  */
-export type ContentType = "quote" | "critique" | "review" | "question" | "answer"
+export type ContentType = "quote" | "critique" | "review" | "question" | "answer" | "comment"
 
 /**
  * 공개 콘텐츠 통합 타입
