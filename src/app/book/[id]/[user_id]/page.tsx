@@ -33,6 +33,7 @@ import ConfirmModal from "@/components/ConfirmModal"
 import ChecklistModal from "@/components/ChecklistModal"
 import SuccessModal from "@/components/SuccessModal"
 import EditReadingSessionModal from "@/components/EditReadingSessionModal"
+import AddReadingSessionModal from "@/components/AddReadingSessionModal"
 // 체크리스트 컴포넌트 (현재 사용하지 않음, 나중에 사용할 수 있도록 유지)
 // import PreReadingChecklistSection from "@/components/PreReadingChecklistSection"
 import { useAuth } from "@/contexts/AuthContext"
@@ -48,6 +49,9 @@ import QuestionCard from "@/components/QuestionCard"
 import { HelpCircle, ChevronRight, PenSquare } from "lucide-react"
 import QuoteModal from "@/components/QuoteModal"
 import QuoteCard from "@/components/QuoteCard"
+import QuoteJsonUploadModal from "@/components/QuoteJsonUploadModal"
+import JsonUploadModal from "@/components/JsonUploadModal"
+import QuestionAddModal from "@/components/QuestionAddModal"
 import CritiqueModal from "@/components/CritiqueModal"
 import CritiqueCard from "@/components/CritiqueCard"
 import { QuoteService } from "@/services/quoteService"
@@ -70,7 +74,7 @@ export default function BookDetailPage({
   params: Promise<{ id: string; user_id: string }>
 }) {
   const router = useRouter()
-  const { userUid, user } = useAuth()
+  const { userUid, user, userData } = useAuth()
   const {
     allBooks,
     updateBook,
@@ -107,6 +111,7 @@ export default function BookDetailPage({
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
   const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false)
   const [sessionToEdit, setSessionToEdit] = useState<ReadingSession | null>(null)
+  const [isAddSessionModalOpen, setIsAddSessionModalOpen] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [successModalTitle, setSuccessModalTitle] = useState("")
@@ -118,6 +123,9 @@ export default function BookDetailPage({
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null)
   const [isDeleteQuoteModalOpen, setIsDeleteQuoteModalOpen] = useState(false)
   const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null)
+  const [isQuoteJsonModalOpen, setIsQuoteJsonModalOpen] = useState(false)
+  const [isQuestionJsonModalOpen, setIsQuestionJsonModalOpen] = useState(false)
+  const [isQuestionAddModalOpen, setIsQuestionAddModalOpen] = useState(false)
   
   // 서평 관련 상태
   const [isCritiqueModalOpen, setIsCritiqueModalOpen] = useState(false)
@@ -137,6 +145,7 @@ export default function BookDetailPage({
   const [goldenBellQuizzes, setGoldenBellQuizzes] = useState<GoldenBellQuizSummary[]>([])
   const [goldenBellResults, setGoldenBellResults] = useState<GoldenBellResult[]>([])
   const [isGoldenBellUploadModalOpen, setIsGoldenBellUploadModalOpen] = useState(false)
+  const [goldenBellReregisterQuiz, setGoldenBellReregisterQuiz] = useState<GoldenBellQuizSummary | null>(null)
 
   // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
   // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
@@ -767,6 +776,32 @@ export default function BookDetailPage({
     }
   }
 
+  const handleAddReadingSession = async (
+    data: Omit<ReadingSession, "id" | "created_at" | "updated_at">
+  ) => {
+    try {
+      setError(null)
+      const sessionId = await ReadingSessionService.createReadingSession(data)
+
+      const updatedSessions =
+        await ReadingSessionService.getBookReadingSessions(
+          resolvedParams?.id || ""
+        )
+      setReadingSessions(updatedSessions)
+
+      const sessionWithId = { ...data, id: sessionId } as ReadingSession
+      await addReadingSession(sessionWithId)
+      await updateStatistics()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else {
+        setError("독서 기록을 추가하는 중 오류가 발생했습니다.")
+      }
+      throw err
+    }
+  }
+
   const handleDeleteReadingSession = async (sessionId: string) => {
     setSessionToDelete(sessionId)
     setIsDeleteSessionModalOpen(true)
@@ -877,6 +912,23 @@ export default function BookDetailPage({
   }
 
   const groupedSessions = groupSessionsByDate()
+
+  const handleQuestionAdd = async (
+    questionData: Omit<BookQuestion, "id" | "created_at" | "updated_at" | "order">
+  ) => {
+    if (!resolvedParams?.id) return
+    const maxOrder =
+      questions.length > 0
+        ? Math.max(...questions.map((q) => q.order ?? 0))
+        : 0
+    await QuestionService.createQuestion({
+      ...questionData,
+      bookId: resolvedParams.id,
+      order: maxOrder + 1,
+    })
+    const updated = await QuestionService.getBookQuestions(resolvedParams.id)
+    setQuestions(updated)
+  }
 
   const isCompleted = book?.status === "completed"
   const isOnHold = book?.status === "on-hold"
@@ -1261,8 +1313,8 @@ export default function BookDetailPage({
           </div>
         )}
 
-        {/* 독서 골든벨 출제 요청 (소유자만) */}
-        {userUid && userUid === book.user_id && (
+        {/* 독서 골든벨 출제 요청 (소유자만, 이미 문제가 출제된 책은 미표시) */}
+        {userUid && userUid === book.user_id && goldenBellQuizzes.length === 0 && (
           <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
             <div className='flex items-center justify-between gap-3'>
               <p className='text-sm text-theme-secondary'>
@@ -1359,9 +1411,19 @@ export default function BookDetailPage({
             <h3 className='text-lg font-semibold text-theme-primary'>
               독서 기록
             </h3>
-            <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
-              {readingSessions.length}개
-            </span>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
+                {readingSessions.length}개
+              </span>
+              <button
+                type='button'
+                onClick={() => setIsAddSessionModalOpen(true)}
+                className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
+                title='독서 기록 추가'
+              >
+                <Plus className='h-4 w-4' />
+              </button>
+            </div>
           </div>
 
           {readingSessions.length === 0 ? (
@@ -1444,6 +1506,98 @@ export default function BookDetailPage({
           )}
         </div>
 
+        {/* 질문 카드 섹션 */}
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
+          <div className='flex items-center justify-between mb-3'>
+            <h3 className='text-lg font-semibold text-theme-primary'>
+              독서 질문
+            </h3>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
+                {questions.length}개
+              </span>
+              {userData?.isAdmin && (
+                <button
+                  type='button'
+                  onClick={() => setIsQuestionJsonModalOpen(true)}
+                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
+                  title='질문 JSON 업로드'
+                >
+                  <Plus className='h-4 w-4' />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {questions.length === 0 ? (
+            <div className='text-center py-6'>
+              <p className='text-theme-secondary mb-4'>
+                아직 질문이 없습니다. 질문을 추가해보세요!
+              </p>
+              <div className='flex flex-col gap-2'>
+                <button
+                  onClick={() => setIsQuestionAddModalOpen(true)}
+                  className='inline-flex items-center justify-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>질문 추가하기</span>
+                </button>
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
+                    )
+                  }
+                  className='inline-flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
+                >
+                  <span>질문 목록</span>
+                  <ChevronRight className='h-4 w-4' />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className='space-y-3 mb-4'>
+                {[...questions]
+                  .sort((a, b) => {
+                    const at = a.created_at instanceof Date ? a.created_at.getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0)
+                    const bt = b.created_at instanceof Date ? b.created_at.getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0)
+                    return bt - at
+                  })
+                  .slice(0, 3)
+                  .map((question) => (
+                  <QuestionCard
+                    key={question.id}
+                    question={question}
+                    showChapterPath={true}
+                    showActions={false}
+                  />
+                ))}
+              </div>
+              <div className='flex flex-col gap-2'>
+                <button
+                  onClick={() => setIsQuestionAddModalOpen(true)}
+                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>질문 추가하기</span>
+                </button>
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
+                    )
+                  }
+                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
+                >
+                  <span>더보기 ({questions.length}개)</span>
+                  <ChevronRight className='h-4 w-4' />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* 구절 기록 섹션 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
           <div className='flex items-center justify-between mb-3'>
@@ -1454,16 +1608,16 @@ export default function BookDetailPage({
               <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
                 {quotes.length}개
               </span>
-              <button
-                onClick={() => {
-                  setEditingQuote(null)
-                  setIsQuoteModalOpen(true)
-                }}
-                className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
-                title='구절 기록 추가'
-              >
-                <Plus className='h-4 w-4' />
-              </button>
+              {userData?.isAdmin && (
+                <button
+                  type='button'
+                  onClick={() => setIsQuoteJsonModalOpen(true)}
+                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
+                  title='구절 기록 JSON 업로드'
+                >
+                  <Plus className='h-4 w-4' />
+                </button>
+              )}
             </div>
           </div>
 
@@ -1473,20 +1627,40 @@ export default function BookDetailPage({
               <p className='text-theme-secondary mb-4'>
                 아직 구절 기록이 없습니다. 인상 깊은 구절을 기록해보세요!
               </p>
-              <button
-                onClick={() => {
-                  setEditingQuote(null)
-                  setIsQuoteModalOpen(true)
-                }}
-                className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-              >
-                <Plus className='h-4 w-4' />
-                <span>구절 기록 추가하기</span>
-              </button>
+              <div className='flex flex-col gap-2'>
+                <button
+                  onClick={() => {
+                    setEditingQuote(null)
+                    setIsQuoteModalOpen(true)
+                  }}
+                  className='inline-flex items-center justify-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>구절 기록 추가하기</span>
+                </button>
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/quotes`
+                    )
+                  }
+                  className='inline-flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
+                >
+                  <span>구절 기록 목록</span>
+                  <ChevronRight className='h-4 w-4' />
+                </button>
+              </div>
             </div>
           ) : (
             <div className='space-y-3'>
-              {quotes.map((quote) => (
+              {[...quotes]
+                .sort((a, b) => {
+                  const at = a.created_at instanceof Date ? a.created_at.getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0)
+                  const bt = b.created_at instanceof Date ? b.created_at.getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0)
+                  return bt - at
+                })
+                .slice(0, 3)
+                .map((quote) => (
                 <QuoteCard
                   key={quote.id}
                   quote={quote}
@@ -1501,62 +1675,30 @@ export default function BookDetailPage({
                   }}
                 />
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* 질문 카드 섹션 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
-          <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-lg font-semibold text-theme-primary'>
-              독서 질문
-            </h3>
-            <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
-              {questions.length}개
-            </span>
-          </div>
-
-          {questions.length === 0 ? (
-            <div className='text-center py-6'>
-              <p className='text-theme-secondary mb-4'>
-                아직 질문이 없습니다. 질문을 추가해보세요!
-              </p>
-              <button
-                onClick={() =>
-                  router.push(
-                    `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
-                  )
-                }
-                className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-              >
-                <Plus className='h-4 w-4' />
-                <span>질문 추가하기</span>
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className='space-y-3 mb-4'>
-                {questions.slice(0, 5).map((question) => (
-                  <QuestionCard
-                    key={question.id}
-                    question={question}
-                    showChapterPath={true}
-                    showActions={false}
-                  />
-                ))}
+              <div className='flex flex-col gap-2 pt-2'>
+                <button
+                  onClick={() => {
+                    setEditingQuote(null)
+                    setIsQuoteModalOpen(true)
+                  }}
+                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>구절 기록 추가하기</span>
+                </button>
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/quotes`
+                    )
+                  }
+                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
+                >
+                  <span>더보기 ({quotes.length}개)</span>
+                  <ChevronRight className='h-4 w-4' />
+                </button>
               </div>
-              <button
-                onClick={() =>
-                  router.push(
-                    `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
-                  )
-                }
-                className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
-              >
-                <span>더보기 ({questions.length}개)</span>
-                <ChevronRight className='h-4 w-4' />
-              </button>
-            </>
+            </div>
           )}
         </div>
 
@@ -1581,13 +1723,15 @@ export default function BookDetailPage({
                 <br />
                 <span className='text-sm'>JSON 파일로 문제를 등록해보세요!</span>
               </p>
-              <button
-                onClick={() => setIsGoldenBellUploadModalOpen(true)}
-                className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-              >
-                <Plus className='h-4 w-4' />
-                <span>골든벨 문제 등록하기</span>
-              </button>
+              {userData?.isAdmin && (
+                <button
+                  onClick={() => setIsGoldenBellUploadModalOpen(true)}
+                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>골든벨 문제 등록하기</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className='space-y-3'>
@@ -1629,21 +1773,37 @@ export default function BookDetailPage({
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => router.push(`/book/${resolvedParams?.id}/${resolvedParams?.user_id}/golden-bell/${quiz.id}`)}
-                    className='w-full py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm font-medium rounded-lg transition-colors'
-                  >
-                    문제 풀기
-                  </button>
+                  <div className='flex gap-2'>
+                    <button
+                      onClick={() => router.push(`/book/${resolvedParams?.id}/${resolvedParams?.user_id}/golden-bell/${quiz.id}`)}
+                      className='flex-1 py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm font-medium rounded-lg transition-colors'
+                    >
+                      문제 풀기
+                    </button>
+                    {userData?.isAdmin && (
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setGoldenBellReregisterQuiz(quiz)
+                          setIsGoldenBellUploadModalOpen(true)
+                        }}
+                        className='py-2 px-3 border border-theme-tertiary text-theme-secondary hover:bg-theme-tertiary rounded-lg text-sm font-medium transition-colors'
+                      >
+                        재등록
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
-              <button
-                onClick={() => setIsGoldenBellUploadModalOpen(true)}
-                className='w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-theme-tertiary hover:border-accent-theme text-theme-secondary hover:text-accent-theme rounded-lg transition-colors'
-              >
-                <Plus className='h-4 w-4' />
-                <span>다른 버전 등록하기</span>
-              </button>
+              {userData?.isAdmin && (
+                <button
+                  onClick={() => setIsGoldenBellUploadModalOpen(true)}
+                  className='w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-theme-tertiary hover:border-accent-theme text-theme-secondary hover:text-accent-theme rounded-lg transition-colors'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>다른 버전 등록하기</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -1953,6 +2113,13 @@ export default function BookDetailPage({
           onSave={handleSaveReadingSession}
           session={sessionToEdit}
         />
+        <AddReadingSessionModal
+          isOpen={isAddSessionModalOpen}
+          onClose={() => setIsAddSessionModalOpen(false)}
+          onSave={handleAddReadingSession}
+          bookId={resolvedParams?.id || ""}
+          userId={resolvedParams?.user_id || ""}
+        />
 
         {/* 독서 기록 삭제 확인 모달 */}
         {isDeleteSessionModalOpen && sessionToDelete && (
@@ -2068,26 +2235,17 @@ export default function BookDetailPage({
           }}
           onConfirm={async () => {
             if (!quoteToDelete || !resolvedParams) return
-
             try {
               setError(null)
               await QuoteService.deleteQuote(quoteToDelete)
-
-              // 구절 기록 목록 새로고침
-              const updatedQuotes = await QuoteService.getBookQuotes(
-                resolvedParams.id
-              )
+              const updatedQuotes = await QuoteService.getBookQuotes(resolvedParams.id)
               setQuotes(updatedQuotes)
-
               setIsDeleteQuoteModalOpen(false)
               setQuoteToDelete(null)
             } catch (error) {
               console.error("Error deleting quote:", error)
-              if (error instanceof ApiError) {
-                setError(error.message)
-              } else {
-                setError("구절 기록을 삭제하는 중 오류가 발생했습니다.")
-              }
+              if (error instanceof ApiError) setError(error.message)
+              else setError("구절 기록을 삭제하는 중 오류가 발생했습니다.")
             }
           }}
           title='구절 기록 삭제'
@@ -2096,6 +2254,45 @@ export default function BookDetailPage({
           cancelText='취소'
           icon={Trash2}
         />
+
+        {/* 구절 기록 JSON 업로드 모달 (관리자) */}
+        <QuoteJsonUploadModal
+          isOpen={isQuoteJsonModalOpen}
+          onClose={() => setIsQuoteJsonModalOpen(false)}
+          onSuccess={async () => {
+            if (!resolvedParams) return
+            const updatedQuotes = await QuoteService.getBookQuotes(resolvedParams.id)
+            setQuotes(updatedQuotes)
+          }}
+          bookId={resolvedParams?.id || ""}
+          userId={userUid || ""}
+        />
+
+        {/* 질문 JSON 업로드 모달 (관리자) */}
+        {resolvedParams && book && (
+          <JsonUploadModal
+            isOpen={isQuestionJsonModalOpen}
+            onClose={() => setIsQuestionJsonModalOpen(false)}
+            onSuccess={async () => {
+              if (!resolvedParams) return
+              const updated = await QuestionService.getBookQuestions(resolvedParams.id)
+              setQuestions(updated)
+            }}
+            bookId={resolvedParams.id}
+            bookTitle={book.title}
+          />
+        )}
+
+        {/* 질문 추가 모달 (일반 유저) */}
+        {resolvedParams && (
+          <QuestionAddModal
+            isOpen={isQuestionAddModalOpen}
+            onClose={() => setIsQuestionAddModalOpen(false)}
+            onSave={handleQuestionAdd}
+            bookId={resolvedParams.id}
+            existingQuestions={questions}
+          />
+        )}
 
         {/* 서평 모달 */}
         <CritiqueModal
@@ -2186,11 +2383,17 @@ export default function BookDetailPage({
         {/* 골든벨 업로드 모달 */}
         <GoldenBellUploadModal
           isOpen={isGoldenBellUploadModalOpen}
-          onClose={() => setIsGoldenBellUploadModalOpen(false)}
+          onClose={() => {
+            setIsGoldenBellUploadModalOpen(false)
+            setGoldenBellReregisterQuiz(null)
+          }}
           bookTitle={book?.title || ""}
           userId={userUid || ""}
+          reregisterQuizId={goldenBellReregisterQuiz?.id ?? null}
+          reregisterDifficulty={goldenBellReregisterQuiz?.difficulty ?? null}
           onUploadSuccess={async () => {
             if (!book) return
+            setGoldenBellReregisterQuiz(null)
             try {
               const updatedQuizzes = await GoldenBellService.getQuizSummariesByBookTitle(book.title)
               setGoldenBellQuizzes(updatedQuizzes)

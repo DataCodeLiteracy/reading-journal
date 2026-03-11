@@ -22,7 +22,7 @@ export default function QuestionAddModal({
   const [questionText, setQuestionText] = useState("")
   const [hasChapter, setHasChapter] = useState<boolean | null>(null) // null: 선택 안함, true: 있음, false: 없음
   const [chapterPath, setChapterPath] = useState<string[]>([""])
-  const [questionType, setQuestionType] = useState<QuestionType>("comprehension")
+  const [questionType, setQuestionType] = useState<QuestionType>("general")
   const [difficulty, setDifficulty] = useState<Difficulty>("easy")
   const [isPublic, setIsPublic] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -33,7 +33,7 @@ export default function QuestionAddModal({
       setQuestionText("")
       setHasChapter(null)
       setChapterPath([""])
-      setQuestionType("comprehension")
+      setQuestionType("general")
       setDifficulty("easy")
       setIsPublic(false)
       setError(null)
@@ -238,10 +238,11 @@ export default function QuestionAddModal({
               className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
               required
             >
-              <option value='comprehension'>이해 (comprehension)</option>
-              <option value='analysis'>분석 (analysis)</option>
-              <option value='synthesis'>종합 (synthesis)</option>
-              <option value='application'>적용 (application)</option>
+              <option value='general'>일반</option>
+              <option value='comprehension'>사실 파악</option>
+              <option value='analysis'>인과·비교</option>
+              <option value='synthesis'>주제·메시지</option>
+              <option value='application'>실생활 적용</option>
             </select>
           </div>
 

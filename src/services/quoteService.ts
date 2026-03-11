@@ -98,8 +98,47 @@ export class QuoteService {
   }
 
   /**
-   * 공개된 구절 기록 조회 (탐색 페이지용)
+   * 구절 기록 일괄 생성 (JSON 업로드용, 관리자)
    */
+  static async createQuotes(
+    bookId: string,
+    user_id: string,
+    items: Array<{
+      quoteText: string
+      thoughts?: string
+      generalThoughts?: string
+      page?: number
+      isPublic?: boolean
+    }>
+  ): Promise<{ success: number; failed: number; errors: string[] }> {
+    const errors: string[] = []
+    let success = 0
+    let failed = 0
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (!item.quoteText?.trim()) {
+        failed++
+        errors.push(`항목 ${i + 1}: 구절 텍스트가 비어 있습니다.`)
+        continue
+      }
+      try {
+        await this.createQuote({
+          bookId,
+          user_id,
+          quoteText: item.quoteText.trim(),
+          thoughts: item.thoughts?.trim() || undefined,
+          generalThoughts: item.generalThoughts?.trim() || undefined,
+          page: item.page,
+          isPublic: item.isPublic ?? false,
+        })
+        success++
+      } catch (e) {
+        failed++
+        errors.push(`항목 ${i + 1}: ${e instanceof Error ? e.message : "저장 실패"}`)
+      }
+    }
+    return { success, failed, errors }
+  }
   static async getPublicQuotes(limitCount?: number): Promise<Quote[]> {
     try {
       return await ApiClient.queryDocuments<Quote>(

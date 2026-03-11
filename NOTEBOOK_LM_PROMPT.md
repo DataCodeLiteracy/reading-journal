@@ -24,11 +24,12 @@
 ## 질문 생성 규칙
 
 1. 각 목차 섹션에 대해 2-5개의 질문을 생성합니다
-2. 질문 유형:
-   - **comprehension**: 이해 확인 질문 (기본 사실 파악)
-   - **analysis**: 분석 질문 (인과관계, 비교)
-   - **synthesis**: 종합 질문 (주제, 메시지)
-   - **application**: 적용 질문 (실생활 연결)
+2. 질문 유형 (한 단어~세 단어로 구분, JSON에는 영문 값 사용):
+   - **general** → 일반 (유저가 그냥 등록할 때 사용, LLM은 네 가지 유형 권장)
+   - **comprehension** → 사실 파악 (기본 사실 파악)
+   - **analysis** → 인과·비교 (인과관계, 비교)
+   - **synthesis** → 주제·메시지 (주제, 메시지 종합)
+   - **application** → 실생활 적용 (실생활 연결)
 3. 질문은 해당 섹션의 내용을 기반으로 생성합니다
 4. 질문은 명확하고 구체적이어야 합니다
 5. 질문은 독자의 사고를 자극해야 합니다
@@ -46,7 +47,7 @@
     {
       "questionText": "string",
       "chapterPath": ["string", "string", ...], // 최대 5개 요소
-      "questionType": "comprehension" | "analysis" | "synthesis" | "application",
+      "questionType": "comprehension" | "analysis" | "synthesis" | "application" | "general",
       "difficulty": "easy" | "medium" | "hard"
     }
   ]

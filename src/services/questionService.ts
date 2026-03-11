@@ -289,12 +289,12 @@ export class QuestionService {
     if (!question.questionType) {
       errors.push("questionType은 필수입니다.")
     } else if (
-      !["comprehension", "analysis", "synthesis", "application"].includes(
+      !["comprehension", "analysis", "synthesis", "application", "general"].includes(
         question.questionType
       )
     ) {
       errors.push(
-        "questionType은 comprehension, analysis, synthesis, application 중 하나여야 합니다."
+        "questionType은 general, comprehension, analysis, synthesis, application 중 하나여야 합니다."
       )
     }
 

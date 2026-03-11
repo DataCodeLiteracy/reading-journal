@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   ArrowLeft,
-  Upload,
   Plus,
   List,
   TreePine,
@@ -11,6 +10,7 @@ import {
   Edit,
   Trash2,
   X,
+  Search,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -24,10 +24,10 @@ import QuestionCard from "@/components/QuestionCard"
 import AnswerList from "@/components/AnswerList"
 import AnswerForm from "@/components/AnswerForm"
 import AudioRecorder from "@/components/AudioRecorder"
-import JsonUploadModal from "@/components/JsonUploadModal"
 import QuestionAddModal from "@/components/QuestionAddModal"
 import QuestionEditModal from "@/components/QuestionEditModal"
 import ConfirmModal from "@/components/ConfirmModal"
+import Pagination from "@/components/Pagination"
 import { ApiError } from "@/lib/apiClient"
 
 export default function QuestionsPage({
@@ -47,7 +47,6 @@ export default function QuestionsPage({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"tree" | "list">("tree")
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -57,6 +56,11 @@ export default function QuestionsPage({
     null
   )
   const [answerMode, setAnswerMode] = useState<"text" | "audio" | null>(null)
+
+  const [searchText, setSearchText] = useState("")
+  const [sortOrder, setSortOrder] = useState<"recent" | "oldest">("recent")
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   useEffect(() => {
     params.then((resolved) => {
@@ -85,7 +89,7 @@ export default function QuestionsPage({
         setBook(bookData)
         setQuestions(questionsData)
 
-        // 질문을 목차별로 그룹화
+        // 질문을 목차별로 그룹화 (전체 목록 기준)
         const groups = QuestionService.groupQuestionsByChapter(questionsData)
         setQuestionGroups(groups)
       } catch (error) {
@@ -101,6 +105,69 @@ export default function QuestionsPage({
 
     loadData()
   }, [resolvedParams])
+
+  const filteredQuestions = useMemo(() => {
+    let list = [...questions]
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase()
+      list = list.filter(
+        (question) =>
+          question.questionText?.toLowerCase().includes(q) ||
+          (question.chapterPath?.join(" ") || "").toLowerCase().includes(q)
+      )
+    }
+    if (sortOrder === "recent") {
+      list.sort((a, b) => {
+        const at =
+          a.created_at instanceof Date
+            ? a.created_at.getTime()
+            : a.created_at
+              ? new Date(a.created_at).getTime()
+              : 0
+        const bt =
+          b.created_at instanceof Date
+            ? b.created_at.getTime()
+            : b.created_at
+              ? new Date(b.created_at).getTime()
+              : 0
+        return bt - at
+      })
+    } else {
+      list.sort((a, b) => {
+        const at =
+          a.created_at instanceof Date
+            ? a.created_at.getTime()
+            : a.created_at
+              ? new Date(a.created_at).getTime()
+              : 0
+        const bt =
+          b.created_at instanceof Date
+            ? b.created_at.getTime()
+            : b.created_at
+              ? new Date(b.created_at).getTime()
+              : 0
+        return at - bt
+      })
+    }
+    return list
+  }, [questions, searchText, sortOrder])
+
+  const totalFiltered = filteredQuestions.length
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / ITEMS_PER_PAGE))
+  const paginatedQuestions = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredQuestions.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredQuestions, currentPage])
+
+  const paginatedGroups = useMemo(() => {
+    return QuestionService.groupQuestionsByChapter(paginatedQuestions)
+  }, [paginatedQuestions])
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages >= 1) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
 
   const handleQuestionClick = (question: BookQuestion): void => {
     setSelectedQuestion(question)
@@ -218,21 +285,6 @@ export default function QuestionsPage({
     }
   }
 
-  const handleUploadSuccess = async (): Promise<void> => {
-    if (!resolvedParams) return
-
-    try {
-      const questionsData = await QuestionService.getBookQuestions(
-        resolvedParams.id
-      )
-      setQuestions(questionsData)
-      const groups = QuestionService.groupQuestionsByChapter(questionsData)
-      setQuestionGroups(groups)
-    } catch (error) {
-      console.error("Error reloading questions:", error)
-    }
-  }
-
   if (isLoading) {
     return (
       <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
@@ -298,13 +350,6 @@ export default function QuestionsPage({
           </div>
           <div className='flex gap-2'>
             <button
-              onClick={() => setIsUploadModalOpen(true)}
-              className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-              title='JSON 업로드'
-            >
-              <Upload className='h-5 w-5 text-theme-secondary' />
-            </button>
-            <button
               onClick={() => setIsAddModalOpen(true)}
               className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
               title='질문 추가'
@@ -319,6 +364,12 @@ export default function QuestionsPage({
           <div className='flex items-center justify-between mb-4'>
             <h2 className='text-lg font-semibold text-theme-primary'>
               질문 목록 ({questions.length}개)
+              {searchText && (
+                <span className='text-theme-tertiary font-normal'>
+                  {" "}
+                  · 검색 결과 {totalFiltered}개
+                </span>
+              )}
             </h2>
             <div className='flex gap-2'>
               <button
@@ -345,6 +396,35 @@ export default function QuestionsPage({
               </button>
             </div>
           </div>
+            <div className='flex flex-col sm:flex-row gap-3 mb-4'>
+              <div className='flex-1 relative'>
+                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-theme-tertiary' />
+                <input
+                  type='text'
+                  placeholder='텍스트 검색 (질문 내용, 목차)'
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className='w-full pl-9 pr-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
+                />
+              </div>
+              <div className='flex gap-2 items-center shrink-0'>
+                <span className='text-sm text-theme-tertiary'>정렬</span>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => {
+                    setSortOrder(e.target.value as "recent" | "oldest")
+                    setCurrentPage(1)
+                  }}
+                  className='px-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
+                >
+                  <option value='recent'>최신순</option>
+                  <option value='oldest'>오래된순</option>
+                </select>
+              </div>
+            </div>
 
           {/* 질문 목록 */}
           {questions.length === 0 ? (
@@ -353,35 +433,61 @@ export default function QuestionsPage({
               <p className='text-theme-secondary mb-4'>
                 아직 질문이 없습니다.
               </p>
+              <div className='flex flex-wrap justify-center gap-2'>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className='px-4 py-2 bg-accent-theme text-white rounded-lg hover:bg-accent-theme-secondary transition-colors'
+                >
+                  질문 추가하기
+                </button>
+              </div>
+            </div>
+          ) : totalFiltered === 0 ? (
+            <div className='text-center py-12'>
+              <p className='text-theme-secondary mb-4'>검색 조건에 맞는 질문이 없습니다.</p>
               <button
-                onClick={() => setIsUploadModalOpen(true)}
-                className='px-4 py-2 bg-accent-theme text-white rounded-lg hover:bg-accent-theme-secondary transition-colors'
+                onClick={() => {
+                  setSearchText("")
+                  setCurrentPage(1)
+                }}
+                className='px-4 py-2 bg-theme-tertiary text-theme-primary rounded-lg hover:bg-theme-tertiary/80 transition-colors'
               >
-                JSON 업로드
+                검색 초기화
               </button>
             </div>
-          ) : viewMode === "tree" ? (
-            <QuestionTree
-              groups={questionGroups}
-              onQuestionClick={handleQuestionClick}
-              onQuestionEdit={handleQuestionEdit}
-              onQuestionDelete={handleQuestionDelete}
-              showActions={true}
-              defaultExpanded={true}
-            />
           ) : (
-            <div className='space-y-3'>
-              {questions.map((question) => (
-                <QuestionCard
-                  key={question.id}
-                  question={question}
-                  onEdit={handleQuestionEdit}
-                  onDelete={handleQuestionDelete}
-                  showChapterPath={true}
+            <>
+              {viewMode === "tree" ? (
+                <QuestionTree
+                  groups={paginatedGroups}
+                  onQuestionClick={handleQuestionClick}
+                  onQuestionEdit={handleQuestionEdit}
+                  onQuestionDelete={handleQuestionDelete}
                   showActions={true}
+                  defaultExpanded={true}
                 />
-              ))}
-            </div>
+              ) : (
+                <div className='space-y-3'>
+                  {paginatedQuestions.map((question: BookQuestion) => (
+                    <QuestionCard
+                      key={question.id}
+                      question={question}
+                      onEdit={handleQuestionEdit}
+                      onDelete={handleQuestionDelete}
+                      showChapterPath={true}
+                      showActions={true}
+                    />
+                  ))}
+                </div>
+              )}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={totalFiltered}
+                itemsPerPage={ITEMS_PER_PAGE}
+              />
+            </>
           )}
         </div>
 
@@ -506,17 +612,6 @@ export default function QuestionsPage({
               </div>
             )}
           </div>
-        )}
-
-        {/* JSON 업로드 모달 */}
-        {resolvedParams && (
-          <JsonUploadModal
-            isOpen={isUploadModalOpen}
-            onClose={() => setIsUploadModalOpen(false)}
-            onSuccess={handleUploadSuccess}
-            bookId={resolvedParams.id}
-            bookTitle={book.title}
-          />
         )}
 
         {/* 질문 추가 모달 */}

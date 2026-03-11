@@ -146,6 +146,7 @@ export class BookService {
 
   /**
    * 사용자의 특정 상태 책 목록을 "가장 최근에 읽은 기록" 순으로 정렬해 반환합니다.
+   * 세션의 endTime(종료 시각, ISO UTC) 기준으로 비교하여 한국 시간과 무관하게 정확히 정렬합니다.
    * 독서 세션에 기록이 없는 책은 목록 맨 뒤로 갑니다.
    */
   static async getUserBooksByStatusSortedByLastRead(
@@ -156,16 +157,16 @@ export class BookService {
       this.getUserBooksByStatus(user_id, status),
       ReadingSessionService.getUserReadingSessions(user_id),
     ])
-    const bookIdToLatestDate = new Map<string, number>()
+    const bookIdToLatestTime = new Map<string, number>()
     for (const s of sessions) {
-      const t = new Date(s.date).getTime()
-      const cur = bookIdToLatestDate.get(s.bookId)
-      if (cur === undefined || t > cur) bookIdToLatestDate.set(s.bookId, t)
+      const t = new Date(s.endTime).getTime()
+      const cur = bookIdToLatestTime.get(s.bookId)
+      if (cur === undefined || t > cur) bookIdToLatestTime.set(s.bookId, t)
     }
     return statusBooks.slice().sort((a, b) => {
-      const dateA = bookIdToLatestDate.get(a.id) ?? 0
-      const dateB = bookIdToLatestDate.get(b.id) ?? 0
-      return dateB - dateA
+      const timeA = bookIdToLatestTime.get(a.id) ?? 0
+      const timeB = bookIdToLatestTime.get(b.id) ?? 0
+      return timeB - timeA
     })
   }
 

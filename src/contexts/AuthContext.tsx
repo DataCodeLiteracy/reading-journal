@@ -14,7 +14,7 @@ import {
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { User } from "@/types/user"
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 interface AuthContextType {
@@ -74,39 +74,53 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
           if (userDoc.exists()) {
-            const existingData = userDoc.data()
-            // 기존 데이터를 유지하면서 Firebase 사용자 정보만 업데이트
+            const existingData = userDoc.data() as Record<string, unknown>
+            // isAdmin: 문서에 명시적으로 true로 저장된 경우만 true, 그 외는 false (필드 없음/undefined 방지)
+            const isAdmin = existingData && existingData.isAdmin === true
             const updatedUserData: User = {
               ...existingData,
               uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              emailVerified: firebaseUser.emailVerified,
-              phoneNumber: firebaseUser.phoneNumber,
+              email: firebaseUser.email ?? null,
+              displayName: firebaseUser.displayName ?? null,
+              photoURL: firebaseUser.photoURL ?? null,
+              emailVerified: firebaseUser.emailVerified ?? false,
+              phoneNumber: firebaseUser.phoneNumber ?? null,
               lastLoginAt: new Date(),
               updated_at: new Date(),
-              // isAdmin 필드가 없으면 기본값 false로 설정
-              isAdmin: existingData.isAdmin ?? false,
+              isAdmin,
             } as User
             setUserData(updatedUserData)
           } else {
             // 사용자 문서가 없으면 기본값으로 생성
             const defaultUserData: User = {
               uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              emailVerified: firebaseUser.emailVerified,
-              phoneNumber: firebaseUser.phoneNumber,
+              email: firebaseUser.email ?? null,
+              displayName: firebaseUser.displayName ?? null,
+              photoURL: firebaseUser.photoURL ?? null,
+              emailVerified: firebaseUser.emailVerified ?? false,
+              phoneNumber: firebaseUser.phoneNumber ?? null,
               lastLoginAt: new Date(),
               isActive: true,
-              isAdmin: false, // 기본값은 false
+              isAdmin: false,
               levelDataMigrated: false,
               created_at: new Date(),
               updated_at: new Date(),
             }
-            await setDoc(doc(db, "users", firebaseUser.uid), defaultUserData)
+            setUserData(defaultUserData)
+            await setDoc(doc(db, "users", firebaseUser.uid), {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email ?? null,
+              displayName: firebaseUser.displayName ?? null,
+              photoURL: firebaseUser.photoURL ?? null,
+              emailVerified: firebaseUser.emailVerified ?? false,
+              phoneNumber: firebaseUser.phoneNumber ?? null,
+              lastLoginAt: serverTimestamp(),
+              isActive: true,
+              isAdmin: false,
+              levelDataMigrated: false,
+              created_at: serverTimestamp(),
+              updated_at: serverTimestamp(),
+            })
             setUserData(defaultUserData)
           }
         } catch (error) {

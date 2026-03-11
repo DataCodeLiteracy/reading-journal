@@ -24,6 +24,7 @@ export default function QuoteModal({
   const [quoteText, setQuoteText] = useState("")
   const [thoughts, setThoughts] = useState("")
   const [generalThoughts, setGeneralThoughts] = useState("")
+  const [page, setPage] = useState<number | "">("")
   const [isPublic, setIsPublic] = useState(false)
   const quoteTextRef = useRef<HTMLTextAreaElement>(null)
 
@@ -33,11 +34,13 @@ export default function QuoteModal({
         setQuoteText(existingQuote.quoteText || "")
         setThoughts(existingQuote.thoughts || "")
         setGeneralThoughts(existingQuote.generalThoughts || "")
+        setPage(existingQuote.page ?? "")
         setIsPublic(existingQuote.isPublic || false)
       } else {
         setQuoteText("")
         setThoughts("")
         setGeneralThoughts("")
+        setPage("")
         setIsPublic(false)
       }
       // 모달이 열릴 때 구절 텍스트 입력란에 포커스
@@ -60,6 +63,7 @@ export default function QuoteModal({
       quoteText: quoteText.trim(),
       thoughts: thoughts.trim() || undefined,
       generalThoughts: generalThoughts.trim() || undefined,
+      page: page === "" || Number.isNaN(Number(page)) ? undefined : Number(page),
       isPublic,
     }
 
@@ -71,6 +75,7 @@ export default function QuoteModal({
     setQuoteText("")
     setThoughts("")
     setGeneralThoughts("")
+    setPage("")
     setIsPublic(false)
     onClose()
   }
@@ -119,6 +124,27 @@ export default function QuoteModal({
               />
               <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
                 책에서 인상 깊었던 구절을 그대로 타이핑해주세요.
+              </p>
+            </div>
+
+            {/* 몇 페이지 구절인지 */}
+            <div>
+              <label className='block text-sm font-medium text-gray-900 dark:text-white mb-2'>
+                페이지 (선택)
+              </label>
+              <input
+                type='number'
+                min={1}
+                value={page === "" ? "" : page}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setPage(v === "" ? "" : parseInt(v, 10))
+                }}
+                placeholder='예: 42'
+                className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent'
+              />
+              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                구절이 있는 페이지 번호를 입력하세요.
               </p>
             </div>
 

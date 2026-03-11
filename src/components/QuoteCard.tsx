@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { LikeService } from "@/services/likeService"
 import { QuoteService } from "@/services/quoteService"
 import CommentSection from "@/components/CommentSection"
+import { formatGeneralThoughtsForDisplay } from "@/utils/quoteDisplay"
 
 interface QuoteCardProps {
   quote: Quote
@@ -87,6 +88,9 @@ export default function QuoteCard({
                 • {new Date(quote.created_at).toLocaleDateString("ko-KR")}
               </span>
             )}
+            {quote.page != null && (
+              <span className='text-xs text-theme-tertiary'>• p. {quote.page}</span>
+            )}
           </div>
         </div>
         {isOwner && (onEdit || onDelete) && (
@@ -135,16 +139,21 @@ export default function QuoteCard({
       )}
 
       {/* 책 읽는 중 느낀 점 */}
-      {quote.generalThoughts && (
-        <div className='mb-3'>
-          <p className='text-xs font-medium text-theme-secondary mb-1'>
-            책 읽는 중 느낀 점
-          </p>
-          <p className='text-sm text-theme-primary whitespace-pre-wrap leading-relaxed'>
-            {quote.generalThoughts}
-          </p>
-        </div>
-      )}
+      {(() => {
+        const displayText = quote.generalThoughts
+          ? formatGeneralThoughtsForDisplay(quote.generalThoughts)
+          : ""
+        return displayText ? (
+          <div className='mb-3'>
+            <p className='text-xs font-medium text-theme-secondary mb-1'>
+              책 읽는 중 느낀 점
+            </p>
+            <p className='text-sm text-theme-primary whitespace-pre-wrap leading-relaxed'>
+              {displayText}
+            </p>
+          </div>
+        ) : null
+      })()}
 
       {/* 좋아요/댓글 수 (공개된 경우만) */}
       {quote.isPublic && (

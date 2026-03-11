@@ -23,6 +23,7 @@ export default function EditReadingSessionModal({
   const [endPeriod, setEndPeriod] = useState<"오전" | "오후">("오전")
   const [endHour, setEndHour] = useState("12")
   const [endMinute, setEndMinute] = useState("00")
+  const [durationMinutes, setDurationMinutes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,74 +61,110 @@ export default function EditReadingSessionModal({
       setEndHour(koreaEndHour.toString().padStart(2, "0"))
       setEndMinute(endDate.getUTCMinutes().toString().padStart(2, "0"))
       setError(null)
+      setDurationMinutes("")
     }
   }, [session, isOpen])
+
+  const to24 = (period: "오전" | "오후", h: number) => {
+    if (period === "오후" && h !== 12) return h + 12
+    if (period === "오전" && h === 12) return 0
+    return h
+  }
+
+  const getStartDate = () => {
+    if (!session) return new Date(0)
+    const [y, m, d] = session.date.split("-").map(Number)
+    const h = to24(startPeriod, parseInt(startHour, 10))
+    const min = parseInt(startMinute, 10)
+    const koreaMs = Date.UTC(y, m - 1, d, h, min, 0, 0)
+    return new Date(koreaMs - 9 * 60 * 60 * 1000)
+  }
+
+  const getEndDateFromSelects = () => {
+    if (!session) return new Date(0)
+    const [y, m, d] = session.date.split("-").map(Number)
+    const h = to24(endPeriod, parseInt(endHour, 10))
+    const min = parseInt(endMinute, 10)
+    const koreaMs = Date.UTC(y, m - 1, d, h, min, 0, 0)
+    return new Date(koreaMs - 9 * 60 * 60 * 1000)
+  }
+
+  const computedDurationFromSelects = (() => {
+    if (!session) return 0
+    const start = getStartDate()
+    let end = getEndDateFromSelects()
+    if (end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000)
+    return Math.floor((end.getTime() - start.getTime()) / 60000)
+  })()
+
+  const handleDurationMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value
+    if (v === "" || /^\d+$/.test(v)) setDurationMinutes(v)
+  }
+
+  const applyDurationToEndSelects = (minutes: number) => {
+    if (!session) return
+    const start = getStartDate()
+    const end = new Date(start.getTime() + minutes * 60 * 1000)
+    const koreaEnd = new Date(end.getTime() + 9 * 60 * 60 * 1000)
+    let h = koreaEnd.getUTCHours()
+    const m = koreaEnd.getUTCMinutes()
+    const period = h < 12 ? "오전" : "오후"
+    if (h === 0) h = 12
+    else if (h > 12) h = h - 12
+    setEndPeriod(period)
+    setEndHour(h.toString().padStart(2, "0"))
+    setEndMinute(m.toString().padStart(2, "0"))
+  }
 
   const handleSave = async () => {
     if (!session) return
 
     setError(null)
 
-    // 입력값 검증
-    const startH = parseInt(startHour)
-    const startM = parseInt(startMinute)
-    const endH = parseInt(endHour)
-    const endM = parseInt(endMinute)
+    const startH = parseInt(startHour, 10)
+    const startM = parseInt(startMinute, 10)
+    const endH = parseInt(endHour, 10)
+    const endM = parseInt(endMinute, 10)
 
     if (
       isNaN(startH) ||
       isNaN(startM) ||
-      isNaN(endH) ||
-      isNaN(endM) ||
       startH < 1 ||
       startH > 12 ||
       startM < 0 ||
-      startM > 59 ||
-      endH < 1 ||
-      endH > 12 ||
-      endM < 0 ||
-      endM > 59
+      startM > 59
     ) {
-      setError("올바른 시간을 선택해주세요.")
+      setError("올바른 시작 시간을 선택해주세요.")
       return
     }
 
-    // 기존 날짜 유지 (날짜는 변경 불가)
     const originalStartDate = new Date(session.startTime)
-    const originalEndDate = new Date(session.endTime)
+    const newStartDate = getStartDate()
 
-    // 12시간 형식을 24시간 형식으로 변환
-    let koreaStartHour = startH
-    if (startPeriod === "오후" && startH !== 12) {
-      koreaStartHour = startH + 12
-    } else if (startPeriod === "오전" && startH === 12) {
-      koreaStartHour = 0
+    let newEndDate: Date
+    if (durationMinutes.trim() !== "" && !isNaN(parseInt(durationMinutes, 10)) && parseInt(durationMinutes, 10) > 0) {
+      const mins = parseInt(durationMinutes, 10)
+      newEndDate = new Date(newStartDate.getTime() + mins * 60 * 1000)
+    } else {
+      if (
+        isNaN(endH) ||
+        isNaN(endM) ||
+        endH < 1 ||
+        endH > 12 ||
+        endM < 0 ||
+        endM > 59
+      ) {
+        setError("올바른 종료 시간을 선택하거나, 읽은 시간(분)을 입력해주세요.")
+        return
+      }
+      newEndDate = getEndDateFromSelects()
     }
 
-    let koreaEndHour = endH
-    if (endPeriod === "오후" && endH !== 12) {
-      koreaEndHour = endH + 12
-    } else if (endPeriod === "오전" && endH === 12) {
-      koreaEndHour = 0
-    }
-
-    // UTC 시간 계산 (한국 시간 - 9시간)
-    const utcStartHour = (koreaStartHour - 9 + 24) % 24
-    const utcEndHour = (koreaEndHour - 9 + 24) % 24
-
-    // 날짜는 그대로 유지하고 시간만 변경
-    const newStartDate = new Date(originalStartDate)
-    newStartDate.setUTCHours(utcStartHour, startM, 0, 0)
-
-    const newEndDate = new Date(originalEndDate)
-    newEndDate.setUTCHours(utcEndHour, endM, 0, 0)
-
-    // 종료 시간이 시작 시간보다 이전이면 다음 날로 설정
     if (newEndDate <= newStartDate) {
       newEndDate.setUTCDate(newEndDate.getUTCDate() + 1)
     }
 
-    // duration 계산 (초 단위)
     const duration = Math.floor((newEndDate.getTime() - newStartDate.getTime()) / 1000)
 
     if (duration <= 0) {
@@ -262,6 +299,39 @@ export default function EditReadingSessionModal({
                     </option>
                   ))}
                 </select>
+              </div>
+              {computedDurationFromSelects > 0 && (
+                <p className="mt-2 text-sm text-accent-theme">
+                  읽은 시간: <strong>{computedDurationFromSelects}분</strong>
+                </p>
+              )}
+            </div>
+
+            {/* 또는 읽은 시간(분)으로 입력 */}
+            <div>
+              <label className="block text-sm font-medium text-theme-primary mb-2">
+                또는 읽은 시간(분)으로 입력
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={durationMinutes}
+                  onChange={handleDurationMinutesChange}
+                  placeholder="분 입력 시 종료 시간 자동 계산"
+                  className="flex-1 px-3 py-2 border border-theme-tertiary rounded-md bg-theme-secondary text-theme-primary placeholder:text-theme-tertiary"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const n = parseInt(durationMinutes, 10)
+                    if (!isNaN(n) && n > 0) applyDurationToEndSelects(n)
+                  }}
+                  disabled={!durationMinutes.trim() || isNaN(parseInt(durationMinutes, 10)) || parseInt(durationMinutes, 10) <= 0}
+                  className="px-3 py-2 bg-theme-tertiary text-theme-primary rounded-md hover:bg-theme-tertiary/80 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  적용
+                </button>
               </div>
             </div>
 

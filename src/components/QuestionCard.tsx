@@ -68,14 +68,16 @@ export default function QuestionCard({
   }
   const getQuestionTypeLabel = (type: string): string => {
     switch (type) {
+      case "general":
+        return "일반"
       case "comprehension":
-        return "이해"
+        return "사실 파악"
       case "analysis":
-        return "분석"
+        return "인과·비교"
       case "synthesis":
-        return "종합"
+        return "주제·메시지"
       case "application":
-        return "적용"
+        return "실생활 적용"
       default:
         return type
     }

@@ -1,6 +1,6 @@
 import { AppDate } from "./firebase"
 
-export type QuestionType = "comprehension" | "analysis" | "synthesis" | "application"
+export type QuestionType = "comprehension" | "analysis" | "synthesis" | "application" | "general"
 export type Difficulty = "easy" | "medium" | "hard"
 
 /**
@@ -16,6 +16,7 @@ export interface BookQuestion {
   questionType: QuestionType
   difficulty: Difficulty
   order: number // 같은 목차 내 정렬 순서
+  thoughtHint?: string // JSON 보고서의 thought_hint (생각 힌트)
   isPublic?: boolean // 공개 여부 (기본값: false)
   likesCount?: number // 좋아요 수 (캐시된 값)
   commentsCount?: number // 댓글 수 (캐시된 값)
