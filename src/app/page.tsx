@@ -30,7 +30,17 @@ import { ChecklistService } from "@/services/checklistService"
 
 import { ApiError } from "@/lib/apiClient"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
+import {
+  getLastWeekRangeKST,
+  getLastWeekISOStringKST,
+  getWeekdayLabelKST,
+} from "@/utils/timeUtils"
+import { ReadingSessionService } from "@/services/readingSessionService"
+import { ReadingSession } from "@/types/user"
 import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
+import WeeklyRecapModal, { DaySummary } from "@/components/WeeklyRecapModal"
+
+const WEEKLY_RECAP_STORAGE_KEY = "weeklyRecapShown_"
 
 export default function Home() {
   const router = useRouter()
@@ -58,6 +68,15 @@ export default function Home() {
 
   const [recentReadingBooks, setRecentReadingBooks] = useState<Book[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [showRecapModal, setShowRecapModal] = useState(false)
+  const [recapData, setRecapData] = useState<{
+    weekLabel: string
+    daySummaries: DaySummary[]
+    totalSeconds: number
+    goalHours: number
+    goalMet: boolean
+    bonusExp: number | null
+  } | null>(null)
 
   const RECENT_BOOKS_LIMIT = 5
 
@@ -91,6 +110,75 @@ export default function Home() {
 
     loadRecentReading()
   }, [isLoggedIn, userUid])
+
+  // 월요일 00:00 KST 이후 새 주가 되면, 메인 접속 시 지난주 독서 요약 모달 한 번만 표시
+  useEffect(() => {
+    if (!userUid || userStatistics === undefined) return
+    const lastWeekISO = getLastWeekISOStringKST()
+    if (typeof window !== "undefined" && localStorage.getItem(WEEKLY_RECAP_STORAGE_KEY + lastWeekISO)) return
+
+    const load = async () => {
+      try {
+        const { monday, sunday } = getLastWeekRangeKST()
+        const weekLabel = `${monday.slice(5).replace("-", "/")} ~ ${sunday.slice(5).replace("-", "/")}`
+        const sessions: ReadingSession[] =
+          await ReadingSessionService.getUserReadingSessions(userUid)
+        const inRange = sessions.filter((s) => s.date >= monday && s.date <= sunday)
+        const totalSeconds = inRange.reduce((sum, s) => sum + (s.duration ?? 0), 0)
+        const goalHours =
+          userStatistics?.weeklyReadingGoalHours ??
+          settings.weeklyReadingGoalHours ??
+          5
+        const goalMet = totalSeconds >= goalHours * 3600
+        const bonusExp =
+          userStatistics?.lastWeeklyBonusWeek === lastWeekISO ? goalHours * 20 : null
+
+        const byDate: Record<string, { bookId: string; duration: number }[]> = {}
+        inRange.forEach((s) => {
+          if (!byDate[s.date]) byDate[s.date] = []
+          const existing = byDate[s.date].find((x) => x.bookId === s.bookId)
+          if (existing) existing.duration += s.duration ?? 0
+          else byDate[s.date].push({ bookId: s.bookId, duration: s.duration ?? 0 })
+        })
+        const daySummaries: DaySummary[] = Object.keys(byDate)
+          .sort()
+          .map((date) => {
+            const items = byDate[date].map(({ bookId, duration }) => ({
+              bookTitle: allBooks.find((b) => b.id === bookId)?.title ?? "알 수 없는 책",
+              duration,
+            }))
+            return {
+              date,
+              weekday: getWeekdayLabelKST(date),
+              items,
+            }
+          })
+
+        setRecapData({
+          weekLabel,
+          daySummaries,
+          totalSeconds,
+          goalHours,
+          goalMet,
+          bonusExp,
+        })
+        setShowRecapModal(true)
+      } catch (e) {
+        console.error("Failed to load weekly recap:", e)
+      }
+    }
+
+    load()
+  }, [userUid, userStatistics, settings.weeklyReadingGoalHours, allBooks])
+
+  const handleCloseRecapModal = () => {
+    const lastWeekISO = getLastWeekISOStringKST()
+    if (typeof window !== "undefined") {
+      localStorage.setItem(WEEKLY_RECAP_STORAGE_KEY + lastWeekISO, "1")
+    }
+    setShowRecapModal(false)
+    setRecapData(null)
+  }
 
   const recentAddedBooks = useMemo(() => {
     return [...allBooks]
@@ -448,6 +536,18 @@ export default function Home() {
         </div>
       </div>
 
+      {showRecapModal && recapData && (
+        <WeeklyRecapModal
+          isOpen={showRecapModal}
+          onClose={handleCloseRecapModal}
+          weekLabel={recapData.weekLabel}
+          daySummaries={recapData.daySummaries}
+          totalSeconds={recapData.totalSeconds}
+          goalHours={recapData.goalHours}
+          goalMet={recapData.goalMet}
+          bonusExp={recapData.bonusExp}
+        />
+      )}
     </div>
   )
 }

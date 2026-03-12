@@ -5,7 +5,7 @@ import { Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ReadingSession } from "@/types/user"
-import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
+import { formatReadingTimeFromSeconds, getCurrentWeekRangeKST, getISOWeekStringKST } from "@/utils/timeUtils"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
 
@@ -13,25 +13,6 @@ const WEEKLY_POPUP_KEY = "weeklyGoalPopup_"
 
 interface WeeklyReadingTimeCardProps {
   userId: string
-}
-
-/**
- * 월요일~일요일을 한 주로 하여, 이번 주 독서 시간(초)을 계산
- */
-function getCurrentWeekRange(): { monday: string; sunday: string } {
-  const now = new Date()
-  const day = now.getDay()
-  const daysFromMonday = day === 0 ? 6 : day - 1
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - daysFromMonday)
-  monday.setHours(0, 0, 0, 0)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
-
-  const toYMD = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-  return { monday: toYMD(monday), sunday: toYMD(sunday) }
 }
 
 function getWeekLabel(monday: string, sunday: string): string {
@@ -66,7 +47,7 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
     const load = async () => {
       setLoading(true)
       try {
-        const { monday, sunday } = getCurrentWeekRange()
+        const { monday, sunday } = getCurrentWeekRangeKST()
         setWeekLabel(getWeekLabel(monday, sunday))
 
         const sessions: ReadingSession[] =
@@ -89,9 +70,11 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
 
   useEffect(() => {
     if (loading || !userId) return
+    // 서버에서 목표를 불러온 뒤에만 판단 (목표 변경 시 현재 목표 기준으로만 달성 처리)
+    if (userStatistics === undefined) return
     if (totalSeconds < goalSeconds) return
 
-    const currentWeek = UserStatisticsService.getISOWeekString(new Date())
+    const currentWeek = getISOWeekStringKST(new Date())
     const popupKey = WEEKLY_POPUP_KEY + currentWeek
     const alreadyShown = typeof window !== "undefined" && localStorage.getItem(popupKey)
 
@@ -126,12 +109,13 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
     totalSeconds,
     goalSeconds,
     goalHours,
+    userStatistics,
     userStatistics?.lastWeeklyBonusWeek,
     refreshAllData,
   ])
 
   const handleCloseBonusModal = () => {
-    const currentWeek = UserStatisticsService.getISOWeekString(new Date())
+    const currentWeek = getISOWeekStringKST(new Date())
     if (typeof window !== "undefined") {
       localStorage.setItem(WEEKLY_POPUP_KEY + currentWeek, "1")
     }
