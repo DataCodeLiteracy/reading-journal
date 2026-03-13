@@ -39,8 +39,8 @@ export default function WeeklyRecapModal({
       aria-modal='true'
       aria-labelledby='weekly-recap-title'
     >
-      <div className='w-full max-w-md max-h-[90vh] flex flex-col rounded-xl bg-theme-secondary shadow-lg border border-theme-tertiary'>
-        <div className='flex items-center justify-between p-4 border-b border-theme-tertiary flex-shrink-0'>
+      <div className='w-full max-w-md max-h-[70vh] flex flex-col rounded-xl bg-theme-secondary shadow-lg border border-theme-tertiary'>
+        <div className='flex items-center justify-between p-3 border-b border-theme-tertiary flex-shrink-0'>
           <h2 id='weekly-recap-title' className='text-lg font-bold text-theme-primary'>
             지난주 독서 요약
           </h2>
@@ -54,22 +54,22 @@ export default function WeeklyRecapModal({
           </button>
         </div>
 
-        <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+        <div className='flex-1 overflow-y-auto p-3 space-y-3'>
           <p className='text-sm text-theme-secondary'>
             <Clock className='h-4 w-4 inline-block mr-1 align-middle' />
             {weekLabel} (월~일)
           </p>
 
           {daySummaries.length === 0 ? (
-            <p className='text-sm text-theme-tertiary py-4'>이번 주 기록된 독서가 없습니다.</p>
+            <p className='text-sm text-theme-tertiary py-3'>이번 주 기록된 독서가 없습니다.</p>
           ) : (
-            <ul className='space-y-3'>
+            <ul className='space-y-2'>
               {daySummaries.map((day) => (
-                <li key={day.date} className='rounded-lg bg-theme-primary/50 p-3'>
-                  <p className='text-xs font-medium text-theme-tertiary mb-2'>
+                <li key={day.date} className='rounded-lg bg-theme-primary/50 p-2'>
+                  <p className='text-xs font-medium text-theme-tertiary mb-1'>
                     {day.weekday} {day.date.slice(5).replace("-", "/")}
                   </p>
-                  <ul className='space-y-1.5'>
+                  <ul className='space-y-1'>
                     {day.items.map((item, i) => (
                       <li
                         key={`${day.date}-${item.bookTitle}-${i}`}
@@ -90,16 +90,16 @@ export default function WeeklyRecapModal({
             </ul>
           )}
 
-          <div className='pt-3 border-t border-theme-tertiary'>
+          <div className='pt-2 border-t border-theme-tertiary'>
             <div className='flex items-center justify-between text-base font-semibold text-theme-primary'>
               <span>총 독서 시간</span>
               <span className='text-accent-theme'>{formatReadingTimeFromSeconds(totalSeconds)}</span>
             </div>
-            <p className='text-xs text-theme-tertiary mt-1'>
+            <p className='text-xs text-theme-tertiary mt-0.5'>
               주간 목표 {goalHours}시간 {goalMet ? "달성" : "미달성"}
             </p>
             {goalMet && bonusExp != null && (
-              <div className='mt-2 flex items-center gap-2 rounded-lg bg-accent-theme/10 px-3 py-2 text-sm text-accent-theme'>
+              <div className='mt-1.5 flex items-center gap-2 rounded-lg bg-accent-theme/10 px-2.5 py-1.5 text-sm text-accent-theme'>
                 <Zap className='h-4 w-4 flex-shrink-0' />
                 <span>
                   목표 달성 보너스 <strong>+{bonusExp} EXP</strong>
@@ -109,7 +109,7 @@ export default function WeeklyRecapModal({
           </div>
         </div>
 
-        <div className='p-4 border-t border-theme-tertiary flex-shrink-0'>
+        <div className='p-3 border-t border-theme-tertiary flex-shrink-0'>
           <button
             type='button'
             onClick={onClose}
