@@ -17,6 +17,7 @@ const contentTypeLabels: Record<ContentType, string> = {
   review: "리뷰",
   question: "질문",
   answer: "답변",
+  comment: "댓글",
 }
 
 const contentTypeColors: Record<ContentType, string> = {
@@ -25,6 +26,7 @@ const contentTypeColors: Record<ContentType, string> = {
   review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   question: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   answer: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+  comment: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
 }
 
 export default function PublicContentCard({ content }: PublicContentCardProps) {
