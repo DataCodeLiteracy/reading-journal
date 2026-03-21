@@ -227,14 +227,8 @@ function BooksPageContent() {
       }
       console.log("bookData to be created:", bookData)
 
-      const bookId = await BookService.createBook(bookData)
-      console.log("Book created with ID:", bookId)
-
-      const createdBook: Book = {
-        ...bookData,
-        id: bookId,
-      }
-      console.log("createdBook:", createdBook)
+      const createdBook = await BookService.createBook(bookData)
+      console.log("Book created:", createdBook)
 
       if (newBook.status === "want-to-read") {
         setActiveTab("want-to-read")

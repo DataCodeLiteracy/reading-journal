@@ -1,12 +1,23 @@
-import { ApiClient } from "@/lib/apiClient"
+import { ApiClient, ApiError } from "@/lib/apiClient"
 import { Book } from "@/types/book"
 import { ReadingSessionService } from "@/services/readingSessionService"
 
 export class BookService {
-  static async createBook(bookData: Omit<Book, "id">): Promise<string> {
+  /**
+   * 책을 생성하고, Firestore에 기록된 created_at/updated_at(서버 타임스탬프)이 반영된 문서를 반환합니다.
+   * 클라이언트 상태(메인 «최근 등록한 책» 등)에서 정렬이 바로 맞도록 사용합니다.
+   */
+  static async createBook(bookData: Omit<Book, "id">): Promise<Book> {
     try {
       const bookId = await ApiClient.createDocumentWithAutoId("books", bookData)
-      return bookId
+      const book = await this.getBook(bookId)
+      if (!book) {
+        throw new ApiError(
+          "책은 생성되었으나 정보를 불러오지 못했습니다.",
+          "BOOK_FETCH_AFTER_CREATE"
+        )
+      }
+      return book
     } catch (error) {
       throw error
     }

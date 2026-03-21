@@ -298,8 +298,7 @@ function ExplorePageContent() {
         ...book,
         user_id: userUid,
       }
-      const id = await BookService.createBook(bookData)
-      const created: Book = { ...bookData, id } as Book
+      const created = await BookService.createBook(bookData)
       addBook(created)
       setAllBooks((prev) => [...prev, created])
       setAddModalOpen(false)

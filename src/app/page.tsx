@@ -181,11 +181,17 @@ export default function Home() {
   }
 
   const recentAddedBooks = useMemo(() => {
+    const createdMs = (book: Book) => {
+      if (!book.created_at) return 0
+      const t = new Date(book.created_at).getTime()
+      return Number.isFinite(t) ? t : 0
+    }
     return [...allBooks]
       .sort((a, b) => {
-        const tA = a.created_at ? new Date(a.created_at).getTime() : 0
-        const tB = b.created_at ? new Date(b.created_at).getTime() : 0
-        return tB - tA
+        const diff = createdMs(b) - createdMs(a)
+        if (diff !== 0) return diff
+        // 동일 시각(또는 둘 다 없음)이면 id로 안정 정렬
+        return b.id.localeCompare(a.id)
       })
       .slice(0, RECENT_BOOKS_LIMIT)
   }, [allBooks])
