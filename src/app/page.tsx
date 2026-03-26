@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import {
   BookOpen,
   AlertCircle,
@@ -31,8 +31,10 @@ import { ChecklistService } from "@/services/checklistService"
 import { ApiError } from "@/lib/apiClient"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
 import {
+  getKoreaDate,
   getLastWeekRangeKST,
   getLastWeekISOStringKST,
+  getWeekdayIndexKST,
   getWeekdayLabelKST,
 } from "@/utils/timeUtils"
 import { ReadingSessionService } from "@/services/readingSessionService"
@@ -79,6 +81,8 @@ export default function Home() {
   } | null>(null)
 
   const RECENT_BOOKS_LIMIT = 5
+  /** 같은 주·같은 lastWeekISO에 대해 요약 로드를 한 번만 시도 (의존성 재실행 시 모달 반복 방지) */
+  const weeklyRecapLoadRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!isLoggedIn || !userUid) return
@@ -111,11 +115,19 @@ export default function Home() {
     loadRecentReading()
   }, [isLoggedIn, userUid])
 
-  // 월요일 00:00 KST 이후 새 주가 되면, 메인 접속 시 지난주 독서 요약 모달 한 번만 표시
+  // KST 월요일에만 지난주 독서 요약 모달 표시. 확인 시 localStorage에 저장해 해당 주차는 재표시 안 함. 화~일에는 표시 안 함.
   useEffect(() => {
     if (!userUid || userStatistics === undefined) return
+
+    const todayKST = getKoreaDate(new Date())
+    // 0=일 … 1=월 — 지난주 요약은 새 주 월요일에만 안내
+    if (getWeekdayIndexKST(todayKST) !== 1) return
+
     const lastWeekISO = getLastWeekISOStringKST()
     if (typeof window !== "undefined" && localStorage.getItem(WEEKLY_RECAP_STORAGE_KEY + lastWeekISO)) return
+
+    if (weeklyRecapLoadRef.current === lastWeekISO) return
+    weeklyRecapLoadRef.current = lastWeekISO
 
     const load = async () => {
       try {

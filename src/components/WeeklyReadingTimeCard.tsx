@@ -25,7 +25,7 @@ function getWeekLabel(monday: string, sunday: string): string {
 
 export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardProps) {
   const { settings } = useSettings()
-  const { userStatistics, refreshAllData } = useData()
+  const { userStatistics, refreshAllData, userDataInitialized } = useData()
 
   const goalHours =
     userStatistics?.weeklyReadingGoalHours ??
@@ -35,7 +35,9 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
 
   const [totalSeconds, setTotalSeconds] = useState<number>(0)
   const [weekLabel, setWeekLabel] = useState<string>("")
-  const [loading, setLoading] = useState(true)
+  const [sessionsLoading, setSessionsLoading] = useState(true)
+  /** 통계(주간 목표)·세션 합산 준비 전까지 — 기본 5시간이 잠깐 보이는 현상 방지 */
+  const showCardLoading = !userDataInitialized || sessionsLoading
   const [showBonusModal, setShowBonusModal] = useState(false)
   const [bonusExpThisWeek, setBonusExpThisWeek] = useState<number | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -45,7 +47,7 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
     if (!userId) return
 
     const load = async () => {
-      setLoading(true)
+      setSessionsLoading(true)
       try {
         const { monday, sunday } = getCurrentWeekRangeKST()
         setWeekLabel(getWeekLabel(monday, sunday))
@@ -61,7 +63,7 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
         console.error("Weekly reading time load error:", error)
         setTotalSeconds(0)
       } finally {
-        setLoading(false)
+        setSessionsLoading(false)
       }
     }
 
@@ -69,9 +71,8 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
   }, [userId])
 
   useEffect(() => {
-    if (loading || !userId) return
+    if (showCardLoading || !userId) return
     // 서버에서 목표를 불러온 뒤에만 판단 (목표 변경 시 현재 목표 기준으로만 달성 처리)
-    if (userStatistics === undefined) return
     if (totalSeconds < goalSeconds) return
 
     const currentWeek = getISOWeekStringKST(new Date())
@@ -104,7 +105,7 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
 
     run()
   }, [
-    loading,
+    showCardLoading,
     userId,
     totalSeconds,
     goalSeconds,
@@ -126,20 +127,32 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
   const progressPercent =
     goalSeconds > 0 ? Math.min(100, (totalSeconds / goalSeconds) * 100) : 0
 
-  if (loading) {
+  if (showCardLoading) {
     return (
       <div className='rounded-xl border-2 border-accent-theme/30 bg-gradient-to-br from-accent-theme-tertiary/40 to-accent-theme/10 p-4 sm:p-5 shadow-md'>
-        <div className='flex items-center gap-3'>
-          <div className='flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-accent-theme/20 shrink-0'>
+        <div className='flex items-center gap-3 mb-3'>
+          <div className='flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-accent-theme/20 shrink-0'>
             <Clock className='h-5 w-5 sm:h-6 sm:w-6 accent-theme-primary' />
           </div>
           <div className='min-w-0 flex-1'>
-            <p className='text-sm font-medium text-theme-secondary'>
+            <p className='text-sm font-semibold text-theme-primary'>
               이번 주 독서 시간
             </p>
-            <p className='text-theme-tertiary text-sm'>불러오는 중...</p>
+            <p className='mt-0.5 text-xs text-theme-tertiary'>불러오는 중...</p>
           </div>
         </div>
+        <div className='flex items-baseline justify-center gap-2 py-2.5 px-4 rounded-lg bg-theme-secondary/80 mb-2.5 min-h-[3.5rem]'>
+          <span className='text-3xl sm:text-4xl font-extrabold text-theme-tertiary tabular-nums animate-pulse'>
+            —
+          </span>
+          <span className='text-lg sm:text-xl font-semibold text-theme-tertiary animate-pulse'>
+            / —시간
+          </span>
+        </div>
+        <div className='h-3 w-full rounded-full bg-theme-tertiary overflow-hidden mb-2.5'>
+          <div className='h-full w-1/3 rounded-full bg-accent-theme/30 animate-pulse' />
+        </div>
+        <p className='text-xs text-theme-tertiary text-center'>목표·독서 시간 불러오는 중</p>
       </div>
     )
   }

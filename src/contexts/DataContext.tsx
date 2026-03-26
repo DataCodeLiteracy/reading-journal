@@ -45,6 +45,8 @@ interface DataContextType {
   // Loading states
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
+  /** 로그인 후 첫 refreshAllData(책·세션·통계) 완료 여부 — UI에서 목표 등 통계 기반 값 깜빡임 방지용 */
+  userDataInitialized: boolean
 
   // Refresh function
   refreshAllData: () => Promise<void>
@@ -65,6 +67,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     null
   )
   const [isLoading, setIsLoading] = useState(false)
+  const [userDataInitialized, setUserDataInitialized] = useState(false)
 
   // 모든 데이터를 새로고침하는 함수
   const refreshAllData = async () => {
@@ -100,6 +103,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.error("Error refreshing data:", error)
     } finally {
       setIsLoading(false)
+      setUserDataInitialized(true)
     }
   }
 
@@ -207,6 +211,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setAllBooks([])
       setUserStatistics(null)
       setAllReadingSessions([])
+      setUserDataInitialized(false)
     }
   }, [isLoggedIn, userUid])
 
@@ -227,6 +232,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateTimePatterns,
     isLoading,
     setIsLoading,
+    userDataInitialized,
     refreshAllData,
   }
 

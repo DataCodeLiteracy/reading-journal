@@ -136,16 +136,32 @@ export const getKoreaDate = (date: Date): string => {
 }
 
 /**
+ * KST 해당 일자 00:00:00 시각을 나타내는 UTC Date
+ * (전날 UTC 15:00 = 당일 KST 00:00)
+ */
+function kstMidnightUtcFromYmd(y: number, m: number, d: number): Date {
+  return new Date(Date.UTC(y, m - 1, d - 1, 15, 0, 0, 0))
+}
+
+/**
+ * KST 해당 일자의 요일 계산용 앵커.
+ * 자정 시각은 UTC 달력과 하루가 어긋나 getUTCDay()가 틀릴 수 있어,
+ * 같은 KST 날짜의 정오(UTC 당일 03:00)로 요일을 맞춤.
+ */
+function kstWeekdayFromYmd(y: number, m: number, d: number): number {
+  return new Date(Date.UTC(y, m - 1, d, 3, 0, 0, 0)).getUTCDay()
+}
+
+/**
  * 한국 시간(KST) 기준 이번 주 월요일~일요일 날짜 문자열 반환
- * 일주일 = 월요일 00:00 KST ~ 일요일 23:59 KST
+ * 일주일 = 월요일 00:00 KST ~ 일요일 23:59:59 KST (날짜 문자열은 월·일 포함 구간)
  */
 export function getCurrentWeekRangeKST(): { monday: string; sunday: string } {
   const now = new Date()
   const todayKST = getKoreaDate(now)
   const [y, m, d] = todayKST.split("-").map(Number)
-  // 해당 날짜 00:00 KST = UTC (y,m,d-1) 15:00
-  const kstMidnight = new Date(Date.UTC(y, m - 1, d - 1, 15, 0, 0, 0))
-  const dayOfWeek = kstMidnight.getUTCDay() // 0=Sun, 1=Mon, ...
+  const kstMidnight = kstMidnightUtcFromYmd(y, m, d)
+  const dayOfWeek = kstWeekdayFromYmd(y, m, d) // 0=Sun, 1=Mon, ...
   const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
   const mondayUTC = new Date(kstMidnight.getTime() - daysFromMonday * 86400000)
   const sundayUTC = new Date(mondayUTC.getTime() + 6 * 86400000)
@@ -161,8 +177,8 @@ export function getCurrentWeekRangeKST(): { monday: string; sunday: string } {
 export function getISOWeekStringKST(date: Date): string {
   const todayKST = getKoreaDate(date)
   const [y, m, d] = todayKST.split("-").map(Number)
-  const kstMidnight = new Date(Date.UTC(y, m - 1, d - 1, 15, 0, 0, 0))
-  const dayOfWeek = kstMidnight.getUTCDay()
+  const kstMidnight = kstMidnightUtcFromYmd(y, m, d)
+  const dayOfWeek = kstWeekdayFromYmd(y, m, d)
   const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
   const mondayUTC = new Date(kstMidnight.getTime() - daysFromMonday * 86400000)
   const thursdayUTC = new Date(mondayUTC.getTime() + 3 * 86400000)
@@ -180,7 +196,7 @@ const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"]
 export function getLastWeekRangeKST(): { monday: string; sunday: string } {
   const { monday } = getCurrentWeekRangeKST()
   const [y, m, d] = monday.split("-").map(Number)
-  const thisMondayUTC = new Date(Date.UTC(y, m - 1, d - 1, 15, 0, 0, 0))
+  const thisMondayUTC = kstMidnightUtcFromYmd(y, m, d)
   const lastMondayUTC = new Date(thisMondayUTC.getTime() - 7 * 86400000)
   const lastSundayUTC = new Date(lastMondayUTC.getTime() + 6 * 86400000)
   return {
@@ -195,7 +211,7 @@ export function getLastWeekRangeKST(): { monday: string; sunday: string } {
 export function getLastWeekISOStringKST(): string {
   const { monday } = getLastWeekRangeKST()
   const [y, m, d] = monday.split("-").map(Number)
-  const kstMidnight = new Date(Date.UTC(y, m - 1, d - 1, 15, 0, 0, 0))
+  const kstMidnight = kstMidnightUtcFromYmd(y, m, d)
   const thursdayUTC = new Date(kstMidnight.getTime() + 3 * 86400000)
   const year = thursdayUTC.getUTCFullYear()
   const week1Thursday = new Date(Date.UTC(year, 0, 1))
@@ -206,8 +222,7 @@ export function getLastWeekISOStringKST(): string {
 /** YYYY-MM-DD 문자열의 요일 인덱스 (0=일, 1=월, ...) - KST 기준 */
 export function getWeekdayIndexKST(ymd: string): number {
   const [y, m, d] = ymd.split("-").map(Number)
-  const utc = new Date(Date.UTC(y, m - 1, d - 1, 15, 0, 0, 0))
-  return utc.getUTCDay()
+  return kstWeekdayFromYmd(y, m, d)
 }
 
 export function getWeekdayLabelKST(ymd: string): string {
