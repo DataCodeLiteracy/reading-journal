@@ -31,10 +31,8 @@ import { ChecklistService } from "@/services/checklistService"
 import { ApiError } from "@/lib/apiClient"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
 import {
-  getKoreaDate,
   getLastWeekRangeKST,
   getLastWeekISOStringKST,
-  getWeekdayIndexKST,
   getWeekdayLabelKST,
 } from "@/utils/timeUtils"
 import { ReadingSessionService } from "@/services/readingSessionService"
@@ -51,6 +49,7 @@ export default function Home() {
   const {
     allBooks,
     userStatistics,
+    userDataInitialized,
   } = useData()
 
   const getTotalBooks = () => allBooks.length
@@ -115,13 +114,9 @@ export default function Home() {
     loadRecentReading()
   }, [isLoggedIn, userUid])
 
-  // KST 월요일에만 지난주 독서 요약 모달 표시. 확인 시 localStorage에 저장해 해당 주차는 재표시 안 함. 화~일에는 표시 안 함.
+  // 지난주 독서 요약: 해당 주차에 대해 확인(닫기)한 적 없으면 월~일 중 첫 접속 시 표시. 확인 시 localStorage에 저장해 재표시 안 함.
   useEffect(() => {
-    if (!userUid || userStatistics === undefined) return
-
-    const todayKST = getKoreaDate(new Date())
-    // 0=일 … 1=월 — 지난주 요약은 새 주 월요일에만 안내
-    if (getWeekdayIndexKST(todayKST) !== 1) return
+    if (!userUid || !userDataInitialized) return
 
     const lastWeekISO = getLastWeekISOStringKST()
     if (typeof window !== "undefined" && localStorage.getItem(WEEKLY_RECAP_STORAGE_KEY + lastWeekISO)) return
@@ -181,7 +176,7 @@ export default function Home() {
     }
 
     load()
-  }, [userUid, userStatistics, settings.weeklyReadingGoalHours, allBooks])
+  }, [userUid, userDataInitialized, userStatistics, settings.weeklyReadingGoalHours, allBooks])
 
   const handleCloseRecapModal = () => {
     const lastWeekISO = getLastWeekISOStringKST()
