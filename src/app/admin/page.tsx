@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { BookOpen, Home, ArrowLeft } from "lucide-react"
 import { adminService } from "@/services/adminService"
 import { useAuth } from "@/contexts/AuthContext"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function AdminPage() {
   const router = useRouter()
@@ -58,14 +59,7 @@ export default function AdminPage() {
 
   // 로딩 중이거나 권한이 없는 경우
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-theme-tertiary mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
 
   // 로그인하지 않았거나 관리자가 아닌 경우

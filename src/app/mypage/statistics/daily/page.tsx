@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Clock, Calendar, BarChart3, TrendingUp } from "lucide-react"
+import { ArrowLeft, Clock, Calendar } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { ReadingSession } from "@/types/user"
 import Pagination from "@/components/Pagination"
+import {
+  GenericRouteSkeleton,
+  StatisticsBodySkeleton,
+} from "@/components/skeletons"
 
 interface DailyReadingData {
   date: string
@@ -107,14 +111,7 @@ export default function DailyStatisticsPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BarChart3 className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
 
   if (!isLoggedIn) {
@@ -141,10 +138,10 @@ export default function DailyStatisticsPage() {
         </header>
 
         {isLoading ? (
-          <div className='text-center py-12'>
-            <BarChart3 className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-            <p className='text-theme-secondary'>데이터를 불러오는 중...</p>
-          </div>
+          <>
+            <span className="sr-only">데이터를 불러오는 중</span>
+            <StatisticsBodySkeleton />
+          </>
         ) : dailyData.length === 0 ? (
           <div className='text-center py-12'>
             <Calendar className='h-12 w-12 text-gray-400 mx-auto mb-4' />

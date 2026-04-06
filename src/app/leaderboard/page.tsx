@@ -18,6 +18,10 @@ import { LeaderboardService, LeaderboardUser } from "@/services/leaderboardServi
 import { useAuth } from "@/contexts/AuthContext"
 import Pagination from "@/components/Pagination"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
+import {
+  GenericRouteSkeleton,
+  LeaderboardBlockSkeleton,
+} from "@/components/skeletons"
 
 const formatTime = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600)
@@ -111,14 +115,7 @@ export default function LeaderboardPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center pb-20'>
-        <div className='text-center'>
-          <Trophy className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
 
   if (!isLoggedIn) {
@@ -183,10 +180,8 @@ export default function LeaderboardPage() {
         </div>
 
         {isLoading ? (
-          <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>
-            <div className='flex items-center justify-center py-12'>
-              <div className='animate-spin rounded-full h-8 w-8 border-2 border-accent-theme border-t-transparent' />
-            </div>
+          <div className="rounded-lg border-card bg-theme-secondary p-4 shadow-sm">
+            <LeaderboardBlockSkeleton rows={10} />
           </div>
         ) : rankedUsers.length === 0 ? (
           <div className='bg-theme-secondary rounded-lg shadow-sm border-card p-4'>

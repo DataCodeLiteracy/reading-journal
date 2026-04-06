@@ -27,6 +27,7 @@ import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
+import { ExploreListSkeleton, GenericRouteSkeleton } from "@/components/skeletons"
 
 type GroupedBook = {
   title: string
@@ -56,11 +57,7 @@ const SORT_OPTIONS = [
 export default function ExplorePage() {
   return (
     <Suspense
-      fallback={
-        <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-          <p className='text-theme-secondary'>불러오는 중...</p>
-        </div>
-      }
+      fallback={<GenericRouteSkeleton rows={5} />}
     >
       <ExplorePageContent />
     </Suspense>
@@ -529,9 +526,7 @@ function ExplorePageContent() {
         </div>
 
         {isLoading ? (
-          <div className='py-12 text-center text-theme-secondary'>
-            불러오는 중...
-          </div>
+          <ExploreListSkeleton count={6} />
         ) : paginated.length === 0 ? (
           <div className='py-12 text-center text-theme-secondary'>
             조건에 맞는 책이 없습니다.

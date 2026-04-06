@@ -12,6 +12,7 @@ import { LikeService } from "@/services/likeService"
 import CommentSection from "@/components/CommentSection"
 import ConfirmModal from "@/components/ConfirmModal"
 import { ApiError } from "@/lib/apiClient"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function CritiqueDetailPage({
   params,
@@ -106,14 +107,7 @@ export default function CritiqueDetailPage({
   }
 
   if (isLoading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={5} />
   }
 
   if (error || !book || !critique) {

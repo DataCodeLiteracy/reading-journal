@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Moon, Sun, Type, Palette, Save, Check, Target } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 import { useData } from "@/contexts/DataContext"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 
@@ -58,14 +59,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={5} />
   }
 
   if (!isLoggedIn) {

@@ -19,6 +19,7 @@ import { UserStatisticsService } from "@/services/userStatisticsService"
 import { BookService } from "@/services/bookService"
 import { User as UserType, UserStatistics } from "@/types/user"
 import { Book } from "@/types/book"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function UserProfilePage({
   params,
@@ -91,14 +92,7 @@ export default function UserProfilePage({
   }
 
   if (isLoading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center pb-20'>
-        <div className='text-center'>
-          <User className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={5} />
   }
 
   if (error || !profileUser) {

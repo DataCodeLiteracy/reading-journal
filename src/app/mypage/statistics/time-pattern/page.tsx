@@ -18,6 +18,10 @@ import {
   TimePatternService,
   TimePatternAnalysis,
 } from "@/services/timePatternService"
+import {
+  GenericRouteSkeleton,
+  StatisticsBodySkeleton,
+} from "@/components/skeletons"
 
 export default function TimePatternPage() {
   const router = useRouter()
@@ -35,7 +39,7 @@ export default function TimePatternPage() {
 
   useEffect(() => {
     if (allReadingSessions.length > 0 || timePatterns) {
-      // 로딩 스피너가 충분히 돌도록 최소 1.5초 대기
+      // 스켈레톤이 충분히 보이도록 최소 1.5초 대기
       const timer = setTimeout(() => {
         setIsLoading(false)
         // 컨텐츠가 부드럽게 나타나도록 약간의 지연
@@ -66,14 +70,7 @@ export default function TimePatternPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BarChart3 className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
 
   if (!isLoggedIn) {
@@ -102,10 +99,10 @@ export default function TimePatternPage() {
         </header>
 
         {isLoading ? (
-          <div className='text-center py-12'>
-            <BarChart3 className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-            <p className='text-theme-secondary'>패턴을 분석하는 중...</p>
-          </div>
+          <>
+            <span className="sr-only">패턴을 분석하는 중</span>
+            <StatisticsBodySkeleton />
+          </>
         ) : !hasData ? (
           <div className='text-center py-12'>
             <BarChart3 className='h-12 w-12 text-gray-400 mx-auto mb-4' />

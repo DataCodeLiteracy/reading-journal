@@ -25,6 +25,7 @@ import QuestionEditModal from "@/components/QuestionEditModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
 import { ApiError } from "@/lib/apiClient"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function QuestionsPage({
   params,
@@ -274,14 +275,7 @@ export default function QuestionsPage({
   }
 
   if (isLoading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <HelpCircle className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={5} />
   }
 
   if (error && !book) {

@@ -14,6 +14,7 @@ import { GoldenBellService } from "@/services/goldenBellService"
 import { GoldenBellResult, GoldenBellQuiz } from "@/types/goldenBell"
 import { useAuth } from "@/contexts/AuthContext"
 import BottomNavigation from "@/components/BottomNavigation"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function GoldenBellResultDetailPage({
   params,
@@ -90,12 +91,10 @@ export default function GoldenBellResultDetailPage({
 
   if (authLoading || isLoading) {
     return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='text-4xl mb-4'>🔔</div>
-          <p className='text-theme-secondary'>불러오는 중...</p>
-        </div>
-      </div>
+      <>
+        <span className="sr-only">불러오는 중</span>
+        <GenericRouteSkeleton rows={4} />
+      </>
     )
   }
 

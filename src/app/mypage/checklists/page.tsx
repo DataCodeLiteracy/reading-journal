@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { UserChecklist } from "@/types/user"
 import ChecklistModal from "@/components/ChecklistModal"
 import { ChecklistService } from "@/services/checklistService"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function ChecklistsPage() {
   const router = useRouter()
@@ -89,14 +90,7 @@ export default function ChecklistsPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <ClipboardList className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={5} />
   }
 
   if (!isLoggedIn) {

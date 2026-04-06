@@ -1,8 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, BookOpen } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
+import FormModalFrame from "@/components/FormModalFrame"
+import { FormNativePickerInput } from "@/components/FormNativePickerInput"
+import Select, { type SelectOption } from "@/components/Select"
 
 interface EditBookModalProps {
   isOpen: boolean
@@ -57,114 +60,100 @@ export default function EditBookModal({
     onClose()
   }
 
-  if (!isOpen) return null
+  const levelOptions: SelectOption<BookLevel | "">[] = [
+    { value: "", label: "선택 안 함" },
+    ...BOOK_LEVELS.map((l) => ({ value: l, label: l })),
+  ]
+  const categoryOptions: SelectOption<BookField | "">[] = [
+    { value: "", label: "선택 안 함" },
+    ...BOOK_FIELDS.map((f) => ({ value: f, label: f })),
+  ]
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
-      <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto shadow-lg'>
-        <div className='flex items-center justify-between mb-4'>
-          <h2 className='text-lg font-semibold text-theme-primary'>
-            책 정보 편집
-          </h2>
-          <button
-            onClick={onClose}
-            className='p-1 rounded-full hover:bg-theme-tertiary transition-colors'
-          >
-            <X className='h-5 w-5 text-theme-secondary' />
-          </button>
+    <FormModalFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      title="책 정보 편집"
+      headerStart={
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-theme-tertiary">
+          <BookOpen className="h-5 w-5 accent-theme-primary" aria-hidden />
         </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+      }
+    >
+      <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               책 제목 *
             </label>
             <input
-              type='text'
+              type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary'
-              placeholder='책 제목을 입력하세요'
+              className="form-control"
+              placeholder="책 제목을 입력하세요"
               required
             />
           </div>
 
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               저자 (선택사항)
             </label>
             <input
-              type='text'
+              type="text"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
-              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary'
-              placeholder='저자를 입력하세요'
+              className="form-control"
+              placeholder="저자를 입력하세요"
             />
           </div>
 
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               출판일 (선택사항)
             </label>
-            <input
-              type='date'
+            <FormNativePickerInput
+              picker="date"
               value={publishedDate}
               onChange={(e) => setPublishedDate(e.target.value)}
-              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary cursor-pointer'
-              style={{
-                WebkitAppearance: "none",
-                MozAppearance: "none",
-              }}
             />
           </div>
 
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               레벨 (대상 연령/학년, 선택사항)
             </label>
-            <select
+            <Select<BookLevel | "">
               value={level}
-              onChange={(e) => setLevel(e.target.value as BookLevel | "")}
-              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
-            >
-              <option value=''>선택 안 함</option>
-              {BOOK_LEVELS.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
+              onChange={setLevel}
+              options={levelOptions}
+              variant="form-modal"
+            />
           </div>
 
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               분야 (선택사항)
             </label>
-            <select
+            <Select<BookField | "">
               value={category}
-              onChange={(e) => setCategory(e.target.value as BookField | "")}
-              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
-            >
-              <option value=''>선택 안 함</option>
-              {BOOK_FIELDS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
+              onChange={setCategory}
+              options={categoryOptions}
+              variant="form-modal"
+            />
           </div>
 
-          <div className='mb-6'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               평점
             </label>
-            <div className='flex gap-1'>
+            <div className="flex gap-1 pt-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
-                  type='button'
+                  type="button"
                   onClick={() => setRating(star)}
-                  className='p-1'
+                  className="p-1"
                 >
                   <BookOpen
                     className={`h-6 w-6 ${
@@ -176,27 +165,26 @@ export default function EditBookModal({
                 </button>
               ))}
             </div>
-            <p className='text-xs text-theme-tertiary mt-1'>{rating}점</p>
+            <p className="mt-1 text-xs text-theme-tertiary">{rating}점</p>
           </div>
 
-          <div className='flex gap-3'>
+          <div className="mt-4 flex justify-end gap-2 sm:mt-6">
             <button
-              type='button'
+              type="button"
               onClick={onClose}
-              className='flex-1 px-4 py-2 border border-theme-tertiary text-theme-primary rounded-md hover:bg-theme-tertiary transition-colors'
+              className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-tertiary"
             >
               취소
             </button>
             <button
-              type='submit'
+              type="submit"
               disabled={!title.trim()}
-              className='flex-1 px-4 py-2 bg-accent-theme text-white rounded-md hover:bg-accent-theme-secondary disabled:bg-theme-tertiary disabled:cursor-not-allowed transition-colors'
+              className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50"
             >
               저장하기
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </FormModalFrame>
   )
 }

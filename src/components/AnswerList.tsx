@@ -5,6 +5,7 @@ import { MessageSquare, Trash2, Edit, Play, Pause, Volume2, Calendar } from "luc
 import { QuestionAnswer } from "@/types/question"
 import { AnswerService } from "@/services/answerService"
 import ConfirmModal from "./ConfirmModal"
+import { AnswerThreadSkeleton } from "@/components/skeletons"
 
 interface AnswerListProps {
   questionId: string
@@ -142,10 +143,10 @@ export default function AnswerList({
 
   if (isLoading) {
     return (
-      <div className='text-center py-8'>
-        <div className='animate-spin rounded-full h-8 w-8 border-2 border-accent-theme border-t-transparent mx-auto mb-2' />
-        <p className='text-sm text-theme-secondary'>답변을 불러오는 중...</p>
-      </div>
+      <>
+        <span className="sr-only">답변을 불러오는 중</span>
+        <AnswerThreadSkeleton rows={3} />
+      </>
     )
   }
 

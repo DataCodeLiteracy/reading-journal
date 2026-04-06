@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { BookService } from "@/services/bookService"
 import { UserService } from "@/services/userService"
 import { Book } from "@/types/book"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 function parseCSVLine(line: string): string[] {
   const out: string[] = []
@@ -200,11 +201,7 @@ export default function AdminBookRegisterPage() {
   }
 
   if (loading || !isLoggedIn) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <p className='text-theme-secondary'>로딩 중...</p>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
   if (!userData?.isAdmin) {
     router.push("/mypage")

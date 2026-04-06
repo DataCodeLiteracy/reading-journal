@@ -2,8 +2,9 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, PenSquare, Star, HelpCircle } from "lucide-react"
+import { PenSquare, Star, HelpCircle } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { RecordHubSkeleton } from "@/components/skeletons"
 
 export default function RecordPage() {
   const router = useRouter()
@@ -16,14 +17,7 @@ export default function RecordPage() {
   }, [isLoggedIn, loading, router])
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center pb-20'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <RecordHubSkeleton />
   }
 
   if (!isLoggedIn) {

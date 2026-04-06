@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Edit, HelpCircle, Lock, Globe } from "lucide-react"
+import { Edit, Lock, Globe } from "lucide-react"
 import { BookQuestion, QuestionType, Difficulty } from "@/types/question"
+import FormModalFrame from "@/components/FormModalFrame"
+import Select, { type SelectOption } from "@/components/Select"
 
 interface QuestionEditModalProps {
   isOpen: boolean
@@ -96,49 +98,49 @@ export default function QuestionEditModal({
     }
   }
 
-  if (!isOpen) return null
+  const questionTypeOptions: SelectOption<QuestionType>[] = [
+    { value: "general", label: "일반" },
+    { value: "comprehension", label: "사실 파악" },
+    { value: "analysis", label: "인과·비교" },
+    { value: "synthesis", label: "주제·메시지" },
+    { value: "application", label: "실생활 적용" },
+  ]
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
-      <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto shadow-lg'>
-        <div className='flex items-center gap-3 mb-4'>
-          <div className='p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full'>
-            <Edit className='h-5 w-5 text-blue-500' />
-          </div>
-          <h2 className='text-lg font-semibold text-theme-primary flex-1'>
-            질문 수정
-          </h2>
-          <button
-            onClick={onClose}
-            className='p-1 rounded-full hover:bg-theme-tertiary transition-colors'
-          >
-            <X className='h-5 w-5 text-theme-secondary' />
-          </button>
+    <FormModalFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      title="질문 수정"
+      size="wide"
+      headerStart={
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+          <Edit className="h-5 w-5 text-blue-500" aria-hidden />
         </div>
-
+      }
+    >
         {error && (
-          <div className='mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
-            <p className='text-sm text-red-700 dark:text-red-400'>{error}</p>
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+        <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               질문 텍스트 *
             </label>
             <textarea
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
-              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary resize-none'
-              placeholder='질문을 입력하세요'
+              className="form-control form-control-textarea resize-none"
+              placeholder="질문을 입력하세요"
               rows={4}
               required
             />
           </div>
 
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               목차 경로 * (최대 5단계, 없으면 '전체' 입력)
             </label>
             <div className='space-y-2'>
@@ -148,10 +150,10 @@ export default function QuestionEditModal({
                     {index + 1}단계
                   </span>
                   <input
-                    type='text'
+                    type="text"
                     value={path}
                     onChange={(e) => handleChapterPathChange(index, e.target.value)}
-                    className='flex-1 px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary placeholder:text-theme-tertiary'
+                    className="form-control min-w-0 flex-1"
                     placeholder={
                       index === 0
                         ? "예: 5부 또는 전체"
@@ -175,26 +177,20 @@ export default function QuestionEditModal({
             </p>
           </div>
 
-          <div className='mb-4'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               질문 유형 *
             </label>
-            <select
+            <Select<QuestionType>
               value={questionType}
-              onChange={(e) => setQuestionType(e.target.value as QuestionType)}
-              className='w-full px-3 py-2 border border-theme-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-theme bg-theme-primary text-theme-primary'
-              required
-            >
-              <option value='general'>일반</option>
-              <option value='comprehension'>사실 파악</option>
-              <option value='analysis'>인과·비교</option>
-              <option value='synthesis'>주제·메시지</option>
-              <option value='application'>실생활 적용</option>
-            </select>
+              onChange={setQuestionType}
+              options={questionTypeOptions}
+              variant="form-modal"
+            />
           </div>
 
-          <div className='mb-6'>
-            <label className='block text-sm font-medium text-theme-primary mb-2'>
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               난이도 *
             </label>
             <div className='flex gap-3'>
@@ -220,8 +216,8 @@ export default function QuestionEditModal({
           </div>
 
           {/* 공개 설정 */}
-          <div className='mb-6'>
-            <div className='flex items-center justify-between p-3 bg-theme-tertiary rounded-lg'>
+          <div>
+            <div className="flex items-center justify-between rounded-lg bg-theme-tertiary p-3">
               <div className='flex items-center gap-2'>
                 {isPublic ? (
                   <Globe className='h-5 w-5 text-blue-500' />
@@ -255,35 +251,34 @@ export default function QuestionEditModal({
             </div>
           </div>
 
-          <div className='flex gap-3'>
+          <div className="mt-4 flex justify-end gap-2 sm:mt-6">
             <button
-              type='button'
+              type="button"
               onClick={onClose}
-              className='flex-1 px-4 py-2 border border-theme-tertiary text-theme-primary rounded-md hover:bg-theme-tertiary transition-colors'
+              className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-tertiary"
             >
               취소
             </button>
             <button
-              type='submit'
+              type="submit"
               disabled={isSaving || !questionText.trim()}
-              className='flex-1 px-4 py-2 bg-accent-theme text-white rounded-md hover:bg-accent-theme-secondary disabled:bg-theme-tertiary disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2'
+              className="flex items-center justify-center gap-2 rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSaving ? (
                 <>
-                  <div className='animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent' />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   저장 중...
                 </>
               ) : (
                 <>
-                  <Edit className='h-4 w-4' />
+                  <Edit className="h-4 w-4" />
                   수정하기
                 </>
               )}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </FormModalFrame>
   )
 }
 

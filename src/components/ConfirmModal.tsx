@@ -1,6 +1,6 @@
 "use client"
 
-import { LucideIcon } from "lucide-react"
+import { LucideIcon, X } from "lucide-react"
 
 interface ConfirmModalProps {
   isOpen: boolean
@@ -37,39 +37,60 @@ export default function ConfirmModal({
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
-      <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-md mx-4 shadow-lg'>
-        <div className='flex items-center gap-3 mb-4'>
-          <div className={`p-2 ${iconBgColor} rounded-full`}>
-            <Icon className={`h-6 w-6 ${iconColor}`} />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+      <div
+        className="absolute inset-0 bg-black/30"
+        aria-hidden
+        onClick={onClose}
+      />
+      <div className="modal-form-shell relative z-10 min-w-0 rounded-xl border-card bg-theme-primary p-6 pt-5 shadow-xl">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-md p-1 text-theme-secondary transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
+          aria-label="닫기"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="pr-8">
+          <div className="flex items-start gap-3">
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBgColor}`}
+            >
+              <Icon className={`h-6 w-6 ${iconColor}`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg font-semibold leading-snug text-theme-primary">
+                {title}
+              </h3>
+              {showSubtitle && (
+                <p className="mt-0.5 text-sm text-theme-secondary">
+                  이 작업은 되돌릴 수 없습니다.
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <h3 className='text-lg font-semibold text-theme-primary'>
-              {title}
-            </h3>
-            {showSubtitle && (
-              <p className='text-sm text-theme-secondary'>
-                이 작업은 되돌릴 수 없습니다.
-              </p>
-            )}
-          </div>
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-theme-secondary">
+            {message}
+          </p>
         </div>
 
-        <p className='text-theme-primary mb-6'>{message}</p>
-
-        <div className='flex gap-3'>
+        <div className="mt-6 flex justify-end gap-2">
           <button
+            type="button"
             onClick={onClose}
-            className='flex-1 px-4 py-2 border border-theme-tertiary text-theme-primary rounded-md hover:bg-theme-tertiary transition-colors'
+            className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-tertiary"
           >
             {cancelText}
           </button>
           <button
+            type="button"
             onClick={() => {
               onClose()
               onConfirm()
             }}
-            className={`flex-1 px-4 py-2 ${confirmButtonColor} text-white rounded-md ${confirmButtonHoverColor} transition-colors`}
+            className={`rounded-md px-4 py-2 text-sm font-medium text-white transition-colors ${confirmButtonColor} ${confirmButtonHoverColor}`}
           >
             {confirmText}
           </button>

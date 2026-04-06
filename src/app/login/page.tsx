@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { BookOpen, LogIn, LogOut, User as UserIcon } from "lucide-react"
 import { User } from "@/types/user"
 import { UserService } from "@/services/userService"
+import { LoginAuthSkeleton } from "@/components/skeletons"
 
 export default function LoginPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
@@ -75,14 +76,7 @@ export default function LoginPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <LoginAuthSkeleton />
   }
 
   return (

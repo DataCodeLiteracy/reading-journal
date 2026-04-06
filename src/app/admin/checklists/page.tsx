@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { ChecklistService } from "@/services/checklistService"
 import { SystemChecklist } from "@/types/user"
 import JsonPreviewModal from "@/components/JsonPreviewModal"
+import { GenericRouteSkeleton, SkeletonBookRow } from "@/components/skeletons"
 
 export default function ChecklistsPage() {
   const router = useRouter()
@@ -218,11 +219,7 @@ export default function ChecklistsPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-background flex items-center justify-center'>
-        <div className='text-theme-primary'>로딩 중...</div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
 
   if (!isLoggedIn || !userData?.isAdmin) {
@@ -340,8 +337,15 @@ export default function ChecklistsPage() {
           </h2>
 
           {isLoading ? (
-            <div className='text-center py-8 text-theme-secondary'>
-              로딩 중...
+            <div
+              className="space-y-3 py-2"
+              aria-busy="true"
+              aria-label="불러오는 중"
+            >
+              <span className="sr-only">체크리스트 목록을 불러오는 중</span>
+              {[0, 1, 2, 3].map((i) => (
+                <SkeletonBookRow key={i} />
+              ))}
             </div>
           ) : checklists.length === 0 ? (
             <div className='text-center py-8 text-theme-secondary'>

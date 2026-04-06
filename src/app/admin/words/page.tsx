@@ -20,6 +20,7 @@ import { adminService } from "@/services/adminService"
 import { WordAnalysis } from "@/types/admin"
 import { useAuth } from "@/contexts/AuthContext"
 import * as XLSX from "xlsx"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function WordsPage() {
   const router = useRouter()
@@ -391,14 +392,7 @@ export default function WordsPage() {
 
   // 로딩 중이거나 권한이 없는 경우
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookMarked className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
 
   // 로그인하지 않았거나 관리자가 아닌 경우
@@ -408,12 +402,10 @@ export default function WordsPage() {
 
   if (isLoading) {
     return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookMarked className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>단어 데이터를 불러오는 중...</p>
-        </div>
-      </div>
+      <>
+        <span className="sr-only">단어 데이터를 불러오는 중</span>
+        <GenericRouteSkeleton rows={6} />
+      </>
     )
   }
 

@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { BookService } from "@/services/bookService"
 import { CritiqueService } from "@/services/critiqueService"
 import { ApiError } from "@/lib/apiClient"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function NewCritiquePage({
   params,
@@ -91,14 +92,7 @@ export default function NewCritiquePage({
   }
 
   if (isLoading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={5} />
   }
 
   if ((error && !book) || !book) {

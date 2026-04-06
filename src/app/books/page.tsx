@@ -22,18 +22,12 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
+import { GenericRouteSkeleton, SkLine } from "@/components/skeletons"
 
 export default function BooksPage() {
   return (
     <Suspense
-      fallback={
-        <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-          <div className='text-center'>
-            <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-            <p className='text-theme-secondary'>로딩 중...</p>
-          </div>
-        </div>
-      }
+      fallback={<GenericRouteSkeleton rows={6} />}
     >
       <BooksPageContent />
     </Suspense>
@@ -299,14 +293,7 @@ function BooksPageContent() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={6} />
   }
 
   if (!isLoggedIn) {
@@ -655,10 +642,18 @@ function BooksPageContent() {
         icon={Trash2}
       />
 
-      {/* 로딩 Backdrop */}
       {isNavigating && (
-        <div className='fixed inset-0 bg-black/60 dark:bg-black/75 flex items-center justify-center z-50'>
-          <div className='animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent' />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          aria-busy="true"
+          aria-label="페이지 이동 중"
+        >
+          <span className="sr-only">페이지 이동 중</span>
+          <div className="w-[min(100%-2rem,20rem)] space-y-3 rounded-xl border border-white/10 bg-theme-secondary/95 p-6 shadow-xl dark:bg-theme-primary/95">
+            <SkLine className="h-4 w-3/4" />
+            <SkLine className="h-4 w-full" />
+            <SkLine className="h-4 w-5/6" />
+          </div>
         </div>
       )}
     </div>

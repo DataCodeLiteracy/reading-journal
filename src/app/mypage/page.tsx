@@ -30,6 +30,7 @@ import ConfirmModal from "@/components/ConfirmModal"
 import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
 import { UserStatisticsService } from "@/services/userStatisticsService"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 
 export default function MyPage() {
   const router = useRouter()
@@ -137,14 +138,7 @@ export default function MyPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <User className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={6} />
   }
 
   if (!isLoggedIn) {

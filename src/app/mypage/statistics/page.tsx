@@ -17,6 +17,10 @@ import { useData } from "@/contexts/DataContext"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { UserStatistics } from "@/types/user"
 import { ReadingPatternCharts } from "@/components/ReadingPatternCharts"
+import {
+  GenericRouteSkeleton,
+  StatisticsBodySkeleton,
+} from "@/components/skeletons"
 
 export default function StatisticsPage() {
   const router = useRouter()
@@ -55,14 +59,7 @@ export default function StatisticsPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BarChart3 className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={4} />
   }
 
   if (!isLoggedIn) {
@@ -100,10 +97,10 @@ export default function StatisticsPage() {
         </header>
 
         {isLoading ? (
-          <div className='text-center py-12'>
-            <BarChart3 className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-            <p className='text-theme-secondary'>통계를 불러오는 중...</p>
-          </div>
+          <>
+            <span className="sr-only">통계를 불러오는 중</span>
+            <StatisticsBodySkeleton />
+          </>
         ) : userStatistics ? (
           <div className='space-y-6'>
             {/* 주요 통계 */}

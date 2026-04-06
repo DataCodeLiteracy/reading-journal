@@ -16,6 +16,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import { GoldenBellRequestService } from "@/services/goldenBellRequestService"
 import { UserService } from "@/services/userService"
 import { GoldenBellRequest } from "@/types/goldenBell"
+import { SkeletonBookRow } from "@/components/skeletons"
+import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 
 type UserOption = { uid: string; displayName: string | null; email: string | null }
 
@@ -205,17 +207,21 @@ export default function GoldenBellRequestsPage() {
             <div className='relative'>
               <label className='block text-xs text-theme-tertiary mb-1'>기간 (요청일)</label>
               <div className='flex gap-2'>
-                <input
-                  type='date'
+                <FormNativePickerInput
+                  picker='date'
+                  bare
+                  wrapperClassName='min-w-0 flex-1'
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className='flex-1 min-w-0 rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme focus:z-20'
+                  className='min-h-[2.5rem] w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:z-20 focus:outline-none focus:ring-2 focus:ring-accent-theme'
                 />
-                <input
-                  type='date'
+                <FormNativePickerInput
+                  picker='date'
+                  bare
+                  wrapperClassName='min-w-0 flex-1'
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className='flex-1 min-w-0 rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme focus:z-20'
+                  className='min-h-[2.5rem] w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:z-20 focus:outline-none focus:ring-2 focus:ring-accent-theme'
                 />
               </div>
             </div>
@@ -262,8 +268,15 @@ export default function GoldenBellRequestsPage() {
         </div>
 
         {isLoading ? (
-          <div className='bg-theme-secondary rounded-lg p-8 text-center text-theme-secondary'>
-            불러오는 중...
+          <div
+            className="space-y-3 rounded-lg bg-theme-secondary p-4 shadow-sm"
+            aria-busy="true"
+            aria-label="불러오는 중"
+          >
+            <span className="sr-only">요청 목록을 불러오는 중</span>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <SkeletonBookRow key={i} />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className='bg-theme-secondary rounded-lg p-8 text-center text-theme-secondary'>

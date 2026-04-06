@@ -19,6 +19,7 @@ import QuoteJsonUploadModal from "@/components/QuoteJsonUploadModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
 import { ApiError } from "@/lib/apiClient"
+import { GenericRouteSkeleton } from "@/components/skeletons"
 import { Trash2 } from "lucide-react"
 
 const ITEMS_PER_PAGE = 10
@@ -183,14 +184,7 @@ export default function BookQuotesPage({
   }, [currentPage, totalPages])
 
   if (isLoading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <PenSquare className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <GenericRouteSkeleton rows={5} />
   }
 
   if (error && !book) {

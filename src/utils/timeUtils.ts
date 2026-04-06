@@ -239,3 +239,23 @@ export const getKoreaDateFromISO = (isoString: string): string => {
   const date = new Date(isoString)
   return getKoreaDate(date)
 }
+
+/**
+ * KST 달력 날짜(YYYY-MM-DD) + 24시각(HH:mm) → UTC Date.
+ * 독서 세션 모달과 동일: Date.UTC(y,m,d,h,min) − 9시간.
+ */
+export function koreaYmdAndTimeToUtcDate(ymd: string, hhmm: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number)
+  const parts = hhmm.trim().split(":")
+  const h = parseInt(parts[0] ?? "0", 10)
+  const min = parseInt(parts[1] ?? "0", 10)
+  const koreaMs = Date.UTC(y, m - 1, d, h, min, 0, 0)
+  return new Date(koreaMs - 9 * 60 * 60 * 1000)
+}
+
+/** UTC 순간에 해당하는 KST 시각을 HTML time input 값(HH:mm)으로 */
+export function utcInstantToKoreaHHmm(isoOrDate: string | Date): string {
+  const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate
+  const k = new Date(d.getTime() + 9 * 60 * 60 * 1000)
+  return `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`
+}

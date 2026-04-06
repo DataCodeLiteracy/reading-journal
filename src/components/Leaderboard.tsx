@@ -5,6 +5,7 @@ import { Trophy, Medal, Award, Clock, TrendingUp, User, ChevronRight } from "luc
 import { LeaderboardService, LeaderboardUser } from "@/services/leaderboardService"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
+import { LeaderboardBlockSkeleton } from "@/components/skeletons"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
 
 interface LeaderboardProps {
@@ -94,10 +95,8 @@ export default function Leaderboard({
 
   if (isLoading) {
     return (
-      <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
-        <div className='flex items-center justify-center py-8'>
-          <div className='animate-spin rounded-full h-8 w-8 border-2 border-accent-theme border-t-transparent' />
-        </div>
+      <div className="rounded-lg bg-theme-secondary p-4 shadow-sm">
+        <LeaderboardBlockSkeleton rows={5} />
       </div>
     )
   }

@@ -67,6 +67,7 @@ import { GoldenBellRequestService } from "@/services/goldenBellRequestService"
 import { GoldenBellService } from "@/services/goldenBellService"
 import { GoldenBellQuizSummary, GoldenBellResult } from "@/types/goldenBell"
 import GoldenBellUploadModal from "@/components/GoldenBellUploadModal"
+import { BookDetailRouteSkeleton } from "@/components/skeletons"
 
 export default function BookDetailPage({
   params,
@@ -942,14 +943,7 @@ export default function BookDetailPage({
   const isOnHold = book?.status === "on-hold"
 
   if (isLoading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <BookDetailRouteSkeleton />
   }
 
   if (error && !book) {

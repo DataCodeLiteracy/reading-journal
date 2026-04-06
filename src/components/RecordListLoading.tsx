@@ -1,14 +1,20 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
+import {
+  SkLine,
+  SkeletonBookRow,
+  SkeletonPageHeader,
+} from "@/components/skeletons"
 
 interface RecordListLoadingProps {
   message?: string
-  /** 페이지 타입에 맞는 메시지 사용 시 전달 */
   variant?: "auth" | "quotes" | "questions" | "reviews" | "critiques"
 }
 
-const variantMessages: Record<NonNullable<RecordListLoadingProps["variant"]>, string> = {
+const variantMessages: Record<
+  NonNullable<RecordListLoadingProps["variant"]>,
+  string
+> = {
   auth: "로딩 중",
   quotes: "구절 기록을 불러오는 중",
   questions: "독서 질문을 불러오는 중",
@@ -16,6 +22,9 @@ const variantMessages: Record<NonNullable<RecordListLoadingProps["variant"]>, st
   critiques: "서평을 불러오는 중",
 }
 
+/**
+ * 기록 서브페이지·인증 대기: 전체 화면 스켈레톤 (스피너 대신 focus-level 스타일 쉬머)
+ */
 export default function RecordListLoading({
   message,
   variant = "auth",
@@ -24,33 +33,24 @@ export default function RecordListLoading({
 
   return (
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center p-4'
-      aria-live='polite'
-      aria-busy='true'
+      className="fixed inset-0 z-[90] cursor-wait overflow-y-auto bg-theme-gradient pb-24 select-none [&_*]:cursor-wait"
+      aria-busy="true"
+      aria-live="polite"
     >
-      {/* 백드롭 */}
-      <div
-        className='absolute inset-0 animate-record-loading-in'
-        style={{ backgroundColor: "var(--backdrop-color)" }}
-      />
-
-      {/* 로딩 카드 */}
-      <div className='relative flex flex-col items-center gap-4 rounded-2xl bg-theme-primary px-8 py-8 shadow-lg border border-card animate-record-loading-card-in'>
-        <div className='flex h-14 w-14 items-center justify-center'>
-          <Loader2
-            className='h-10 w-10 text-accent-theme animate-spin'
-            strokeWidth={2}
-            aria-hidden
-          />
+      <span className="sr-only">{displayMessage}</span>
+      <div className="container mx-auto px-4 py-6">
+        <SkeletonPageHeader />
+        <div className="mt-2">
+          <div className="flex gap-2 rounded-lg border-card bg-theme-secondary p-2">
+            <SkLine className="h-9 min-w-0 flex-1" />
+            <SkLine className="h-9 w-24 shrink-0" />
+          </div>
         </div>
-        <p className='text-theme-primary font-medium text-center max-w-[260px]'>
-          {displayMessage}
-          <span className='inline-flex gap-0.5 ml-0.5'>
-            <span className='animate-bounce' style={{ animationDelay: "0ms", animationDuration: "1s" }}>.</span>
-            <span className='animate-bounce' style={{ animationDelay: "150ms", animationDuration: "1s" }}>.</span>
-            <span className='animate-bounce' style={{ animationDelay: "300ms", animationDuration: "1s" }}>.</span>
-          </span>
-        </p>
+        <div className="mt-6 space-y-3">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <SkeletonBookRow key={i} />
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -213,6 +213,188 @@ body {
   border: 1px solid color-mix(in srgb, var(--border-primary) 65%, transparent);
 }
 
+/**
+ * 폼 모달 패널 (focus-level 정렬): 모바일 뷰포트 비율, 기본 최대 500px.
+ */
+.modal-form-shell {
+  box-sizing: border-box;
+  width: min(94vw, 500px);
+  max-width: 500px;
+}
+
+.modal-form-shell-wide {
+  box-sizing: border-box;
+  width: min(94vw, 42rem);
+  max-width: 42rem;
+}
+
+/* 네이티브 date/time: 좁은 모달에서 intrinsic min-width 넘침 방지 */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit {
+  min-width: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  min-width: 0;
+}
+
+/**
+ * 모달 폼 필드: 텍스트·숫자·date/time 높이 통일 (focus-level).
+ */
+.form-modal-fieldset input[type="date"],
+.form-modal-fieldset input[type="time"],
+.form-modal-fieldset input[type="datetime-local"],
+.form-modal-fieldset input[type="text"],
+.form-modal-fieldset input[type="number"],
+.form-modal-fieldset input[type="tel"],
+.form-modal-fieldset input[type="email"],
+.form-modal-fieldset input[type="url"] {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  line-height: 2.5rem;
+}
+
+.form-modal-fieldset input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.form-modal-fieldset input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.form-modal-fieldset input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+  min-width: 0;
+}
+
+.form-modal-fieldset input[type="date"]::-webkit-calendar-picker-indicator,
+.form-modal-fieldset input[type="time"]::-webkit-calendar-picker-indicator {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/**
+ * 네이티브 date/time: 필드 전체 클릭 시 피커 열림 (WebKit).
+ * 시각적 아이콘은 Lucide 오버레이(.form-native-picker-field) 사용.
+ */
+.form-native-picker-field input[type="date"],
+.form-native-picker-field input[type="time"] {
+  position: relative;
+}
+
+.form-native-picker-field input[type="date"]::-webkit-calendar-picker-indicator,
+.form-native-picker-field input[type="time"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+@media (max-width: 767px) {
+  .form-modal-fieldset input[type="date"],
+  .form-modal-fieldset input[type="time"],
+  .form-modal-fieldset input[type="datetime-local"],
+  .form-modal-fieldset input[type="text"],
+  .form-modal-fieldset input[type="number"],
+  .form-modal-fieldset input[type="tel"],
+  .form-modal-fieldset input[type="email"],
+  .form-modal-fieldset input[type="url"] {
+    height: auto !important;
+    min-height: 2.75rem !important;
+    line-height: 1.35 !important;
+    padding-top: 0.5625rem !important;
+    padding-bottom: 0.5625rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .form-modal-fieldset input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  .form-modal-fieldset input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  .form-modal-fieldset input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  .form-modal-fieldset input[type="date"]::-webkit-datetime-edit,
+  .form-modal-fieldset input[type="time"]::-webkit-datetime-edit,
+  .form-modal-fieldset input[type="datetime-local"]::-webkit-datetime-edit {
+    padding: 0 !important;
+    min-width: 0 !important;
+  }
+}
+
+/* 모달 공통: 테마 입력·텍스트영역 */
+.form-control {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-secondary);
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem !important;
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.form-control::placeholder {
+  color: var(--text-tertiary);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 28%, transparent);
+}
+
+.form-control-textarea {
+  min-height: 5rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* Mobile Safari: 포커스 시 자동 줌 방지 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
 /* Fade-in animation for content loading */
 @keyframes fadeIn {
   from {
@@ -258,6 +440,97 @@ body {
   animation: recordLoadingCardIn 0.25s ease-out forwards;
 }
 
+/**
+ * focus-level 스타일: 1·2·3 depth 중첩 박스, 3depth에서 세로 바가 좌→우로 이동.
+ */
+@keyframes sk-vbar-sweep {
+  0% {
+    left: -15%;
+  }
+  100% {
+    left: 115%;
+  }
+}
+
+.sk-depth-1 {
+  box-sizing: border-box;
+  padding: 2px;
+  background: color-mix(in srgb, var(--border-primary) 55%, transparent);
+}
+
+.sk-depth-2 {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 2px;
+  background: color-mix(
+    in srgb,
+    var(--background-secondary) 88%,
+    var(--border-primary)
+  );
+}
+
+.sk-depth-3 {
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  min-height: 100%;
+  background: color-mix(
+    in srgb,
+    var(--border-primary) 48%,
+    var(--background-secondary)
+  );
+  isolation: isolate;
+}
+
+.sk-depth-3::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--background-primary) 75%, var(--accent-primary) 25%)
+      45%,
+    color-mix(in srgb, var(--background-primary) 75%, var(--accent-primary) 25%)
+      55%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px
+    color-mix(in srgb, var(--accent-primary) 40%, transparent);
+  animation: sk-vbar-sweep 1.35s ease-in-out infinite;
+  will-change: left;
+}
+
+.sk-depth-3 > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="dark"] .sk-depth-3::after {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.12) 45%,
+    rgb(255 255 255 / 0.2) 50%,
+    rgb(255 255 255 / 0.12) 55%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px rgb(255 255 255 / 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-depth-3::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 /* Native date input: keep calendar popup visible (z-index) and readable (color-scheme) */
 input[type="date"] {
   position: relative;
@@ -271,8 +544,7 @@ input[type="date"]:focus {
 input[type="date"] {
   color-scheme: light;
 }
-/* 캘린더 아이콘 노란색 (WebKit) */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.85) sepia(1) saturate(10000%) hue-rotate(45deg);
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }

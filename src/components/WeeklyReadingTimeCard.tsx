@@ -8,6 +8,7 @@ import { ReadingSession } from "@/types/user"
 import { formatReadingTimeFromSeconds, getCurrentWeekRangeKST, getISOWeekStringKST } from "@/utils/timeUtils"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
+import { SkLine } from "@/components/skeletons"
 
 const WEEKLY_POPUP_KEY = "weeklyGoalPopup_"
 
@@ -129,30 +130,27 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
 
   if (showCardLoading) {
     return (
-      <div className='rounded-xl border-2 border-accent-theme/30 bg-gradient-to-br from-accent-theme-tertiary/40 to-accent-theme/10 p-4 sm:p-5 shadow-md'>
+      <div
+        className='rounded-xl border-2 border-accent-theme/30 bg-gradient-to-br from-accent-theme-tertiary/40 to-accent-theme/10 p-4 sm:p-5 shadow-md'
+        aria-busy="true"
+        aria-label="이번 주 독서 시간 불러오는 중"
+      >
+        <span className="sr-only">목표와 독서 시간을 불러오는 중</span>
         <div className='flex items-center gap-3 mb-3'>
           <div className='flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-accent-theme/20 shrink-0'>
             <Clock className='h-5 w-5 sm:h-6 sm:w-6 accent-theme-primary' />
           </div>
-          <div className='min-w-0 flex-1'>
-            <p className='text-sm font-semibold text-theme-primary'>
-              이번 주 독서 시간
-            </p>
-            <p className='mt-0.5 text-xs text-theme-tertiary'>불러오는 중...</p>
+          <div className='min-w-0 flex-1 space-y-2'>
+            <SkLine className="h-4 w-36 max-w-full" />
+            <SkLine className="h-3 w-24 max-w-full" />
           </div>
         </div>
         <div className='flex items-baseline justify-center gap-2 py-2.5 px-4 rounded-lg bg-theme-secondary/80 mb-2.5 min-h-[3.5rem]'>
-          <span className='text-3xl sm:text-4xl font-extrabold text-theme-tertiary tabular-nums animate-pulse'>
-            —
-          </span>
-          <span className='text-lg sm:text-xl font-semibold text-theme-tertiary animate-pulse'>
-            / —시간
-          </span>
+          <SkLine className="h-10 w-28 sm:h-11 sm:w-32" />
+          <SkLine className="h-6 w-20 sm:h-7 sm:w-24" />
         </div>
-        <div className='h-3 w-full rounded-full bg-theme-tertiary overflow-hidden mb-2.5'>
-          <div className='h-full w-1/3 rounded-full bg-accent-theme/30 animate-pulse' />
-        </div>
-        <p className='text-xs text-theme-tertiary text-center'>목표·독서 시간 불러오는 중</p>
+        <SkLine className="mb-2.5 h-3 w-full rounded-full" />
+        <SkLine className="mx-auto h-3 w-48 max-w-full" />
       </div>
     )
   }

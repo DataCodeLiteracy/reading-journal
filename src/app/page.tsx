@@ -39,6 +39,7 @@ import { ReadingSessionService } from "@/services/readingSessionService"
 import { ReadingSession } from "@/types/user"
 import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import WeeklyRecapModal, { DaySummary } from "@/components/WeeklyRecapModal"
+import { HomePageSkeleton } from "@/components/skeletons"
 
 const WEEKLY_RECAP_STORAGE_KEY = "weeklyRecapShown_"
 
@@ -214,14 +215,7 @@ export default function Home() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
-        <div className='text-center'>
-          <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4 animate-pulse' />
-          <p className='text-theme-secondary'>로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <HomePageSkeleton />
   }
 
   if (!isLoggedIn) {

@@ -16,6 +16,7 @@ import { LikeService } from "@/services/likeService"
 import { UserService } from "@/services/userService"
 import { User } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
+import { CommentThreadSkeleton } from "@/components/skeletons"
 
 interface CommentSectionProps {
   contentType: ContentType
@@ -306,11 +307,12 @@ export default function CommentSection({
 
       {/* 댓글/답변 목록 */}
       {isLoading ? (
-        <div className='text-center py-4'>
-          <p className='text-sm text-theme-secondary'>
-            {label}을 불러오는 중...
-          </p>
-        </div>
+        <>
+          <span className="sr-only">
+            {label}을 불러오는 중
+          </span>
+          <CommentThreadSkeleton rows={3} />
+        </>
       ) : comments.length === 0 ? (
         <div className='text-center py-4'>
           <p className='text-sm text-theme-secondary'>
