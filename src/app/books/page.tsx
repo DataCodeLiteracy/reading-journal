@@ -23,6 +23,7 @@ import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton, SkLine } from "@/components/skeletons"
+import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 
 export default function BooksPage() {
   return (
@@ -43,6 +44,11 @@ function BooksPageContent() {
     addBook,
     removeBook,
   } = useData()
+
+  const userBookTitleKeys = useMemo(
+    () => allBooks.map((b) => normalizeBookTitleKey(b.title)),
+    [allBooks],
+  )
 
   const [error, setError] = useState<string | null>(null)
 
@@ -209,6 +215,12 @@ function BooksPageContent() {
 
   const handleAddBook = async (newBook: Omit<Book, "id" | "user_id">) => {
     if (!userUid) return
+
+    const key = normalizeBookTitleKey(newBook.title)
+    if (allBooks.some((b) => normalizeBookTitleKey(b.title) === key)) {
+      setError("이미 같은 제목으로 등록된 책이 있습니다.")
+      return
+    }
 
     try {
       setError(null)
@@ -627,7 +639,7 @@ function BooksPageContent() {
         isOpen={isAddBookModalOpen}
         onClose={() => setIsAddBookModalOpen(false)}
         onAddBook={handleAddBook}
-        currentUserId={userUid || undefined}
+        userBookTitleKeys={userBookTitleKeys}
       />
 
       {/* 책 삭제 확인 모달 */}

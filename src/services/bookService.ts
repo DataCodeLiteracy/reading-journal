@@ -74,27 +74,6 @@ export class BookService {
     return list
   }
 
-  /**
-   * 제목으로 다른 사용자가 등록한 책이 있는지 확인
-   * 정확히 일치하는 제목의 책이 있으면 반환
-   */
-  static async findBooksByTitle(
-    title: string,
-    excludeUserId?: string
-  ): Promise<Book[]> {
-    const normalizedTitle = title.trim()
-    if (!normalizedTitle) return []
-
-    const books = await ApiClient.queryDocuments<Book>("books", [
-      ["title", "==", normalizedTitle],
-    ])
-
-    if (excludeUserId) {
-      return books.filter((b) => b.user_id !== excludeUserId)
-    }
-    return books
-  }
-
   static async getUserBooksPaginated(
     user_id: string,
     page: number = 1,

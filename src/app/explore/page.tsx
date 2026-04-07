@@ -28,6 +28,7 @@ import ConfirmModal from "@/components/ConfirmModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { ExploreListSkeleton, GenericRouteSkeleton } from "@/components/skeletons"
+import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 
 type GroupedBook = {
   title: string
@@ -68,7 +69,7 @@ function ExplorePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { userUid, loading, isLoggedIn } = useAuth()
-  const { addBook } = useData()
+  const { addBook, allBooks: myBooksFromContext } = useData()
   const [allBooks, setAllBooks] = useState<Book[]>([])
   const [userNames, setUserNames] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -282,12 +283,24 @@ function ExplorePageContent() {
     sortBy,
   ])
 
+  const userBookTitleKeys = useMemo(
+    () => myBooksFromContext.map((b) => normalizeBookTitleKey(b.title)),
+    [myBooksFromContext],
+  )
+
   if (!isLoggedIn) return null
 
   const handleAddBookFromExplore = async (
     book: Omit<Book, "id" | "user_id">,
   ) => {
     if (!userUid) return
+    const key = normalizeBookTitleKey(book.title)
+    if (
+      myBooksFromContext.some((b) => normalizeBookTitleKey(b.title) === key)
+    ) {
+      setError("이미 같은 제목으로 등록된 책이 있습니다.")
+      return
+    }
     try {
       setIsAddingBook(true)
       setError(null)
@@ -724,7 +737,7 @@ function ExplorePageContent() {
         initialPublishedDate={addModalInitial?.publishedDate ?? ""}
         initialLevel={addModalInitial?.level}
         initialCategory={addModalInitial?.category}
-        skipDuplicateCheck={true}
+        userBookTitleKeys={userBookTitleKeys}
       />
       {isAddingBook && (
         <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>

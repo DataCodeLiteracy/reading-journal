@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { BookOpen, Search, AlertCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useState, useRef, useEffect, useMemo } from "react"
+import { BookOpen, AlertCircle } from "lucide-react"
 import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
-import { BookService } from "@/services/bookService"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
+import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
+import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 
 interface AddBookModalProps {
   isOpen: boolean
@@ -19,10 +19,11 @@ interface AddBookModalProps {
   initialPublishedDate?: string
   initialLevel?: BookLevel
   initialCategory?: BookField
-  /** 현재 사용자 ID (중복 체크 시 본인 책 제외용) */
-  currentUserId?: string
-  /** 탐색에서 추가하는 경우 중복 체크 건너뛰기 */
-  skipDuplicateCheck?: boolean
+  /**
+   * 현재 로그인 유저 서재에 이미 있는 책 제목 키 목록
+   * (`normalizeBookTitleKey` 적용값). 중복 등록 방지용.
+   */
+  userBookTitleKeys: readonly string[]
 }
 
 export default function AddBookModal({
@@ -34,10 +35,8 @@ export default function AddBookModal({
   initialPublishedDate = "",
   initialLevel,
   initialCategory,
-  currentUserId,
-  skipDuplicateCheck = false,
+  userBookTitleKeys,
 }: AddBookModalProps) {
-  const router = useRouter()
   const [title, setTitle] = useState(initialTitle)
   const [author, setAuthor] = useState(initialAuthor)
   const [publishedDate, setPublishedDate] = useState(initialPublishedDate)
@@ -46,11 +45,18 @@ export default function AddBookModal({
   const [level, setLevel] = useState<BookLevel | "">(initialLevel || "")
   const [category, setCategory] = useState<BookField | "">(initialCategory || "")
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const [ownDuplicateModalOpen, setOwnDuplicateModalOpen] = useState(false)
 
-  // 중복 체크 관련 상태
-  const [duplicateBooks, setDuplicateBooks] = useState<Book[]>([])
-  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
-  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const titleKeySet = useMemo(
+    () => new Set(userBookTitleKeys),
+    [userBookTitleKeys],
+  )
+
+  const hasOwnDuplicateTitle = useMemo(() => {
+    const t = title.trim()
+    if (!t) return false
+    return titleKeySet.has(normalizeBookTitleKey(t))
+  }, [title, titleKeySet])
 
   useEffect(() => {
     if (isOpen && titleInputRef.current) {
@@ -65,44 +71,18 @@ export default function AddBookModal({
       setPublishedDate(initialPublishedDate)
       setLevel(initialLevel || "")
       setCategory(initialCategory || "")
-      setDuplicateBooks([])
+      setOwnDuplicateModalOpen(false)
     }
   }, [isOpen, initialTitle, initialAuthor, initialPublishedDate, initialLevel, initialCategory])
-
-  // 제목 변경 시 중복 체크 (디바운스)
-  useEffect(() => {
-    if (skipDuplicateCheck || !title.trim()) {
-      setDuplicateBooks([])
-      return
-    }
-
-    if (checkTimeoutRef.current) {
-      clearTimeout(checkTimeoutRef.current)
-    }
-
-    checkTimeoutRef.current = setTimeout(async () => {
-      setIsCheckingDuplicate(true)
-      try {
-        const books = await BookService.findBooksByTitle(title.trim(), currentUserId)
-        setDuplicateBooks(books)
-      } catch (error) {
-        console.error("Duplicate check error:", error)
-        setDuplicateBooks([])
-      } finally {
-        setIsCheckingDuplicate(false)
-      }
-    }, 500)
-
-    return () => {
-      if (checkTimeoutRef.current) {
-        clearTimeout(checkTimeoutRef.current)
-      }
-    }
-  }, [title, currentUserId, skipDuplicateCheck])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
+
+    if (hasOwnDuplicateTitle) {
+      setOwnDuplicateModalOpen(true)
+      return
+    }
 
     const newBook: Omit<Book, "id" | "user_id"> = {
       title: title.trim(),
@@ -134,13 +114,8 @@ export default function AddBookModal({
     setRating(0)
     setLevel("")
     setCategory("")
-    setDuplicateBooks([])
+    setOwnDuplicateModalOpen(false)
     onClose()
-  }
-
-  const handleGoToExplore = () => {
-    handleClose()
-    router.push(`/explore?search=${encodeURIComponent(title.trim())}`)
   }
 
   const levelOptions: SelectOption<BookLevel | "">[] = [
@@ -159,17 +134,18 @@ export default function AddBookModal({
   ]
 
   return (
-    <FormModalFrame
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="새 책 추가"
-      headerStart={
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-theme-tertiary">
-          <BookOpen className="h-5 w-5 accent-theme-primary" aria-hidden />
-        </div>
-      }
-    >
-      <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
+    <>
+      <FormModalFrame
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="새 책 추가"
+        headerStart={
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-theme-tertiary">
+            <BookOpen className="h-5 w-5 accent-theme-primary" aria-hidden />
+          </div>
+        }
+      >
+        <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               책 제목 *
@@ -179,43 +155,22 @@ export default function AddBookModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className={`form-control ${
-                duplicateBooks.length > 0 ? "!border-blue-400" : ""
+                hasOwnDuplicateTitle ? "!border-amber-500 ring-1 ring-amber-500/30" : ""
               }`}
               placeholder="책 제목을 입력하세요"
               required
               ref={titleInputRef}
             />
-            {isCheckingDuplicate && (
-              <p className='mt-1 text-xs text-theme-tertiary'>확인 중...</p>
+            {hasOwnDuplicateTitle && (
+              <p className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>
+                  내 서재에 이미 같은 제목으로 등록된 책이 있습니다. 제목을 바꾸거나
+                  추가하기를 누르면 안내를 확인할 수 있어요.
+                </span>
+              </p>
             )}
           </div>
-
-          {/* 중복 책 안내 */}
-          {duplicateBooks.length > 0 && !isCheckingDuplicate && (
-            <div className='mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
-              <div className='flex items-start gap-2 mb-2'>
-                <AlertCircle className='h-4 w-4 text-blue-500 mt-0.5 shrink-0' />
-                <div className='flex-1'>
-                  <p className='text-blue-700 dark:text-blue-300 text-sm font-medium'>
-                    이미 등록된 책이 있어요!
-                  </p>
-                  <p className='text-blue-600 dark:text-blue-400 text-xs mt-1'>
-                    다른 사용자가 "{title.trim()}" 책을 {duplicateBooks.length}권 등록했습니다.
-                    <br />
-                    탐색에서 찾아 추가하면 골든벨 문제도 함께 볼 수 있어요.
-                  </p>
-                </div>
-              </div>
-              <button
-                type='button'
-                onClick={handleGoToExplore}
-                className='w-full flex items-center justify-center gap-2 py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-md transition-colors'
-              >
-                <Search className='h-4 w-4' />
-                탐색에서 찾아보기
-              </button>
-            </div>
-          )}
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
@@ -294,6 +249,13 @@ export default function AddBookModal({
             </button>
           </div>
         </form>
-    </FormModalFrame>
+      </FormModalFrame>
+
+      <OwnBookDuplicateModal
+        isOpen={ownDuplicateModalOpen}
+        onClose={() => setOwnDuplicateModalOpen(false)}
+        title={title.trim()}
+      />
+    </>
   )
 }
