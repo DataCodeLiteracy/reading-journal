@@ -5,10 +5,16 @@ export class UserService {
   static async createOrUpdateUser(userData: Partial<User>): Promise<void> {
     if (!userData.uid) throw new Error("User ID is required")
 
-    await ApiClient.createDocument("users", userData.uid, {
-      ...userData,
-      updated_at: ApiClient.getServerTimestamp(),
-    })
+    // merge: 로그인 등에서 일부 필드만 넘겨도 isAdmin 등 기존 필드가 삭제되지 않도록 함
+    await ApiClient.createDocument(
+      "users",
+      userData.uid,
+      {
+        ...userData,
+        updated_at: ApiClient.getServerTimestamp(),
+      },
+      { merge: true }
+    )
   }
 
   static async getUser(uid: string): Promise<User | null> {

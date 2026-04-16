@@ -133,12 +133,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Base styles */
+/* Base styles — 페이지의 bg-theme-gradient와 동일 톤 (라이트에서 순백만 보이는 현상 방지) */
+html {
+  min-height: 100%;
+}
+
 body {
-  background: var(--background-primary);
+  min-height: 100dvh;
+  background: linear-gradient(
+    to bottom right,
+    var(--gradient-from),
+    var(--gradient-to)
+  );
   color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* Utility classes for theme-aware styling */
@@ -547,4 +556,130 @@ input[type="date"] {
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
+}
+
+/* 독서 타이머: 진행 중 은은한 호흡 */
+@keyframes reading-timer-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.88;
+  }
+}
+
+.reading-timer-glow {
+  animation: reading-timer-breathe 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reading-timer-glow {
+    animation: none;
+  }
+}
+
+/* 독서 타이머 진행 중: 이미지 없이 그라데이션 + 별 레이어로 은은한 우주 느낌 */
+.reading-timer-cosmos {
+  background-color: transparent;
+}
+
+.reading-timer-cosmos-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* 베이스는 페이지에서 theme-secondary 그라데이션으로 깔고, 여기서는 은은한 글로우만 */
+[data-theme="light"] .reading-timer-cosmos-bg {
+  background: radial-gradient(
+      ellipse 120% 75% at 50% -28%,
+      color-mix(in srgb, var(--accent-primary) 9%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at 88% 22%,
+      color-mix(in srgb, var(--accent-primary) 6%, transparent),
+      transparent 44%
+    );
+}
+
+[data-theme="dark"] .reading-timer-cosmos-bg {
+  background: radial-gradient(
+      ellipse 105% 65% at 50% 0%,
+      color-mix(in srgb, var(--accent-secondary) 11%, transparent),
+      transparent 52%
+    ),
+    radial-gradient(
+      circle at 82% 24%,
+      color-mix(in srgb, var(--accent-primary) 8%, transparent),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 10% 82%,
+      color-mix(in srgb, var(--accent-tertiary) 22%, transparent),
+      transparent 46%
+    );
+}
+
+.reading-timer-cosmos-stars {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  animation: reading-timer-twinkle 12s ease-in-out infinite alternate;
+}
+
+[data-theme="light"] .reading-timer-cosmos-stars {
+  opacity: 0.38;
+  mix-blend-mode: multiply;
+  background-image: radial-gradient(1.5px 1.5px at 7% 14%, rgba(67, 56, 202, 0.55), transparent),
+    radial-gradient(1px 1px at 19% 38%, rgba(79, 70, 229, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 44% 11%, rgba(99, 102, 241, 0.45), transparent),
+    radial-gradient(1px 1px at 63% 28%, rgba(67, 56, 202, 0.3), transparent),
+    radial-gradient(1px 1px at 81% 19%, rgba(30, 27, 75, 0.25), transparent),
+    radial-gradient(1.5px 1.5px at 91% 42%, rgba(79, 70, 229, 0.4), transparent),
+    radial-gradient(1px 1px at 13% 72%, rgba(99, 102, 241, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 36% 61%, rgba(67, 56, 202, 0.28), transparent),
+    radial-gradient(1px 1px at 54% 78%, rgba(79, 70, 229, 0.32), transparent),
+    radial-gradient(1px 1px at 72% 66%, rgba(30, 27, 75, 0.22), transparent),
+    radial-gradient(2px 2px at 88% 84%, rgba(99, 102, 241, 0.38), transparent),
+    radial-gradient(1px 1px at 28% 52%, rgba(67, 56, 202, 0.25), transparent);
+}
+
+[data-theme="dark"] .reading-timer-cosmos-stars {
+  opacity: 0.34;
+  mix-blend-mode: screen;
+  background-image: radial-gradient(1px 1px at 9% 12%, rgba(255, 255, 255, 0.95), transparent),
+    radial-gradient(1px 1px at 24% 34%, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1.5px 1.5px at 46% 9%, rgba(226, 232, 240, 0.85), transparent),
+    radial-gradient(1px 1px at 71% 21%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 89% 36%, rgba(199, 210, 254, 0.75), transparent),
+    radial-gradient(1.5px 1.5px at 16% 68%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 39% 79%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 58% 56%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1.5px 1.5px at 77% 74%, rgba(199, 210, 254, 0.55), transparent),
+    radial-gradient(1px 1px at 93% 86%, rgba(255, 255, 255, 0.65), transparent),
+    radial-gradient(1px 1px at 33% 47%, rgba(165, 180, 252, 0.45), transparent),
+    radial-gradient(2px 2px at 52% 88%, rgba(224, 231, 255, 0.35), transparent);
+}
+
+@keyframes reading-timer-twinkle {
+  0% {
+    opacity: 0.32;
+  }
+  100% {
+    opacity: 0.52;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reading-timer-cosmos-stars {
+    animation: none;
+  }
 }

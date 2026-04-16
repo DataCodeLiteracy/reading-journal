@@ -16,12 +16,14 @@ import {
   HelpCircle,
 } from "lucide-react"
 import { GoldenBellService } from "@/services/goldenBellService"
+import { GoldenBellSessionService } from "@/services/goldenBellSessionService"
 import {
   GoldenBellQuiz,
   GoldenBellUserAnswer,
 } from "@/types/goldenBell"
 import { useAuth } from "@/contexts/AuthContext"
 import { gradeShortAnswer } from "@/utils/textSimilarity"
+import { gradeGoldenBellOpen } from "@/lib/readingAiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
 
 type QuizState = "playing" | "reviewing" | "completed"
@@ -60,6 +62,7 @@ export default function GoldenBellQuizPage({
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({})
   const [results, setResults] = useState<GoldenBellUserAnswer[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [isScoring, setIsScoring] = useState(false)
 
   useEffect(() => {
     params.then((resolved) => {
@@ -83,6 +86,24 @@ export default function GoldenBellQuizPage({
         }
 
         setQuiz(quizData)
+
+        if (userUid) {
+          const session = await GoldenBellSessionService.get(
+            userUid,
+            resolvedParams.quizId
+          )
+          if (
+            session &&
+            (session.quizState === "playing" || session.quizState === "reviewing")
+          ) {
+            setQuizState(session.quizState)
+            setCurrentQuestionIndex(session.currentQuestionIndex ?? 0)
+            setUserAnswers(session.userAnswers ?? {})
+            if (session.results?.length) {
+              setResults(session.results as GoldenBellUserAnswer[])
+            }
+          }
+        }
       } catch (err) {
         console.error("Error loading quiz:", err)
         setError("퀴즈를 불러오는 중 오류가 발생했습니다.")
@@ -92,7 +113,31 @@ export default function GoldenBellQuizPage({
     }
 
     loadQuiz()
-  }, [resolvedParams])
+  }, [resolvedParams, userUid])
+
+  useEffect(() => {
+    if (!quiz || !userUid) return
+    if (quizState === "completed") return
+    const t = setTimeout(() => {
+      void GoldenBellSessionService.save({
+        userId: userUid,
+        quizId: quiz.id,
+        quizState,
+        currentQuestionIndex,
+        userAnswers,
+        results:
+          quizState === "reviewing" && results.length > 0 ? results : undefined,
+      })
+    }, 700)
+    return () => clearTimeout(t)
+  }, [
+    quiz,
+    userUid,
+    quizState,
+    currentQuestionIndex,
+    userAnswers,
+    results,
+  ])
 
   const currentQuestion = quiz?.questions[currentQuestionIndex]
   const totalQuestions = quiz?.questions.length || 0
@@ -125,59 +170,138 @@ export default function GoldenBellQuizPage({
     }
   }
 
-  // 문제 제출 및 자동 채점
-  const handleSubmit = () => {
+  // 문제 제출 및 자동 채점 (주관식은 AI 우선, 실패 시 단답형은 유사도·서술형은 수동)
+  const handleSubmit = async () => {
     if (!quiz) return
 
     const answersMap = new Map(quiz.answers.map((a) => [a.id, a]))
+    setIsScoring(true)
+    try {
+      const userResults: GoldenBellUserAnswer[] = []
 
-    const userResults: GoldenBellUserAnswer[] = quiz.questions.map((q) => {
-      const userAnswer = userAnswers[q.id] || ""
-      const correctAnswerObj = answersMap.get(q.id)
-      const correctAnswer = correctAnswerObj?.answer || ""
-      const questionType = normalizeQuestionType(q.type)
+      for (const q of quiz.questions) {
+        const userAnswer = userAnswers[q.id] || ""
+        const correctAnswerObj = answersMap.get(q.id)
+        const correctAnswer = correctAnswerObj?.answer || ""
+        const explanation = correctAnswerObj?.explanation || ""
+        const questionType = normalizeQuestionType(q.type)
 
-      if (questionType === "객관식") {
-        // 객관식: 정확한 일치만 정답
-        const isCorrect = userAnswer.trim() === correctAnswer.trim()
-        return {
-          questionId: q.id,
-          questionType,
-          userAnswer,
-          correctAnswer,
-          autoGraded: true,
-          isCorrect,
+        if (questionType === "객관식") {
+          const isCorrect = userAnswer.trim() === correctAnswer.trim()
+          userResults.push({
+            questionId: q.id,
+            questionType,
+            userAnswer,
+            correctAnswer,
+            autoGraded: true,
+            isCorrect,
+          })
+          continue
         }
-      } else if (questionType === "단답형") {
-        // 단답형: 유사도 알고리즘으로 채점
-        const gradingResult = gradeShortAnswer(correctAnswer, userAnswer)
-        return {
-          questionId: q.id,
-          questionType,
-          userAnswer,
-          correctAnswer,
-          autoGraded: true,
-          similarity: gradingResult.similarity,
-          isCorrect: gradingResult.isCorrect,
-          manuallyGraded: false,
+
+        if (questionType === "단답형") {
+          const fallback = gradeShortAnswer(correctAnswer, userAnswer)
+          if (userUid) {
+            try {
+              const ai = await gradeGoldenBellOpen({
+                bookTitle: quiz.bookTitle,
+                questionType: "short_answer",
+                question: q.question,
+                referenceAnswer: correctAnswer,
+                explanation,
+                userAnswer,
+              })
+              userResults.push({
+                questionId: q.id,
+                questionType,
+                userAnswer,
+                correctAnswer,
+                autoGraded: true,
+                aiGraded: true,
+                aiFeedback: ai.feedback,
+                similarity: fallback.similarity,
+                isCorrect: ai.isCorrect,
+                manuallyGraded: false,
+              })
+            } catch {
+              userResults.push({
+                questionId: q.id,
+                questionType,
+                userAnswer,
+                correctAnswer,
+                autoGraded: true,
+                similarity: fallback.similarity,
+                isCorrect: fallback.isCorrect,
+                manuallyGraded: false,
+              })
+            }
+          } else {
+            userResults.push({
+              questionId: q.id,
+              questionType,
+              userAnswer,
+              correctAnswer,
+              autoGraded: true,
+              similarity: fallback.similarity,
+              isCorrect: fallback.isCorrect,
+              manuallyGraded: false,
+            })
+          }
+          continue
         }
-      } else {
-        // 서술형: 사용자가 직접 채점해야 함
-        return {
-          questionId: q.id,
-          questionType,
-          userAnswer,
-          correctAnswer,
-          autoGraded: false,
-          isCorrect: false, // 초기값, 사용자가 확정
-          manuallyGraded: false,
+
+        // 서술형
+        if (userUid) {
+          try {
+            const ai = await gradeGoldenBellOpen({
+              bookTitle: quiz.bookTitle,
+              questionType: "essay",
+              question: q.question,
+              referenceAnswer: correctAnswer,
+              explanation,
+              userAnswer,
+            })
+            userResults.push({
+              questionId: q.id,
+              questionType,
+              userAnswer,
+              correctAnswer,
+              autoGraded: true,
+              aiGraded: true,
+              aiFeedback: ai.feedback,
+              isCorrect: ai.isCorrect,
+              manuallyGraded: true,
+            })
+          } catch {
+            userResults.push({
+              questionId: q.id,
+              questionType,
+              userAnswer,
+              correctAnswer,
+              autoGraded: false,
+              isCorrect: false,
+              manuallyGraded: false,
+            })
+          }
+        } else {
+          userResults.push({
+            questionId: q.id,
+            questionType,
+            userAnswer,
+            correctAnswer,
+            autoGraded: false,
+            isCorrect: false,
+            manuallyGraded: false,
+          })
         }
       }
-    })
 
-    setResults(userResults)
-    setQuizState("reviewing")
-    setCurrentQuestionIndex(0)
+      setResults(userResults)
+      setQuizState("reviewing")
+      setCurrentQuestionIndex(0)
+    } finally {
+      setIsScoring(false)
+    }
   }
 
   // 사용자가 단답형/서술형 정답 여부 수정
@@ -197,7 +321,8 @@ export default function GoldenBellQuizPage({
 
     // 서술형 중 확인 안 된 것 체크
     const unconfirmedEssays = results.filter(
-      (r) => r.questionType === "서술형" && !r.manuallyGraded
+      (r) =>
+        r.questionType === "서술형" && !r.manuallyGraded && !r.autoGraded
     )
 
     if (unconfirmedEssays.length > 0) {
@@ -220,6 +345,7 @@ export default function GoldenBellQuizPage({
         results,
         totalQuestions
       )
+      await GoldenBellSessionService.clear(userUid, quiz.id)
       setQuizState("completed")
     } catch (err) {
       console.error("Error saving result:", err)
@@ -230,6 +356,9 @@ export default function GoldenBellQuizPage({
   }
 
   const handleRetry = () => {
+    if (userUid && quiz) {
+      void GoldenBellSessionService.clear(userUid, quiz.id)
+    }
     setQuizState("playing")
     setCurrentQuestionIndex(0)
     setUserAnswers({})
@@ -264,7 +393,7 @@ export default function GoldenBellQuizPage({
   const allEssaysReviewed = useMemo(() => {
     return results
       .filter((r) => r.questionType === "서술형")
-      .every((r) => r.manuallyGraded)
+      .every((r) => r.manuallyGraded || r.autoGraded)
   }, [results])
 
   if (isLoading) {
@@ -418,7 +547,8 @@ export default function GoldenBellQuizPage({
               <div>
                 <p className='text-blue-700 dark:text-blue-300 font-medium'>채점 확인 중</p>
                 <p className='text-blue-600 dark:text-blue-400 text-sm mt-1'>
-                  객관식은 자동 채점되었습니다. 단답형과 서술형은 정답을 확인하고 맞음/틀림을 선택해주세요.
+                  객관식은 자동 채점되었습니다. 단답형·서술형은 AI가 먼저 채점했을 수 있으니 정답·피드백을
+                  확인하고 필요하면 맞음/틀림을 수정해 주세요.
                 </p>
                 {!allEssaysReviewed && (
                   <p className='text-blue-500 dark:text-blue-400 text-xs mt-2'>
@@ -586,20 +716,38 @@ export default function GoldenBellQuizPage({
 
                     {/* 단답형: 유사도 표시 */}
                     {normalizeQuestionType(currentQuestion.type) === "단답형" && (
-                      <div className='p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'>
-                        <div className='flex items-center gap-2 mb-2'>
+                      <div className='p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 space-y-2'>
+                        {getResultForQuestion(currentQuestion.id)?.aiGraded &&
+                          getResultForQuestion(currentQuestion.id)?.aiFeedback && (
+                            <p className='text-blue-800 dark:text-blue-200 text-xs'>
+                              AI: {getResultForQuestion(currentQuestion.id)?.aiFeedback}
+                            </p>
+                          )}
+                        <div className='flex items-center gap-2'>
                           <HelpCircle className='h-4 w-4 text-blue-500' />
                           <p className='text-xs font-medium text-blue-700 dark:text-blue-300'>
-                            자동 채점 유사도: {Math.round((getResultForQuestion(currentQuestion.id)?.similarity || 0) * 100)}%
+                            유사도 참고: {Math.round((getResultForQuestion(currentQuestion.id)?.similarity || 0) * 100)}%
                           </p>
                         </div>
                         <p className='text-blue-600 dark:text-blue-400 text-xs'>
-                          {(getResultForQuestion(currentQuestion.id)?.similarity || 0) >= 0.75
-                            ? "자동으로 정답 처리되었습니다. 틀렸다면 아래에서 수정하세요."
-                            : "자동으로 오답 처리되었습니다. 맞았다면 아래에서 수정하세요."}
+                          {getResultForQuestion(currentQuestion.id)?.isCorrect
+                            ? "정답으로 처리되었습니다. 틀렸다면 아래에서 수정하세요."
+                            : "오답으로 처리되었습니다. 맞았다면 아래에서 수정하세요."}
                         </p>
                       </div>
                     )}
+
+                    {normalizeQuestionType(currentQuestion.type) === "서술형" &&
+                      getResultForQuestion(currentQuestion.id)?.aiFeedback && (
+                        <div className='p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800'>
+                          <p className='text-xs font-medium text-violet-800 dark:text-violet-200 mb-1'>
+                            AI 피드백
+                          </p>
+                          <p className='text-violet-900 dark:text-violet-100 text-sm'>
+                            {getResultForQuestion(currentQuestion.id)?.aiFeedback}
+                          </p>
+                        </div>
+                      )}
 
                     {/* 채점 수정 버튼 (단답형/서술형) */}
                     <div className='flex items-center gap-3 pt-2'>
@@ -668,10 +816,12 @@ export default function GoldenBellQuizPage({
           {currentQuestionIndex === totalQuestions - 1 ? (
             quizState === "playing" ? (
               <button
-                onClick={handleSubmit}
-                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme text-white rounded-lg hover:bg-accent-theme-secondary transition-colors'
+                type='button'
+                onClick={() => void handleSubmit()}
+                disabled={isScoring}
+                className='flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme text-white rounded-lg hover:bg-accent-theme-secondary transition-colors disabled:opacity-50'
               >
-                채점하기
+                {isScoring ? "채점 중…" : "채점하기"}
               </button>
             ) : (
               <button
@@ -711,7 +861,11 @@ export default function GoldenBellQuizPage({
                   btnClass = "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                 }
                 // 서술형 미확인 표시
-                if (questionType === "서술형" && !result.manuallyGraded) {
+                if (
+                  questionType === "서술형" &&
+                  !result.manuallyGraded &&
+                  !result.autoGraded
+                ) {
                   btnClass = "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                 }
               } else if (isAnswered) {

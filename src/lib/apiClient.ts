@@ -51,18 +51,37 @@ const convertFirestoreData = (data: any, docId?: string): any => {
 }
 
 export class ApiClient {
+  /**
+   * @param options.merge true면 필드 단위 병합(기존 필드 유지). false면 문서 전체 교체.
+   *   merge 시 기존 문서가 있으면 created_at은 건드리지 않고, 없을 때만 created_at을 넣습니다.
+   */
   static async createDocument<T extends DocumentData>(
     collectionName: string,
     id: string,
-    data: T
+    data: T,
+    options?: { merge?: boolean }
   ): Promise<void> {
     try {
       const docRef = doc(db, collectionName, id)
-      await setDoc(docRef, {
-        ...data,
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-      })
+      const merge = options?.merge ?? false
+
+      let payload: DocumentData
+      if (merge) {
+        const snap = await getDoc(docRef)
+        payload = {
+          ...data,
+          updated_at: serverTimestamp(),
+          ...(snap.exists() ? {} : { created_at: serverTimestamp() }),
+        }
+        await setDoc(docRef, payload, { merge: true })
+      } else {
+        payload = {
+          ...data,
+          created_at: serverTimestamp(),
+          updated_at: serverTimestamp(),
+        }
+        await setDoc(docRef, payload)
+      }
     } catch (error) {
       throw new ApiError(
         `문서를 생성하는 중 오류가 발생했습니다.`,

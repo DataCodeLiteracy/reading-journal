@@ -78,6 +78,10 @@ export interface GoldenBellUserAnswer {
   autoGraded: boolean
   /** 자동 채점 유사도 (단답형만 해당, 0-1) */
   similarity?: number
+  /** AI 채점 사용 여부 (골든벨 주관식) */
+  aiGraded?: boolean
+  /** AI 한 줄 피드백 */
+  aiFeedback?: string
   /** 최종 정답 여부 (사용자 확인 후 확정) */
   isCorrect: boolean
   /** 사용자가 수동으로 수정했는지 여부 */

@@ -27,6 +27,8 @@ import CommentSection from "@/components/CommentSection"
 import ConfirmModal from "@/components/ConfirmModal"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { ReadingContentPackService } from "@/services/readingContentPackService"
+import { gradeReadingReview } from "@/lib/readingAiClient"
 
 export default function ReviewPage({
   params,
@@ -52,6 +54,9 @@ export default function ReviewPage({
   const [isReviewLiked, setIsReviewLiked] = useState(false)
   const [reviewLikesCount, setReviewLikesCount] = useState(0)
   const [isDeleteReviewModalOpen, setIsDeleteReviewModalOpen] = useState(false)
+  const [overallSummaryRef, setOverallSummaryRef] = useState<string | null>(null)
+  const [gradingAi, setGradingAi] = useState(false)
+  const [gradingError, setGradingError] = useState<string | null>(null)
 
   useEffect(() => {
     params.then((resolved) => {
@@ -82,6 +87,13 @@ export default function ReviewPage({
         setReview(bookData.review || "")
         setIsPublic(bookData.reviewIsPublic || false)
         setReadingSessions(sessionsData)
+
+        try {
+          const pack = await ReadingContentPackService.getByBookTitle(bookData.title)
+          setOverallSummaryRef(pack?.excerptBookMetadata?.overall_summary ?? null)
+        } catch {
+          setOverallSummaryRef(null)
+        }
 
         const isOwner = userUid === bookData.user_id
         if (bookData.review && bookData.reviewIsPublic && userUid && !isOwner) {
@@ -154,11 +166,23 @@ export default function ReviewPage({
         await LikeService.deleteAllLikesForContent("review", resolvedParams?.id || book.id)
       }
 
+      const reviewChanged =
+        review.trim() !== (book.review || "").trim()
+      const clearAiIfReviewEdited =
+        book.reviewAiGradedAt && reviewChanged
+          ? {
+              reviewAiScore: undefined,
+              reviewAiFeedback: undefined,
+              reviewAiGradedAt: undefined,
+            }
+          : {}
+
       const updatedBook = {
         ...book,
         rating,
         review: review.trim(),
         reviewIsPublic: review.trim() ? isPublic : false,
+        ...clearAiIfReviewEdited,
       }
 
       await BookService.updateBook(resolvedParams?.id || "", updatedBook)
@@ -190,7 +214,14 @@ export default function ReviewPage({
       const { CommentService } = await import("@/services/commentService")
       await CommentService.deleteAllCommentsForContent("review", resolvedParams.id)
       await LikeService.deleteAllLikesForContent("review", resolvedParams.id)
-      const updatedBook = { ...book, review: "", reviewIsPublic: false }
+      const updatedBook = {
+        ...book,
+        review: "",
+        reviewIsPublic: false,
+        reviewAiScore: undefined,
+        reviewAiFeedback: undefined,
+        reviewAiGradedAt: undefined,
+      }
       await BookService.updateBook(resolvedParams.id, updatedBook)
       setBook(updatedBook)
       setIsDeleteReviewModalOpen(false)
@@ -198,6 +229,37 @@ export default function ReviewPage({
     } catch (err) {
       if (err instanceof ApiError) setError(err.message)
       else setError("리뷰를 삭제하는 중 오류가 발생했습니다.")
+    }
+  }
+
+  const handleAiReviewGrade = async () => {
+    if (!book || !resolvedParams || !overallSummaryRef) return
+    const reviewText = (review || book.review || "").trim()
+    if (!reviewText) return
+    if (book.reviewAiGradedAt) return
+    setGradingError(null)
+    setGradingAi(true)
+    try {
+      const { score, feedback } = await gradeReadingReview({
+        overallSummary: overallSummaryRef,
+        userReview: reviewText,
+      })
+      const gradedAt = new Date().toISOString()
+      await BookService.updateBook(resolvedParams.id, {
+        reviewAiScore: score,
+        reviewAiFeedback: feedback,
+        reviewAiGradedAt: gradedAt,
+      })
+      setBook({
+        ...book,
+        reviewAiScore: score,
+        reviewAiFeedback: feedback,
+        reviewAiGradedAt: gradedAt,
+      })
+    } catch (e) {
+      setGradingError(e instanceof Error ? e.message : "채점에 실패했습니다.")
+    } finally {
+      setGradingAi(false)
     }
   }
 
@@ -343,6 +405,43 @@ export default function ReviewPage({
                 {book.review}
               </p>
             </div>
+
+            {book.reviewAiScore != null && (
+              <div className='px-4 pb-4 border-t border-theme-tertiary pt-4'>
+                <p className='text-xs font-medium text-theme-tertiary mb-1'>
+                  전체 요약 대비 AI 평가
+                </p>
+                <p className='text-lg font-bold text-accent-theme'>
+                  {book.reviewAiScore}점 / 10
+                </p>
+                {book.reviewAiFeedback && (
+                  <p className='text-sm text-theme-primary mt-2 whitespace-pre-wrap'>
+                    <span className='text-theme-tertiary'>AI 한 줄 피드백 · </span>
+                    {book.reviewAiFeedback}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {isOwner &&
+              overallSummaryRef &&
+              book.review?.trim() &&
+              book.reviewAiScore == null &&
+              !book.reviewAiGradedAt && (
+                <div className='px-4 pb-4'>
+                  {gradingError && (
+                    <p className='text-sm text-red-600 mb-2'>{gradingError}</p>
+                  )}
+                  <button
+                    type='button'
+                    disabled={gradingAi}
+                    onClick={handleAiReviewGrade}
+                    className='w-full py-2.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium disabled:opacity-50'
+                  >
+                    {gradingAi ? "채점 중…" : "AI와 비교해 채점"}
+                  </button>
+                </div>
+              )}
 
             {/* 좋아요: 개수는 항상 표시, 버튼은 비소유자만 */}
             {book.reviewIsPublic && (
@@ -509,6 +608,38 @@ export default function ReviewPage({
             {review.length}/50자
           </p>
         </div>
+
+        {overallSummaryRef && review.trim() && isOwner && !book.reviewAiGradedAt && (
+          <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6 border border-theme-tertiary'>
+            <p className='text-sm text-theme-secondary mb-3'>
+              등록된 책 전체 요약과 내 리뷰를 비교해 AI가 10점 만점과 한 줄 피드백을 남깁니다. (한 번만)
+            </p>
+            {gradingError && (
+              <p className='text-sm text-red-600 mb-2'>{gradingError}</p>
+            )}
+            <button
+              type='button'
+              disabled={gradingAi}
+              onClick={handleAiReviewGrade}
+              className='w-full py-3 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium disabled:opacity-50'
+            >
+              {gradingAi ? "채점 중…" : "AI와 비교해 채점"}
+            </button>
+          </div>
+        )}
+
+        {book.reviewAiScore != null && isOwner && (
+          <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6 border border-theme-tertiary'>
+            <p className='text-xs font-medium text-theme-tertiary mb-1'>저장된 AI 평가</p>
+            <p className='text-lg font-bold text-accent-theme'>{book.reviewAiScore}점 / 10</p>
+            {book.reviewAiFeedback && (
+              <p className='text-sm text-theme-primary mt-2 whitespace-pre-wrap'>
+                <span className='text-theme-tertiary'>AI 한 줄 피드백 · </span>
+                {book.reviewAiFeedback}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 공개 설정 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6'>

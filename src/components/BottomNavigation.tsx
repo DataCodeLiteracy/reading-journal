@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation"
 import { Home, PenSquare, User, BookOpen, Compass } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useReadingTimerSheet } from "@/contexts/ReadingTimerSheetContext"
 
 const navigationItems = [
   {
@@ -36,6 +37,7 @@ export default function BottomNavigation() {
   const pathname = usePathname()
   const router = useRouter()
   const { isLoggedIn } = useAuth()
+  const { sheetOpen, immersiveOpen } = useReadingTimerSheet()
 
   // 로그인하지 않았거나 로그인 페이지에서는 네비게이션 바 숨김
   if (!isLoggedIn || pathname === "/login") {
@@ -46,6 +48,10 @@ export default function BottomNavigation() {
   // 필요에 따라 특정 경로에서 숨길 수 있음
   const hidePaths = ["/admin"]
   if (hidePaths.some((path) => pathname.startsWith(path))) {
+    return null
+  }
+
+  if (sheetOpen || immersiveOpen) {
     return null
   }
 

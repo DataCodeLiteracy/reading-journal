@@ -46,8 +46,9 @@ export default function OwnBookDuplicateModal({
             </div>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-theme-secondary">
-            내 서재에 이미「{title}」과(와) 같은 제목으로 등록된 책이 있습니다. 제목을
-            바꾸거나, 기존 책을 수정해 주세요.
+            내 서재에 이미「{title}」과(와) 같은 책으로 취급되는 제목이 있습니다. (띄어쓰기
+            차이는 같은 제목으로 간주됩니다.) 구분이 필요하면 부제·권수 등 표기를 달리해
+            주세요.
           </p>
         </div>
 

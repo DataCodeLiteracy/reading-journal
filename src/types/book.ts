@@ -55,6 +55,11 @@ export interface Book {
   rating: number
   review?: string
   reviewIsPublic?: boolean // 리뷰 공개 여부
+  /** AI가 전체 요약과 비교해 준 독서 리뷰 점수 (1~10) */
+  reviewAiScore?: number
+  /** AI 한 줄 피드백 */
+  reviewAiFeedback?: string
+  reviewAiGradedAt?: Date | string
   isBookPublic?: boolean // 책 전체 공개 여부 (이 책의 모든 콘텐츠를 다른 유저에게 공개할지 여부)
   hasStartedReading: boolean
   completedDate?: string

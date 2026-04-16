@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   ArrowLeft,
   Star,
@@ -18,10 +18,14 @@ import {
   Trash2,
   ClipboardList,
   Plus,
-  Heart,
   Globe,
   Lock,
+  ChevronRight,
+  NotebookPen,
+  Sparkles,
+  Settings,
 } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { ReadingSession, UserChecklist } from "@/types/user"
@@ -43,31 +47,24 @@ import { ReadingSessionService } from "@/services/readingSessionService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ChecklistService } from "@/services/checklistService"
 import { getKoreaDate } from "@/utils/timeUtils"
-import { QuestionService } from "@/services/questionService"
-import { BookQuestion } from "@/types/question"
-import QuestionCard from "@/components/QuestionCard"
-import { HelpCircle, ChevronRight, PenSquare } from "lucide-react"
-import QuoteModal from "@/components/QuoteModal"
-import QuoteCard from "@/components/QuoteCard"
-import QuoteJsonUploadModal from "@/components/QuoteJsonUploadModal"
-import JsonUploadModal from "@/components/JsonUploadModal"
-import QuestionAddModal from "@/components/QuestionAddModal"
-import CritiqueCard from "@/components/CritiqueCard"
-import { QuoteService } from "@/services/quoteService"
-import { CritiqueService } from "@/services/critiqueService"
-import { LikeService } from "@/services/likeService"
-import { CommentService } from "@/services/commentService"
-import CommentSection from "@/components/CommentSection"
-import { Quote, Critique } from "@/types/content"
-
 import { ApiError } from "@/lib/apiClient"
 import { RereadService } from "@/services/rereadService"
 import { Reread } from "@/types/reread"
-import { GoldenBellRequestService } from "@/services/goldenBellRequestService"
-import { GoldenBellService } from "@/services/goldenBellService"
-import { GoldenBellQuizSummary, GoldenBellResult } from "@/types/goldenBell"
-import GoldenBellUploadModal from "@/components/GoldenBellUploadModal"
 import { BookDetailRouteSkeleton } from "@/components/skeletons"
+import ReadingTimerSettingsModal from "@/components/ReadingTimerSettingsModal"
+import ReadingImmersiveFullscreen, {
+  IMMERSIVE_TRANSITION_MS,
+} from "@/components/ReadingImmersiveFullscreen"
+import { useReadingTimerAmbient } from "@/hooks/useReadingTimerAmbient"
+import { useReadingTimerSheet } from "@/contexts/ReadingTimerSheetContext"
+import {
+  READING_TIMER_AMBIENT_STORAGE_KEY,
+  READING_TIMER_BG_STORAGE_KEY,
+  READING_TIMER_DEFAULT_BG_ID,
+  getTimerBgSrc,
+  isValidAmbientTrackId,
+  isValidTimerBgId,
+} from "@/constants/readingTimerMedia"
 
 export default function BookDetailPage({
   params,
@@ -75,7 +72,7 @@ export default function BookDetailPage({
   params: Promise<{ id: string; user_id: string }>
 }) {
   const router = useRouter()
-  const { userUid, user, userData } = useAuth()
+  const { userUid } = useAuth()
   const {
     allBooks,
     updateBook,
@@ -87,9 +84,6 @@ export default function BookDetailPage({
 
   const [book, setBook] = useState<Book | null>(null)
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([])
-  const [questions, setQuestions] = useState<BookQuestion[]>([])
-  const [quotes, setQuotes] = useState<Quote[]>([])
-  const [critiques, setCritiques] = useState<Critique[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [resolvedParams, setResolvedParams] = useState<{
@@ -117,35 +111,93 @@ export default function BookDetailPage({
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [successModalTitle, setSuccessModalTitle] = useState("")
   const [successModalMessage, setSuccessModalMessage] = useState("")
-  const [isOnHoldModalOpen, setIsOnHoldModalOpen] = useState(false)
-  
-  // 구절 기록 관련 상태
-  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
-  const [editingQuote, setEditingQuote] = useState<Quote | null>(null)
-  const [isDeleteQuoteModalOpen, setIsDeleteQuoteModalOpen] = useState(false)
-  const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null)
-  const [isQuoteJsonModalOpen, setIsQuoteJsonModalOpen] = useState(false)
-  const [isQuestionJsonModalOpen, setIsQuestionJsonModalOpen] = useState(false)
-  const [isQuestionAddModalOpen, setIsQuestionAddModalOpen] = useState(false)
-  
-  // 서평 관련 상태
-  const [isDeleteCritiqueModalOpen, setIsDeleteCritiqueModalOpen] = useState(false)
-  const [critiqueToDelete, setCritiqueToDelete] = useState<string | null>(null)
-  
-  // 리뷰 좋아요 관련 상태
-  const [isReviewLiked, setIsReviewLiked] = useState(false)
-  const [reviewLikesCount, setReviewLikesCount] = useState(0)
-  const [reviewCommentsCount, setReviewCommentsCount] = useState(0)
+  const [isHoldUpdating, setIsHoldUpdating] = useState(false)
+  const [ambientTrackId, setAmbientTrackId] = useState("off")
+  const [timerBgId, setTimerBgId] = useState(READING_TIMER_DEFAULT_BG_ID)
+  const [isTimerSettingsOpen, setIsTimerSettingsOpen] = useState(false)
+  const [cosmosOverlay, setCosmosOverlay] = useState<"off" | "on" | "fail">("off")
+  /** 타이머 정지 후 전환 애니메이션 동안에도 마운트 유지 */
+  const [immersiveVisible, setImmersiveVisible] = useState(false)
+  const [immersiveExiting, setImmersiveExiting] = useState(false)
+  const prevTimerRunningRef = useRef(false)
 
-  // 독서 골든벨 출제 요청
-  const [goldenBellRequestSent, setGoldenBellRequestSent] = useState(false)
-  const [goldenBellRequesting, setGoldenBellRequesting] = useState(false)
+  const timerBgSrc = getTimerBgSrc(timerBgId)
 
-  // 독서 골든벨 퀴즈
-  const [goldenBellQuizzes, setGoldenBellQuizzes] = useState<GoldenBellQuizSummary[]>([])
-  const [goldenBellResults, setGoldenBellResults] = useState<GoldenBellResult[]>([])
-  const [isGoldenBellUploadModalOpen, setIsGoldenBellUploadModalOpen] = useState(false)
-  const [goldenBellReregisterQuiz, setGoldenBellReregisterQuiz] = useState<GoldenBellQuizSummary | null>(null)
+  useReadingTimerAmbient(isTimerRunning, ambientTrackId)
+
+  useEffect(() => {
+    setCosmosOverlay("off")
+  }, [isTimerRunning, timerBgId])
+
+  const { setImmersiveOpen } = useReadingTimerSheet()
+
+  useEffect(() => {
+    if (book && isTimerRunning) {
+      setImmersiveVisible(true)
+      setImmersiveExiting(false)
+    }
+  }, [book, isTimerRunning])
+
+  useEffect(() => {
+    if (!book) {
+      setImmersiveVisible(false)
+      setImmersiveExiting(false)
+      prevTimerRunningRef.current = false
+      return
+    }
+
+    if (isTimerRunning) {
+      prevTimerRunningRef.current = true
+      return
+    }
+
+    const wasRunning = prevTimerRunningRef.current
+    prevTimerRunningRef.current = false
+
+    if (wasRunning && immersiveVisible) {
+      setImmersiveExiting(true)
+      const id = window.setTimeout(() => {
+        setImmersiveVisible(false)
+        setImmersiveExiting(false)
+      }, IMMERSIVE_TRANSITION_MS)
+      return () => window.clearTimeout(id)
+    }
+  }, [book, isTimerRunning, immersiveVisible])
+
+  useEffect(() => {
+    setImmersiveOpen(Boolean(book && immersiveVisible))
+    return () => {
+      setImmersiveOpen(false)
+    }
+  }, [book, immersiveVisible, setImmersiveOpen])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(READING_TIMER_AMBIENT_STORAGE_KEY)
+      if (raw && isValidAmbientTrackId(raw)) setAmbientTrackId(raw)
+      const rawBg = localStorage.getItem(READING_TIMER_BG_STORAGE_KEY)
+      if (rawBg && isValidTimerBgId(rawBg)) setTimerBgId(rawBg)
+      else setTimerBgId(READING_TIMER_DEFAULT_BG_ID)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(READING_TIMER_AMBIENT_STORAGE_KEY, ambientTrackId)
+    } catch {
+      /* ignore */
+    }
+  }, [ambientTrackId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(READING_TIMER_BG_STORAGE_KEY, timerBgId)
+    } catch {
+      /* ignore */
+    }
+  }, [timerBgId])
 
   // 체크리스트 관련 상태 (현재 서비스에서는 사용하지 않음)
   // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
@@ -178,17 +230,11 @@ export default function BookDetailPage({
         setBook(bookData)
 
         try {
-          const [sessionsData, questionsData, quotesData, critiquesData, rereadsData] = await Promise.all([
+          const [sessionsData, rereadsData] = await Promise.all([
             ReadingSessionService.getBookReadingSessions(resolvedParams.id),
-            QuestionService.getBookQuestions(resolvedParams.id),
-            QuoteService.getBookQuotes(resolvedParams.id),
-            CritiqueService.getBookCritiques(resolvedParams.id),
             RereadService.getBookRereads(resolvedParams.id),
           ])
           setReadingSessions(sessionsData)
-          setQuestions(questionsData)
-          setQuotes(quotesData)
-          setCritiques(critiquesData)
           setRereads(rereadsData)
 
           // 이미 완독된 책인데 회독 기록이 없는 경우 자동 생성
@@ -241,39 +287,6 @@ export default function BookDetailPage({
               console.error("기존 완독 책 회독 기록 생성 오류:", error)
               // 오류가 발생해도 계속 진행
             }
-          }
-
-          // 리뷰 좋아요 상태 확인 (개수는 공개 시 항상 로드)
-          if (bookData.review && bookData.reviewIsPublic) {
-            const [reviewLikes, reviewComments] = await Promise.all([
-              LikeService.getLikesCount("review", bookData.id),
-              CommentService.getCommentsCount("review", bookData.id),
-            ])
-            setReviewLikesCount(reviewLikes)
-            setReviewCommentsCount(reviewComments)
-            if (userUid && userUid !== bookData.user_id) {
-              const reviewLike = await LikeService.getUserLike(userUid, "review", bookData.id)
-              setIsReviewLiked(!!reviewLike)
-            } else {
-              setIsReviewLiked(false)
-            }
-          } else {
-            setIsReviewLiked(false)
-            setReviewLikesCount(0)
-            setReviewCommentsCount(0)
-          }
-
-          // 골든벨 퀴즈 및 결과 로드 (책 제목 기준)
-          try {
-            const quizSummaries = await GoldenBellService.getQuizSummariesByBookTitle(bookData.title)
-            setGoldenBellQuizzes(quizSummaries)
-
-            if (userUid) {
-              const results = await GoldenBellService.getUserResultsByBook(userUid, bookData.title)
-              setGoldenBellResults(results)
-            }
-          } catch (error) {
-            console.error("Error loading golden bell quizzes:", error)
           }
 
           // 체크리스트 데이터 로드 (현재 서비스에서는 사용하지 않음)
@@ -922,23 +935,6 @@ export default function BookDetailPage({
 
   const groupedSessions = groupSessionsByDate()
 
-  const handleQuestionAdd = async (
-    questionData: Omit<BookQuestion, "id" | "created_at" | "updated_at" | "order">
-  ) => {
-    if (!resolvedParams?.id) return
-    const maxOrder =
-      questions.length > 0
-        ? Math.max(...questions.map((q) => q.order ?? 0))
-        : 0
-    await QuestionService.createQuestion({
-      ...questionData,
-      bookId: resolvedParams.id,
-      order: maxOrder + 1,
-    })
-    const updated = await QuestionService.getBookQuestions(resolvedParams.id)
-    setQuestions(updated)
-  }
-
   const isCompleted = book?.status === "completed"
   const isOnHold = book?.status === "on-hold"
 
@@ -981,8 +977,14 @@ export default function BookDetailPage({
   }
 
   return (
-    <div className='min-h-screen bg-theme-gradient pb-20'>
-      <div className='container mx-auto px-4 py-4'>
+    <>
+      <div
+        className={`min-h-screen bg-theme-gradient pb-20 ${
+          book && immersiveVisible && !immersiveExiting ? "hidden" : ""
+        }`}
+        aria-hidden={book && immersiveVisible ? true : undefined}
+      >
+      <div className='container mx-auto max-w-2xl px-4 py-4'>
         {/* 에러 메시지 */}
         {error && (
           <div className='mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
@@ -1020,201 +1022,273 @@ export default function BookDetailPage({
           </div>
         </div>
 
-        {/* 책 기본 정보 카드 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
-          <div className='flex items-start gap-3'>
-            <div className='w-16 h-20 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-              <BookOpen className='h-8 w-8 text-gray-400' />
+        {/* 책 기본 정보: 타이머 진행 시 아이콘 유지 + 제목·저자·총 독서 시간만 남기고 부드럽게 축소 */}
+        <div
+          className={`bg-theme-secondary rounded-xl shadow-sm overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] mb-4 ${
+            isTimerRunning ? "p-3 shadow-md" : "p-4"
+          }`}
+        >
+          <div
+            className={`flex transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+              isTimerRunning ? "items-center gap-3" : "items-start gap-3"
+            }`}
+          >
+            <div
+              className={`bg-theme-tertiary rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
+                isTimerRunning ? "w-12 h-16 opacity-100" : "w-16 h-20 opacity-100"
+              }`}
+            >
+              <BookOpen
+                className={`text-gray-400 transition-all duration-500 ${
+                  isTimerRunning ? "h-6 w-6" : "h-8 w-8"
+                }`}
+              />
             </div>
             <div className='flex-1 min-w-0'>
-              <h2 className='text-lg font-semibold text-theme-primary mb-1'>
+              <h2
+                className={`font-semibold text-theme-primary tracking-tight transition-all duration-500 ${
+                  isTimerRunning ? "text-base mb-0.5 line-clamp-2" : "text-lg mb-1"
+                }`}
+              >
                 {book.title}
               </h2>
-              <p className='text-sm text-theme-secondary mb-2'>
+              <p
+                className={`text-theme-secondary transition-all duration-500 ${
+                  isTimerRunning ? "text-xs mb-1 line-clamp-1" : "text-sm mb-2"
+                }`}
+              >
                 {book.author || "저자 미상"}
               </p>
-              <div className='flex flex-wrap gap-2 mb-3'>
-                {book.publisher && (
-                  <span className='text-xs text-theme-tertiary'>출판사: {book.publisher}</span>
-                )}
-                {(book.publishedDate || book.publisher) && (
-                  <span className='text-xs text-theme-tertiary'>
-                    {book.publishedDate ? `출판일: ${book.publishedDate}` : ""}
-                  </span>
-                )}
-                {book.category && (
-                  <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
-                    {book.category}
-                  </span>
-                )}
-              </div>
-              <div className='flex items-center gap-2 mb-2'>
-                <span className='text-xs text-theme-tertiary'>상태</span>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${
-                    book.status === "reading"
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                      : book.status === "completed"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-                        : book.status === "on-hold"
-                          ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                  }`}
-                >
-                  {book.status === "reading"
-                    ? "읽는 중"
-                    : book.status === "completed"
-                      ? "완독"
-                      : book.status === "on-hold"
-                        ? "보류"
-                        : "읽고 싶은 책"}
-                </span>
-                {book.toReadThisYear && (
-                  <span className='text-xs text-theme-tertiary'>이번 년도에 읽을 책</span>
-                )}
-              </div>
-              <div className='flex items-center gap-2 mb-3'>
-                <span className='text-sm text-theme-secondary'>평점</span>
-                <div className='flex gap-0.5'>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`h-4 w-4 ${
-                        star <= book.rating
-                          ? "text-yellow-400 fill-current"
-                          : "text-gray-300"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className='border-t border-theme-tertiary pt-3 mt-3 space-y-1.5 text-sm text-theme-secondary'>
-                <div className='flex items-center gap-1.5'>
-                  <Clock className='h-4 w-4 shrink-0' />
+              {isTimerRunning && (
+                <div className='flex items-center gap-1.5 text-xs text-theme-secondary'>
+                  <Clock className='h-3.5 w-3.5 shrink-0 text-accent-theme' />
                   <span>총 독서 시간: {formatTotalTime(totalReadingTime)}</span>
                 </div>
-                {book.startDate && (
+              )}
+
+              <div
+                className={`transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
+                  isTimerRunning
+                    ? "max-h-0 opacity-0 pointer-events-none mt-0"
+                    : "max-h-[2000px] opacity-100 mt-0"
+                }`}
+              >
+                <div className='flex flex-wrap gap-2 mb-3'>
+                  {book.publisher && (
+                    <span className='text-xs text-theme-tertiary'>출판사: {book.publisher}</span>
+                  )}
+                  {(book.publishedDate || book.publisher) && (
+                    <span className='text-xs text-theme-tertiary'>
+                      {book.publishedDate ? `출판일: ${book.publishedDate}` : ""}
+                    </span>
+                  )}
+                  {book.category && (
+                    <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
+                      {book.category}
+                    </span>
+                  )}
+                </div>
+                <div className='flex items-center gap-2 mb-2'>
+                  <span className='text-xs text-theme-tertiary'>상태</span>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      book.status === "reading"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                        : book.status === "completed"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
+                          : book.status === "on-hold"
+                            ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                    }`}
+                  >
+                    {book.status === "reading"
+                      ? "읽는 중"
+                      : book.status === "completed"
+                        ? "완독"
+                        : book.status === "on-hold"
+                          ? "보류"
+                          : "읽고 싶은 책"}
+                  </span>
+                  {book.toReadThisYear && (
+                    <span className='text-xs text-theme-tertiary'>이번 년도에 읽을 책</span>
+                  )}
+                </div>
+                <div className='flex items-center gap-2 mb-3'>
+                  <span className='text-sm text-theme-secondary'>평점</span>
+                  <div className='flex gap-0.5'>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-4 w-4 ${
+                          star <= book.rating
+                            ? "text-yellow-400 fill-current"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className='border-t border-theme-tertiary pt-3 mt-3 space-y-1.5 text-sm text-theme-secondary'>
                   <div className='flex items-center gap-1.5'>
-                    <Calendar className='h-4 w-4 shrink-0' />
-                    <span>읽기 시작: {book.startDate}</span>
+                    <Clock className='h-4 w-4 shrink-0' />
+                    <span>총 독서 시간: {formatTotalTime(totalReadingTime)}</span>
                   </div>
-                )}
-                {book.completedDate && (
-                  <div className='flex items-center gap-1.5 text-green-600 dark:text-green-400'>
-                    <CheckCircle className='h-4 w-4 shrink-0' />
-                    <span>완독일: {book.completedDate}</span>
-                  </div>
-                )}
-                {book.currentRereadStartDate && (
-                  <div className='flex items-center gap-1.5'>
-                    <Calendar className='h-4 w-4 shrink-0' />
-                    <span>현재 회독 시작: {book.currentRereadStartDate}</span>
-                  </div>
-                )}
-                {rereads.length > 0 && (() => {
-                  const totalDays = rereads.reduce((sum, reread) => sum + (reread.durationDays || 0), 0)
-                  return totalDays > 0 ? (
-                    <div className='flex items-center gap-1.5 text-theme-secondary'>
-                      <Clock className='h-4 w-4 shrink-0' />
-                      <span>총 읽은 일수: {totalDays}일</span>
+                  {book.startDate && (
+                    <div className='flex items-center gap-1.5'>
+                      <Calendar className='h-4 w-4 shrink-0' />
+                      <span>읽기 시작: {book.startDate}</span>
                     </div>
-                  ) : null
-                })()}
-                <button
-                  onClick={() => setIsRereadDetailModalOpen(true)}
-                  className='flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer'
-                >
-                  <BookOpen className='h-4 w-4 shrink-0' />
-                  <span className='underline'>회독: {book.rereadCount ?? 0}회</span>
-                  <ChevronRight className='h-3 w-3' />
-                </button>
+                  )}
+                  {book.completedDate && (
+                    <div className='flex items-center gap-1.5 text-green-600 dark:text-green-400'>
+                      <CheckCircle className='h-4 w-4 shrink-0' />
+                      <span>완독일: {book.completedDate}</span>
+                    </div>
+                  )}
+                  {book.currentRereadStartDate && (
+                    <div className='flex items-center gap-1.5'>
+                      <Calendar className='h-4 w-4 shrink-0' />
+                      <span>현재 회독 시작: {book.currentRereadStartDate}</span>
+                    </div>
+                  )}
+                  {rereads.length > 0 && (() => {
+                    const totalDays = rereads.reduce(
+                      (sum, reread) => sum + (reread.durationDays || 0),
+                      0
+                    )
+                    return totalDays > 0 ? (
+                      <div className='flex items-center gap-1.5 text-theme-secondary'>
+                        <Clock className='h-4 w-4 shrink-0' />
+                        <span>총 읽은 일수: {totalDays}일</span>
+                      </div>
+                    ) : null
+                  })()}
+                  <button
+                    type='button'
+                    onClick={() => setIsRereadDetailModalOpen(true)}
+                    className='flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer'
+                  >
+                    <BookOpen className='h-4 w-4 shrink-0' />
+                    <span className='underline'>회독: {book.rereadCount ?? 0}회</span>
+                    <ChevronRight className='h-3 w-3' />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 독서 타이머 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
-          <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-lg font-semibold text-theme-primary'>
-              독서 타이머
-            </h3>
-          </div>
-
-          <div className='text-center mb-3'>
-            {isTimerRunning ? (
-              <div className='text-3xl font-mono text-accent-theme mb-3'>
-                {Math.floor(getElapsedTime() / 3600)
-                  .toString()
-                  .padStart(2, "0")}
-                :
-                {Math.floor((getElapsedTime() % 3600) / 60)
-                  .toString()
-                  .padStart(2, "0")}
-                :{(getElapsedTime() % 60).toString().padStart(2, "0")}
+        {/* 독서 타이머 (정지 시 카드 — 실행 중에는 전체 화면 독서 모드) */}
+        {!isTimerRunning && (
+          <div className='relative mb-4 overflow-hidden rounded-2xl border border-theme-tertiary/80 bg-theme-secondary p-4 shadow-sm'>
+            <div className='relative z-10'>
+              <div className='relative mb-3 flex min-h-10 items-center justify-between gap-2'>
+                <h3 className='min-w-0 flex-1 pr-2 text-lg font-semibold leading-snug text-theme-primary'>
+                  독서 타이머
+                </h3>
+                <button
+                  type='button'
+                  onClick={() => setIsTimerSettingsOpen((o) => !o)}
+                  className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-theme-tertiary transition-colors hover:bg-theme-tertiary/40 hover:text-theme-primary'
+                  title='타이머 설정'
+                  aria-expanded={isTimerSettingsOpen}
+                >
+                  <Settings className='h-5 w-5' />
+                </button>
               </div>
-            ) : (
-              <div className='text-3xl font-mono text-theme-tertiary mb-3'>
-                00:00:00
+              <div className='mb-3 text-center transition-all duration-500'>
+                <div className='text-3xl font-mono tracking-tight text-theme-tertiary'>
+                  00:00:00
+                </div>
               </div>
-            )}
+              <div className='flex gap-3'>
+                {isCompleted ? (
+                  <button
+                    type='button'
+                    onClick={() => setIsRereadModalOpen(true)}
+                    disabled={isTimerProcessing}
+                    className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-theme px-4 py-3 font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50'
+                  >
+                    <RotateCcw className='h-5 w-5' />
+                    계속 읽기
+                  </button>
+                ) : isOnHold ? (
+                  <button
+                    type='button'
+                    onClick={handleReread}
+                    disabled={isTimerProcessing}
+                    className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-theme px-4 py-3 font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50'
+                  >
+                    <Play className='h-5 w-5' />
+                    다시 읽기
+                  </button>
+                ) : (
+                  <button
+                    type='button'
+                    onClick={startTimer}
+                    disabled={isTimerProcessing}
+                    className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-theme px-4 py-3 font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50'
+                  >
+                    <Play className='h-5 w-5' />
+                    {isTimerProcessing ? "시작 중..." : "독서 시작"}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
+        )}
 
-          {/* 타이머 컨트롤 버튼들 */}
-          <div className='flex gap-3'>
-            {isCompleted ? (
-              <button
-                onClick={() => setIsRereadModalOpen(true)}
-                disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <RotateCcw className='h-5 w-5' />
-                계속 읽기
-              </button>
-            ) : isOnHold ? (
-              <button
-                onClick={handleReread}
-                disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <Play className='h-5 w-5' />
-                다시 읽기
-              </button>
-            ) : !isTimerRunning ? (
-              <button
-                onClick={startTimer}
-                disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <Play className='h-5 w-5' />
-                {isTimerProcessing ? "시작 중..." : "독서 시작"}
-              </button>
-            ) : (
-              <button
-                onClick={stopTimer}
-                disabled={isTimerProcessing}
-                className='flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                <Pause className='h-5 w-5' />
-                {isTimerProcessing ? "정지 중..." : "독서 정지"}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 보류하기 / 완독하기 등 액션 버튼 */}
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4'>
-          {!isCompleted && !isOnHold && book.hasStartedReading && (
-            <button
-              onClick={() => setIsOnHoldModalOpen(true)}
-              disabled={isTimerProcessing}
-              className='flex items-center justify-center gap-2 py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+        {/* 기록 / 활동 허브 */}
+        {resolvedParams && (
+          <div className='mb-4 grid gap-3 sm:grid-cols-2'>
+            <Link
+              href={`/book/${resolvedParams.id}/${resolvedParams.user_id}/journal`}
+              className='group flex rounded-xl border border-theme-tertiary bg-theme-secondary p-4 shadow-sm transition-all hover:border-accent-theme/50 hover:shadow-md'
             >
-              <Pause className='h-4 w-4' />
-              보류하기
-            </button>
-          )}
+              <div className='flex w-full items-stretch gap-3'>
+                <div className='flex shrink-0 items-center'>
+                  <div className='rounded-lg bg-accent-theme/10 p-2.5'>
+                    <NotebookPen className='h-6 w-6 text-accent-theme' />
+                  </div>
+                </div>
+                <div className='min-w-0 flex-1 flex flex-col justify-center py-0.5'>
+                  <h3 className='font-semibold text-theme-primary'>기록</h3>
+                  <p className='mt-1 text-sm text-theme-secondary leading-snug'>
+                    독서 질문, 구절, 완독 후 리뷰와 서평
+                  </p>
+                </div>
+                <div className='flex w-9 shrink-0 items-center justify-center self-stretch'>
+                  <ChevronRight className='h-5 w-5 text-theme-tertiary transition-colors group-hover:text-accent-theme' />
+                </div>
+              </div>
+            </Link>
+            <Link
+              href={`/book/${resolvedParams.id}/${resolvedParams.user_id}/activities`}
+              className='group flex rounded-xl border border-theme-tertiary bg-theme-secondary p-4 shadow-sm transition-all hover:border-accent-theme/50 hover:shadow-md'
+            >
+              <div className='flex w-full items-stretch gap-3'>
+                <div className='flex shrink-0 items-center'>
+                  <div className='rounded-lg bg-violet-500/10 p-2.5 dark:bg-violet-400/10'>
+                    <Sparkles className='h-6 w-6 text-violet-600 dark:text-violet-300' />
+                  </div>
+                </div>
+                <div className='min-w-0 flex-1 flex flex-col justify-center py-0.5'>
+                  <h3 className='font-semibold text-theme-primary'>활동</h3>
+                  <p className='mt-1 text-sm text-theme-secondary leading-snug'>
+                    골든벨, 이해도 점검, 발췌 요약
+                  </p>
+                </div>
+                <div className='flex w-9 shrink-0 items-center justify-center self-stretch'>
+                  <ChevronRight className='h-5 w-5 text-theme-tertiary transition-colors group-hover:text-accent-theme' />
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
+
+        {/* 완독하기 등 액션 버튼 (기록·활동 아래) */}
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4'>
           {!isCompleted &&
             book.hasStartedReading &&
             readingSessions.length > 0 && (
@@ -1227,16 +1301,6 @@ export default function BookDetailPage({
                 완독하기
               </button>
             )}
-          {isOnHold && (
-            <button
-              onClick={handleReread}
-              disabled={isTimerProcessing}
-              className='flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              <Play className='h-4 w-4' />
-              다시 읽기
-            </button>
-          )}
           {isCompleted && (
             <>
               <button
@@ -1262,101 +1326,6 @@ export default function BookDetailPage({
             </>
           )}
         </div>
-
-        {/* 책 공개 설정 (소유자만) */}
-        {userUid === book.user_id && (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-2'>
-                {book.isBookPublic ? (
-                  <Globe className='h-5 w-5 text-blue-500' />
-                ) : (
-                  <Lock className='h-5 w-5 text-gray-400' />
-                )}
-                <div>
-                  <label className='text-sm font-medium text-theme-primary cursor-pointer'>
-                    이 책의 모든 콘텐츠 공개하기
-                  </label>
-                  <p className='text-xs text-theme-tertiary'>
-                    {book.isBookPublic
-                      ? "다른 독서자들이 이 책의 구절 기록, 질문, 리뷰, 서평을 볼 수 있습니다"
-                      : "이 책의 모든 콘텐츠는 나만 볼 수 있습니다"}
-                  </p>
-                </div>
-              </div>
-              <button
-                type='button'
-                onClick={async () => {
-                  if (!resolvedParams) return
-                  try {
-                    const updatedBook = {
-                      ...book,
-                      isBookPublic: !book.isBookPublic,
-                    }
-                    await BookService.updateBook(resolvedParams.id, updatedBook)
-                    setBook(updatedBook)
-                    updateBook(resolvedParams.id, updatedBook)
-                  } catch (error) {
-                    console.error("Error updating book public setting:", error)
-                    setError("공개 설정을 업데이트하는 중 오류가 발생했습니다.")
-                  }
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  book.isBookPublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    book.isBookPublic ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 독서 골든벨 출제 요청 (소유자만, 이미 문제가 출제된 책은 미표시) */}
-        {userUid && userUid === book.user_id && goldenBellQuizzes.length === 0 && (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
-            <div className='flex items-center justify-between gap-3'>
-              <p className='text-sm text-theme-secondary'>
-                이 책으로 독서 골든벨 문제 출제를 요청할 수 있습니다.
-              </p>
-              {goldenBellRequestSent ? (
-                <span className='text-sm text-green-600 dark:text-green-400 shrink-0'>
-                  요청됨
-                </span>
-              ) : (
-                <button
-                  type='button'
-                  disabled={goldenBellRequesting}
-                  onClick={async () => {
-                    if (!resolvedParams || !userUid || !book) return
-                    setGoldenBellRequesting(true)
-                    setError(null)
-                    try {
-                      await GoldenBellRequestService.create({
-                        user_id: userUid,
-                        user_display_name: user?.displayName ?? undefined,
-                        book_id: resolvedParams.id,
-                        book_title: book.title,
-                      })
-                      setGoldenBellRequestSent(true)
-                    } catch (err) {
-                      console.error("Golden bell request error:", err)
-                      setError("요청을 저장하는 중 오류가 발생했습니다.")
-                    } finally {
-                      setGoldenBellRequesting(false)
-                    }
-                  }}
-                  className='shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-accent-theme text-white hover:bg-accent-theme-secondary disabled:opacity-50'
-                >
-                  {goldenBellRequesting ? "요청 중..." : "골든벨 출제 요청"}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* 체크리스트 섹션 - 현재 서비스에서는 사용하지 않음 */}
         {/* 나중에 사용할 수 있도록 컴포넌트로 분리되어 있음 */}
@@ -1508,571 +1477,118 @@ export default function BookDetailPage({
           )}
         </div>
 
-        {/* 질문 카드 섹션 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
-          <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-lg font-semibold text-theme-primary'>
-              독서 질문
-            </h3>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
-                {questions.length}개
-              </span>
-              {userData?.isAdmin && (
-                <button
-                  type='button'
-                  onClick={() => setIsQuestionJsonModalOpen(true)}
-                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
-                  title='질문 JSON 업로드'
-                >
-                  <Plus className='h-4 w-4' />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {questions.length === 0 ? (
-            <div className='text-center py-6'>
-              <p className='text-theme-secondary mb-4'>
-                아직 질문이 없습니다. 질문을 추가해보세요!
-              </p>
-              <div className='flex flex-col gap-2'>
-                <button
-                  onClick={() => setIsQuestionAddModalOpen(true)}
-                  className='inline-flex items-center justify-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>질문 추가하기</span>
-                </button>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
-                    )
-                  }
-                  className='inline-flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
-                >
-                  <span>질문 목록</span>
-                  <ChevronRight className='h-4 w-4' />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className='space-y-3 divide-y divide-theme-tertiary first:pt-0'>
-                {[...questions]
-                  .sort((a, b) => {
-                    const at = a.created_at instanceof Date ? a.created_at.getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0)
-                    const bt = b.created_at instanceof Date ? b.created_at.getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0)
-                    return bt - at
-                  })
-                  .slice(0, 3)
-                  .map((question) => (
-                  <div key={question.id} className='pt-3 first:pt-0'>
-                    <QuestionCard
-                      question={question}
-                      showChapterPath={true}
-                      showActions={false}
-                      detailHref={resolvedParams ? `/book/${resolvedParams.id}/${resolvedParams.user_id}/questions/${question.id}` : undefined}
+        {/* 보류 · 공개 (소유자만, 독서 기록 아래 — 보류가 위) */}
+        {userUid === book.user_id && (
+          <div className='mt-4 space-y-3'>
+            {!isCompleted && book.hasStartedReading && (
+              <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div className='flex items-center gap-2 min-w-0'>
+                    <Pause
+                      className={`h-5 w-5 shrink-0 ${
+                        isOnHold ? "text-orange-500" : "text-theme-tertiary"
+                      }`}
                     />
+                    <div className='min-w-0'>
+                      <p className='text-sm font-medium text-theme-primary'>
+                        이 책 보류하기
+                      </p>
+                      <p className='text-xs text-theme-tertiary mt-0.5'>
+                        {isOnHold
+                          ? "보류 중입니다. 토글을 끄면 다시 읽는 중으로 돌아갑니다."
+                          : "읽다가 잠시 멈출 때 켜 두면 목록에서 보류로 표시됩니다."}
+                      </p>
+                    </div>
                   </div>
-                ))}
+                  <button
+                    type='button'
+                    disabled={isTimerProcessing || isHoldUpdating}
+                    onClick={async () => {
+                      if (!resolvedParams || !book || isTimerProcessing || isHoldUpdating)
+                        return
+                      setIsHoldUpdating(true)
+                      setError(null)
+                      try {
+                        if (isOnHold) {
+                          await handleReread()
+                        } else {
+                          await handlePutOnHold()
+                        }
+                      } finally {
+                        setIsHoldUpdating(false)
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                      isOnHold ? "bg-orange-500" : "bg-gray-300 dark:bg-gray-600"
+                    }`}
+                    aria-pressed={isOnHold}
+                    aria-label={isOnHold ? "보류 끄기" : "보류 켜기"}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        isOnHold ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
-              <div className='flex flex-col gap-2 pt-4'>
-                <button
-                  onClick={() => setIsQuestionAddModalOpen(true)}
-                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>질문 추가하기</span>
-                </button>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/questions`
-                    )
-                  }
-                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
-                >
-                  <span>더보기 ({questions.length}개)</span>
-                  <ChevronRight className='h-4 w-4' />
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+            )}
 
-        {/* 구절 기록 섹션 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
-          <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-lg font-semibold text-theme-primary'>
-              구절 기록
-            </h3>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
-                {quotes.length}개
-              </span>
-              {userData?.isAdmin && (
+            <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  {book.isBookPublic ? (
+                    <Globe className='h-5 w-5 text-blue-500' />
+                  ) : (
+                    <Lock className='h-5 w-5 text-gray-400' />
+                  )}
+                  <div>
+                    <label className='text-sm font-medium text-theme-primary cursor-pointer'>
+                      이 책의 모든 콘텐츠 공개하기
+                    </label>
+                    <p className='text-xs text-theme-tertiary'>
+                      {book.isBookPublic
+                        ? "다른 독서자들이 이 책의 구절 기록, 질문, 리뷰, 서평을 볼 수 있습니다"
+                        : "이 책의 모든 콘텐츠는 나만 볼 수 있습니다"}
+                    </p>
+                  </div>
+                </div>
                 <button
                   type='button'
-                  onClick={() => setIsQuoteJsonModalOpen(true)}
-                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
-                  title='구절 기록 JSON 업로드'
-                >
-                  <Plus className='h-4 w-4' />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {quotes.length === 0 ? (
-            <div className='text-center py-6'>
-              <PenSquare className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-              <p className='text-theme-secondary mb-4'>
-                아직 구절 기록이 없습니다. 인상 깊은 구절을 기록해보세요!
-              </p>
-              <div className='flex flex-col gap-2'>
-                <button
-                  onClick={() => {
-                    setEditingQuote(null)
-                    setIsQuoteModalOpen(true)
+                  onClick={async () => {
+                    if (!resolvedParams) return
+                    try {
+                      const updatedBook = {
+                        ...book,
+                        isBookPublic: !book.isBookPublic,
+                      }
+                      await BookService.updateBook(resolvedParams.id, updatedBook)
+                      setBook(updatedBook)
+                      updateBook(resolvedParams.id, updatedBook)
+                    } catch (error) {
+                      console.error("Error updating book public setting:", error)
+                      setError("공개 설정을 업데이트하는 중 오류가 발생했습니다.")
+                    }
                   }}
-                  className='inline-flex items-center justify-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    book.isBookPublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                  }`}
                 >
-                  <Plus className='h-4 w-4' />
-                  <span>구절 기록 추가하기</span>
-                </button>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/quotes`
-                    )
-                  }
-                  className='inline-flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
-                >
-                  <span>구절 기록 목록</span>
-                  <ChevronRight className='h-4 w-4' />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className='space-y-3 divide-y divide-theme-tertiary first:pt-0'>
-              {[...quotes]
-                .sort((a, b) => {
-                  const at = a.created_at instanceof Date ? a.created_at.getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0)
-                  const bt = b.created_at instanceof Date ? b.created_at.getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0)
-                  return bt - at
-                })
-                .slice(0, 3)
-                .map((quote) => (
-                <div key={quote.id} className='pt-3 first:pt-0'>
-                  <QuoteCard
-                    quote={quote}
-                    bookTitle={book?.title}
-                    detailHref={resolvedParams ? `/book/${resolvedParams.id}/${resolvedParams.user_id}/quotes/${quote.id}` : undefined}
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      book.isBookPublic ? "translate-x-6" : "translate-x-1"
+                    }`}
                   />
-                </div>
-              ))}
-              <div className='flex flex-col gap-2 pt-2'>
-                <button
-                  onClick={() => {
-                    setEditingQuote(null)
-                    setIsQuoteModalOpen(true)
-                  }}
-                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>구절 기록 추가하기</span>
-                </button>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/quotes`
-                    )
-                  }
-                  className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
-                >
-                  <span>더보기 ({quotes.length}개)</span>
-                  <ChevronRight className='h-4 w-4' />
                 </button>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* 독서 골든벨 섹션 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-6'>
-          <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-lg font-semibold text-theme-primary'>
-              🔔 독서 골든벨
-            </h3>
-            {goldenBellQuizzes.length > 0 && (
-              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
-                {goldenBellQuizzes.length}개 버전
-              </span>
-            )}
-          </div>
-
-          {goldenBellQuizzes.length === 0 ? (
-            <div className='text-center py-6'>
-              <div className='text-4xl mb-4'>🔔</div>
-              <p className='text-theme-secondary mb-4'>
-                아직 골든벨 문제가 없습니다.
-                <br />
-                <span className='text-sm'>JSON 파일로 문제를 등록해보세요!</span>
-              </p>
-              {userData?.isAdmin && (
-                <button
-                  onClick={() => setIsGoldenBellUploadModalOpen(true)}
-                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>골든벨 문제 등록하기</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className='space-y-3'>
-              {goldenBellQuizzes.map((quiz) => (
-                <div
-                  key={quiz.id}
-                  className='bg-theme-tertiary rounded-lg p-4'
-                >
-                  <div className='flex items-center justify-between mb-2'>
-                    <div className='flex items-center gap-2'>
-                      <span
-                        className={`px-2 py-0.5 text-xs font-medium rounded ${
-                          quiz.difficulty === "easy"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                        }`}
-                      >
-                        {quiz.difficulty === "easy" ? "😊 쉬움" : "🔥 어려움"}
-                      </span>
-                    </div>
-                    <span className='text-sm font-medium text-theme-primary'>
-                      총 {quiz.totalQuestions}문제
-                    </span>
-                  </div>
-                  <div className='flex flex-wrap gap-2 text-xs mb-3'>
-                    {quiz.multipleChoiceCount > 0 && (
-                      <span className='px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded'>
-                        객관식 {quiz.multipleChoiceCount}
-                      </span>
-                    )}
-                    {quiz.shortAnswerCount > 0 && (
-                      <span className='px-2 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded'>
-                        단답형 {quiz.shortAnswerCount}
-                      </span>
-                    )}
-                    {quiz.essayCount > 0 && (
-                      <span className='px-2 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded'>
-                        서술형 {quiz.essayCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className='flex gap-2'>
-                    <button
-                      onClick={() => router.push(`/book/${resolvedParams?.id}/${resolvedParams?.user_id}/golden-bell/${quiz.id}`)}
-                      className='flex-1 py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm font-medium rounded-lg transition-colors'
-                    >
-                      문제 풀기
-                    </button>
-                    {userData?.isAdmin && (
-                      <button
-                        type='button'
-                        onClick={() => {
-                          setGoldenBellReregisterQuiz(quiz)
-                          setIsGoldenBellUploadModalOpen(true)
-                        }}
-                        className='py-2 px-3 border border-theme-tertiary text-theme-secondary hover:bg-theme-tertiary rounded-lg text-sm font-medium transition-colors'
-                      >
-                        재등록
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {userData?.isAdmin && (
-                <button
-                  onClick={() => setIsGoldenBellUploadModalOpen(true)}
-                  className='w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-theme-tertiary hover:border-accent-theme text-theme-secondary hover:text-accent-theme rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>다른 버전 등록하기</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* 내 골든벨 결과 */}
-          {goldenBellResults.length > 0 && (
-            <div className='mt-4 pt-4 border-t border-theme-tertiary'>
-              <h4 className='text-sm font-medium text-theme-primary mb-3'>
-                📊 내 풀이 기록
-              </h4>
-              <div className='space-y-2'>
-                {goldenBellResults.slice(0, 5).map((result) => {
-                  const completedDate = result.completedAt instanceof Date
-                    ? result.completedAt
-                    : new Date(result.completedAt)
-
-                  return (
-                    <div
-                      key={result.id}
-                      className='flex items-center justify-between p-3 bg-theme-tertiary/50 rounded-lg'
-                    >
-                      <div className='flex items-center gap-2'>
-                        <span
-                          className={`px-2 py-0.5 text-xs font-medium rounded ${
-                            result.difficulty === "easy"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                          }`}
-                        >
-                          {result.difficulty === "easy" ? "쉬움" : "어려움"}
-                        </span>
-                        <span className='text-xs text-theme-tertiary'>
-                          {completedDate.toLocaleDateString("ko-KR", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        <span className='text-sm text-theme-secondary'>
-                          {result.correctCount}/{result.totalQuestions}
-                        </span>
-                        <span
-                          className={`text-sm font-bold ${
-                            result.score >= 80
-                              ? "text-green-600 dark:text-green-400"
-                              : result.score >= 60
-                                ? "text-blue-600 dark:text-blue-400"
-                                : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {result.score}점
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 리뷰 섹션 (완독 후) */}
-        {isCompleted && (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-4'>
-            <div className='flex items-center justify-between mb-3'>
-              <h3 className='text-lg font-semibold text-theme-primary'>
-                독서 리뷰
-              </h3>
-              {!book.review && (
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
-                    )
-                  }
-                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
-                  title='리뷰 작성'
-                >
-                  <Plus className='h-4 w-4' />
-                </button>
-              )}
-            </div>
-
-            {book.review ? (
-              <div
-                role='button'
-                tabIndex={0}
-                onClick={() =>
-                  router.push(
-                    `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
-                    )
-                  }
-                }}
-                className='rounded-lg border border-theme-tertiary p-4 bg-theme-secondary cursor-pointer hover:border-accent-theme/50 hover:shadow-md transition-shadow'
-              >
-                <div className='flex items-center justify-between gap-2 mb-2'>
-                  <div className='flex items-center gap-2'>
-                    <span className='text-xs text-theme-secondary'>평점:</span>
-                    <div className='flex gap-1'>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`h-3 w-3 ${
-                            star <= book.rating
-                              ? "text-yellow-400 fill-current"
-                              : "text-gray-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className='text-xs text-theme-secondary'>
-                      {book.rating}점
-                    </span>
-                  </div>
-                  <ChevronRight className='h-4 w-4 text-theme-tertiary shrink-0' />
-                </div>
-                <div className='text-theme-primary whitespace-pre-wrap text-sm mb-3 line-clamp-2'>
-                  {book.review}
-                </div>
-                {book.reviewIsPublic && userUid && userUid !== book.user_id && (
-                  <div
-                    className='flex items-center gap-4 pt-3 border-t border-theme-tertiary'
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        if (!userUid || !resolvedParams) return
-                        try {
-                          if (isReviewLiked) {
-                            await LikeService.removeLike(userUid, "review", resolvedParams.id)
-                            setIsReviewLiked(false)
-                            const count = await LikeService.getLikesCount("review", resolvedParams.id)
-                            setReviewLikesCount(count)
-                          } else {
-                            await LikeService.addLike(userUid, "review", resolvedParams.id)
-                            setIsReviewLiked(true)
-                            const count = await LikeService.getLikesCount("review", resolvedParams.id)
-                            setReviewLikesCount(count)
-                          }
-                        } catch (error) {
-                          console.error("Error toggling review like:", error)
-                        }
-                      }}
-                      className='flex items-center gap-1 transition-colors text-theme-secondary'
-                    >
-                      <Heart className={`h-4 w-4 ${isReviewLiked ? "text-red-500 fill-red-500" : "text-red-500"}`} />
-                      <span className='text-xs'>{reviewLikesCount}</span>
-                    </button>
-                    <span className='flex items-center gap-1 text-xs text-theme-tertiary'>
-                      <MessageSquare className='h-4 w-4' />
-                      {reviewCommentsCount}
-                    </span>
-                  </div>
-                )}
-                {book.reviewIsPublic && userUid === book.user_id && (
-                  <div className='flex items-center gap-4 pt-3 border-t border-theme-tertiary'>
-                    <span className='flex items-center gap-1 text-theme-secondary'>
-                      <Heart className='h-4 w-4 text-red-500 fill-red-500' />
-                      <span className='text-xs'>{reviewLikesCount}</span>
-                    </span>
-                    <span className='flex items-center gap-1 text-theme-tertiary'>
-                      <MessageSquare className='h-4 w-4' />
-                      <span className='text-xs'>{reviewCommentsCount}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className='text-center py-6'>
-                <Star className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-                <p className='text-theme-secondary mb-4'>
-                  아직 리뷰가 없습니다. 책에 대한 리뷰를 작성해보세요!
-                </p>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
-                    )
-                  }
-                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>리뷰 작성하기</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 서평 섹션 (완독 후) */}
-        {isCompleted && (
-          <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mt-4'>
-            <div className='flex items-center justify-between mb-3'>
-              <h3 className='text-lg font-semibold text-theme-primary'>
-                서평
-              </h3>
-              <div className='flex items-center gap-2'>
-                <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
-                  {critiques.length}개
-                </span>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/critique`
-                    )
-                  }
-                  className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
-                  title='서평 추가'
-                >
-                  <Plus className='h-4 w-4' />
-                </button>
-              </div>
-            </div>
-
-            {critiques.length === 0 ? (
-              <div className='text-center py-6'>
-                <MessageSquare className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-                <p className='text-theme-secondary mb-4'>
-                  아직 서평이 없습니다. 깊이 있는 분석과 평가를 작성해보세요!
-                </p>
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/critique`
-                    )
-                  }
-                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>서평 작성하기</span>
-                </button>
-              </div>
-            ) : (
-              <div className='space-y-3 divide-y divide-theme-tertiary first:pt-0'>
-                {critiques.map((critique) => (
-                  <div key={critique.id} className='pt-3 first:pt-0'>
-                    <CritiqueCard
-                    key={critique.id}
-                    critique={critique}
-                    bookTitle={book?.title}
-                    showCommentSection={false}
-                    detailHref={resolvedParams ? `/book/${resolvedParams.id}/${resolvedParams.user_id}/critiques/${critique.id}` : undefined}
-                    onEdit={(critique) => {
-                      router.push(
-                        `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/critiques/${critique.id}/edit`
-                      )
-                    }}
-                    onDelete={(critiqueId) => {
-                      setCritiqueToDelete(critiqueId)
-                      setIsDeleteCritiqueModalOpen(true)
-                    }}
-                  />
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
         {/* 하단 고정 액션 바 - 변경사항 저장만 */}
         {hasUnsavedChanges && (
           <div className='fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme-tertiary p-4 z-40'>
-            <div className='container mx-auto flex items-center justify-between'>
+            <div className='container mx-auto max-w-2xl flex items-center justify-between'>
               <span className='text-sm text-theme-secondary'>
                 변경사항이 저장되지 않았습니다
               </span>
@@ -2086,6 +1602,39 @@ export default function BookDetailPage({
             </div>
           </div>
         )}
+      </div>
+    </div>
+
+        {book && immersiveVisible && (
+          <ReadingImmersiveFullscreen
+            exiting={immersiveExiting}
+            bookTitle={book.title}
+            bookAuthor={book.author || "저자 미상"}
+            totalReadingTimeLabel={formatTotalTime(totalReadingTime)}
+            timerBgSrc={timerBgSrc}
+            cosmosOverlay={cosmosOverlay}
+            onCosmosLoad={() => setCosmosOverlay("on")}
+            onCosmosError={() => setCosmosOverlay("fail")}
+            getElapsedTime={getElapsedTime}
+            isTimerProcessing={isTimerProcessing}
+            isSettingsOpen={isTimerSettingsOpen}
+            onToggleSettings={() => setIsTimerSettingsOpen((o) => !o)}
+            isCompleted={isCompleted}
+            isOnHold={isOnHold}
+            onStop={stopTimer}
+            onRereadModal={() => setIsRereadModalOpen(true)}
+            onReread={handleReread}
+          />
+        )}
+
+        <ReadingTimerSettingsModal
+          isOpen={isTimerSettingsOpen}
+          onClose={() => setIsTimerSettingsOpen(false)}
+          ambientTrackId={ambientTrackId}
+          onAmbientChange={setAmbientTrackId}
+          timerBgId={timerBgId}
+          onTimerBgChange={setTimerBgId}
+        />
 
         <RereadModal
           isOpen={isRereadModalOpen}
@@ -2198,195 +1747,6 @@ export default function BookDetailPage({
         )}
         */}
 
-        {/* 보류하기 확인 모달 */}
-        <ConfirmModal
-          isOpen={isOnHoldModalOpen}
-          onClose={() => setIsOnHoldModalOpen(false)}
-          onConfirm={handlePutOnHold}
-          title='책을 보류하시겠습니까?'
-          message={`"${book?.title}" 책을 보류하시겠습니까?\n\n보류된 책은 나중에 다시 읽기 상태로 변경할 수 있습니다.`}
-          confirmText='보류하기'
-          cancelText='취소'
-          icon={Pause}
-        />
-
-        {/* 구절 기록 모달 */}
-        <QuoteModal
-          isOpen={isQuoteModalOpen}
-          onClose={() => {
-            setIsQuoteModalOpen(false)
-            setEditingQuote(null)
-          }}
-          onSave={async (quoteData) => {
-            if (!userUid || !resolvedParams) return
-
-            try {
-              setError(null)
-              if (editingQuote) {
-                // 수정
-                await QuoteService.updateQuote(editingQuote.id, {
-                  ...quoteData,
-                  user_id: userUid,
-                })
-              } else {
-                // 생성
-                await QuoteService.createQuote({
-                  ...quoteData,
-                  user_id: userUid,
-                })
-              }
-
-              // 구절 기록 목록 새로고침
-              const updatedQuotes = await QuoteService.getBookQuotes(
-                resolvedParams.id
-              )
-              setQuotes(updatedQuotes)
-
-              setIsQuoteModalOpen(false)
-              setEditingQuote(null)
-            } catch (error) {
-              console.error("Error saving quote:", error)
-              if (error instanceof ApiError) {
-                setError(error.message)
-              } else {
-                setError("구절 기록을 저장하는 중 오류가 발생했습니다.")
-              }
-            }
-          }}
-          bookId={resolvedParams?.id || ""}
-          bookTitle={book?.title}
-          existingQuote={editingQuote}
-        />
-
-        {/* 구절 기록 삭제 확인 모달 */}
-        <ConfirmModal
-          isOpen={isDeleteQuoteModalOpen}
-          onClose={() => {
-            setIsDeleteQuoteModalOpen(false)
-            setQuoteToDelete(null)
-          }}
-          onConfirm={async () => {
-            if (!quoteToDelete || !resolvedParams) return
-            try {
-              setError(null)
-              await QuoteService.deleteQuote(quoteToDelete)
-              const updatedQuotes = await QuoteService.getBookQuotes(resolvedParams.id)
-              setQuotes(updatedQuotes)
-              setIsDeleteQuoteModalOpen(false)
-              setQuoteToDelete(null)
-            } catch (error) {
-              console.error("Error deleting quote:", error)
-              if (error instanceof ApiError) setError(error.message)
-              else setError("구절 기록을 삭제하는 중 오류가 발생했습니다.")
-            }
-          }}
-          title='구절 기록 삭제'
-          message='이 구절 기록을 삭제하시겠습니까? 삭제하면 달린 생각(댓글)도 모두 삭제됩니다.'
-          confirmText='삭제'
-          cancelText='취소'
-          icon={Trash2}
-        />
-
-        {/* 구절 기록 JSON 업로드 모달 (관리자) */}
-        <QuoteJsonUploadModal
-          isOpen={isQuoteJsonModalOpen}
-          onClose={() => setIsQuoteJsonModalOpen(false)}
-          onSuccess={async () => {
-            if (!resolvedParams) return
-            const updatedQuotes = await QuoteService.getBookQuotes(resolvedParams.id)
-            setQuotes(updatedQuotes)
-          }}
-          bookId={resolvedParams?.id || ""}
-          userId={userUid || ""}
-        />
-
-        {/* 질문 JSON 업로드 모달 (관리자) */}
-        {resolvedParams && book && (
-          <JsonUploadModal
-            isOpen={isQuestionJsonModalOpen}
-            onClose={() => setIsQuestionJsonModalOpen(false)}
-            onSuccess={async () => {
-              if (!resolvedParams) return
-              const updated = await QuestionService.getBookQuestions(resolvedParams.id)
-              setQuestions(updated)
-            }}
-            bookId={resolvedParams.id}
-            bookTitle={book.title}
-          />
-        )}
-
-        {/* 질문 추가 모달 (일반 유저) */}
-        {resolvedParams && (
-          <QuestionAddModal
-            isOpen={isQuestionAddModalOpen}
-            onClose={() => setIsQuestionAddModalOpen(false)}
-            onSave={handleQuestionAdd}
-            bookId={resolvedParams.id}
-            existingQuestions={questions}
-          />
-        )}
-
-        {/* 서평 삭제 확인 모달 */}
-        <ConfirmModal
-          isOpen={isDeleteCritiqueModalOpen}
-          onClose={() => {
-            setIsDeleteCritiqueModalOpen(false)
-            setCritiqueToDelete(null)
-          }}
-          onConfirm={async () => {
-            if (!critiqueToDelete || !resolvedParams) return
-
-            try {
-              setError(null)
-              await CritiqueService.deleteCritique(critiqueToDelete)
-
-              // 서평 목록 새로고침
-              const updatedCritiques = await CritiqueService.getBookCritiques(
-                resolvedParams.id
-              )
-              setCritiques(updatedCritiques)
-
-              setIsDeleteCritiqueModalOpen(false)
-              setCritiqueToDelete(null)
-            } catch (error) {
-              console.error("Error deleting critique:", error)
-              if (error instanceof ApiError) {
-                setError(error.message)
-              } else {
-                setError("서평을 삭제하는 중 오류가 발생했습니다.")
-              }
-            }
-          }}
-          title='서평 삭제'
-          message='이 서평을 삭제하시겠습니까? 삭제하면 달린 의견(댓글)도 모두 삭제됩니다.'
-          confirmText='삭제'
-          cancelText='취소'
-          icon={Trash2}
-        />
-
-        {/* 골든벨 업로드 모달 */}
-        <GoldenBellUploadModal
-          isOpen={isGoldenBellUploadModalOpen}
-          onClose={() => {
-            setIsGoldenBellUploadModalOpen(false)
-            setGoldenBellReregisterQuiz(null)
-          }}
-          bookTitle={book?.title || ""}
-          userId={userUid || ""}
-          reregisterQuizId={goldenBellReregisterQuiz?.id ?? null}
-          reregisterDifficulty={goldenBellReregisterQuiz?.difficulty ?? null}
-          onUploadSuccess={async () => {
-            if (!book) return
-            setGoldenBellReregisterQuiz(null)
-            try {
-              const updatedQuizzes = await GoldenBellService.getQuizSummariesByBookTitle(book.title)
-              setGoldenBellQuizzes(updatedQuizzes)
-            } catch (error) {
-              console.error("Error reloading golden bell quizzes:", error)
-            }
-          }}
-        />
-      </div>
-    </div>
+    </>
   )
 }

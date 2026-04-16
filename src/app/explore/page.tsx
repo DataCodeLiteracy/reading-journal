@@ -29,6 +29,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { ExploreListSkeleton, GenericRouteSkeleton } from "@/components/skeletons"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import ReadingExamUploadModal from "@/components/ReadingExamUploadModal"
+import ReadingExcerptUploadModal from "@/components/ReadingExcerptUploadModal"
 
 type GroupedBook = {
   title: string
@@ -68,7 +70,7 @@ export default function ExplorePage() {
 function ExplorePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { userUid, loading, isLoggedIn } = useAuth()
+  const { userUid, loading, isLoggedIn, userData } = useAuth()
   const { addBook, allBooks: myBooksFromContext } = useData()
   const [allBooks, setAllBooks] = useState<Book[]>([])
   const [userNames, setUserNames] = useState<Record<string, string>>({})
@@ -107,6 +109,10 @@ function ExplorePageContent() {
   } | null>(null)
   const [isAddingBook, setIsAddingBook] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
+
+  const [exploreExamModalOpen, setExploreExamModalOpen] = useState(false)
+  const [exploreExcerptModalOpen, setExploreExcerptModalOpen] = useState(false)
+  const [exploreAdminTitle, setExploreAdminTitle] = useState("")
 
   const itemsPerPage = 15
 
@@ -634,6 +640,32 @@ function ExplorePageContent() {
                 </div>
                 {expandedTitle === g.title && (
                   <div className='border-t border-theme-tertiary bg-theme-tertiary/30 px-4 py-3'>
+                    {userData?.isAdmin && userUid && (
+                      <div className='flex flex-wrap gap-2 mb-3'>
+                        <button
+                          type='button'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExploreAdminTitle(g.title)
+                            setExploreExamModalOpen(true)
+                          }}
+                          className='text-xs px-2 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700'
+                        >
+                          이해도 점검 JSON 등록
+                        </button>
+                        <button
+                          type='button'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExploreAdminTitle(g.title)
+                            setExploreExcerptModalOpen(true)
+                          }}
+                          className='text-xs px-2 py-1.5 rounded-md bg-teal-700 text-white hover:bg-teal-800'
+                        >
+                          발췌 JSON 등록
+                        </button>
+                      </div>
+                    )}
                     <p className='text-xs font-medium text-theme-secondary mb-2'>
                       이 책을 등록한 유저
                     </p>
@@ -746,6 +778,27 @@ function ExplorePageContent() {
           </div>
         </div>
       )}
+
+      <ReadingExamUploadModal
+        isOpen={exploreExamModalOpen}
+        onClose={() => {
+          setExploreExamModalOpen(false)
+          setExploreAdminTitle("")
+        }}
+        bookTitle={exploreAdminTitle}
+        userId={userUid || ""}
+        onSuccess={() => {}}
+      />
+      <ReadingExcerptUploadModal
+        isOpen={exploreExcerptModalOpen}
+        onClose={() => {
+          setExploreExcerptModalOpen(false)
+          setExploreAdminTitle("")
+        }}
+        bookTitle={exploreAdminTitle}
+        userId={userUid || ""}
+        onSuccess={() => {}}
+      />
     </div>
   )
 }

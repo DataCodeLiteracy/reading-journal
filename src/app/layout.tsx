@@ -4,6 +4,7 @@ import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { SettingsProvider } from "@/contexts/SettingsContext"
 import { DataProvider } from "@/contexts/DataContext"
+import { ReadingTimerSheetProvider } from "@/contexts/ReadingTimerSheetContext"
 import BottomNavigation from "@/components/BottomNavigation"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -29,8 +30,10 @@ export default function RootLayout({
         <AuthProvider>
           <SettingsProvider>
             <DataProvider>
-              {children}
-              <BottomNavigation />
+              <ReadingTimerSheetProvider>
+                {children}
+                <BottomNavigation />
+              </ReadingTimerSheetProvider>
             </DataProvider>
           </SettingsProvider>
         </AuthProvider>

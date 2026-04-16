@@ -16,6 +16,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation"
 import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
 import AddBookModal from "@/components/AddBookModal"
+import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
 import { useAuth } from "@/contexts/AuthContext"
@@ -82,6 +83,8 @@ function BooksPageContent() {
   const [isDeleteBookModalOpen, setIsDeleteBookModalOpen] = useState(false)
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null)
   const [isNavigating, setIsNavigating] = useState(false)
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
+  const [duplicateModalTitle, setDuplicateModalTitle] = useState("")
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -218,7 +221,8 @@ function BooksPageContent() {
 
     const key = normalizeBookTitleKey(newBook.title)
     if (allBooks.some((b) => normalizeBookTitleKey(b.title) === key)) {
-      setError("이미 같은 제목으로 등록된 책이 있습니다.")
+      setDuplicateModalTitle(newBook.title.trim())
+      setDuplicateModalOpen(true)
       return
     }
 
@@ -640,6 +644,12 @@ function BooksPageContent() {
         onClose={() => setIsAddBookModalOpen(false)}
         onAddBook={handleAddBook}
         userBookTitleKeys={userBookTitleKeys}
+      />
+
+      <OwnBookDuplicateModal
+        isOpen={duplicateModalOpen}
+        onClose={() => setDuplicateModalOpen(false)}
+        title={duplicateModalTitle}
       />
 
       {/* 책 삭제 확인 모달 */}

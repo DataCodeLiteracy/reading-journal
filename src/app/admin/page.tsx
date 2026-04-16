@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, Home, ArrowLeft } from "lucide-react"
+import { BookOpen, Home, ArrowLeft, Cpu } from "lucide-react"
 import { adminService } from "@/services/adminService"
 import { useAuth } from "@/contexts/AuthContext"
 import { GenericRouteSkeleton } from "@/components/skeletons"
@@ -98,6 +98,22 @@ export default function AdminPage() {
 
         {/* 메뉴 (독서 골든벨 출제 요청만 노출) */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 mb-6'>
+          <button
+            onClick={() => router.push("/admin/ai-settings")}
+            className='bg-gradient-to-r from-slate-600 to-slate-800 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
+          >
+            <div className='flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3'>
+              <div className='p-1.5 sm:p-2 bg-white/20 rounded-lg'>
+                <Cpu className='h-4 w-4 sm:h-5 sm:w-5' />
+              </div>
+            </div>
+            <h3 className='font-semibold text-base sm:text-lg mb-1 sm:mb-2'>
+              AI 채점 모델
+            </h3>
+            <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
+              이해도 점검·발췌 요약·리뷰 비교용 OpenAI 모델 선택
+            </p>
+          </button>
           <button
             onClick={() => router.push("/admin/golden-bell-requests")}
             className='bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
