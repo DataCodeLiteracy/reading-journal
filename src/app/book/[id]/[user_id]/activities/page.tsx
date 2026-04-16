@@ -410,144 +410,160 @@ export default function BookActivitiesHubPage({
 
         {/* 이해도 점검 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-6'>
-          <div className='flex items-center justify-between mb-3'>
-            <h2 className='text-lg font-semibold text-theme-primary flex items-center gap-2'>
-              <ClipboardCheck className='h-5 w-5 text-accent-theme shrink-0' />
-              이해도 점검
-            </h2>
-            {examBlocksMemo && examBlocksMemo.length > 0 && (
-              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full shrink-0'>
-                {examBlocksMemo.length}개 구간 · 총 {examQuestionTotal}문항
-              </span>
+          <div className='flex items-start justify-between gap-3 mb-3'>
+            <div className='min-w-0 flex-1'>
+              <h2 className='text-lg font-semibold text-theme-primary flex items-center gap-2'>
+                <ClipboardCheck className='h-5 w-5 text-accent-theme shrink-0' />
+                이해도 점검
+              </h2>
+              {examBlocksMemo && examBlocksMemo.length > 0 && (
+                <div className='mt-2 flex flex-wrap items-center gap-2'>
+                  <span className='inline-flex items-center rounded-md bg-accent-theme/15 px-2.5 py-1 text-xs font-semibold text-accent-theme'>
+                    구간 {examBlocksMemo.length}개
+                  </span>
+                  <span className='inline-flex items-center rounded-md bg-theme-tertiary/90 px-2.5 py-1 text-xs font-semibold text-theme-primary'>
+                    문항 {examQuestionTotal}개
+                  </span>
+                  {userUid && (
+                    <span className='inline-flex items-center rounded-md bg-theme-tertiary/90 px-2.5 py-1 text-xs font-semibold text-theme-primary'>
+                      채점 {examGradedTotal} / {examQuestionTotal}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            {userData?.isAdmin && (
+              <button
+                type='button'
+                onClick={() => setReadingExamUploadOpen(true)}
+                className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
+                title='이해도 점검 JSON 등록·갱신'
+                aria-label='이해도 점검 JSON 등록·갱신'
+              >
+                <Plus className='h-4 w-4' />
+              </button>
             )}
           </div>
 
           {!examBlocksMemo || examBlocksMemo.length === 0 ? (
-            <div className='text-center py-6'>
-              <div className='text-4xl mb-4'>📋</div>
-              <p className='text-theme-secondary mb-4'>
+            <div className='rounded-lg border border-dashed border-theme-tertiary bg-theme-tertiary/20 px-4 py-8 text-center'>
+              <p className='text-sm text-theme-secondary'>
                 아직 이해도 점검 문제가 없습니다.
                 <br />
-                <span className='text-sm'>JSON 파일로 문제를 등록해 보세요!</span>
+                <span className='text-xs text-theme-tertiary'>
+                  {userData?.isAdmin
+                    ? "우측 상단 + 버튼으로 JSON을 등록할 수 있습니다."
+                    : "문제가 준비되면 이곳에서 시작할 수 있습니다."}
+                </span>
               </p>
-              {userData?.isAdmin && (
-                <button
-                  type='button'
-                  onClick={() => setReadingExamUploadOpen(true)}
-                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>이해도 점검 JSON 등록하기</span>
-                </button>
-              )}
             </div>
           ) : (
-            <div className='space-y-3'>
-              <div className='bg-theme-tertiary rounded-lg p-4'>
+            <div className='rounded-lg border border-theme-tertiary bg-theme-tertiary/25 p-4'>
                 <p className='text-sm text-theme-secondary mb-3'>
-                  페이지 구간별 질문에 한 문항씩 답하고 AI 채점으로 이해도를 점검합니다.
+                  구간별로 한 문항씩 답하고 AI 채점으로 이해도를 점검합니다.
                   {userUid && examGradedTotal > 0 && (
-                    <span className='block mt-1 text-theme-primary font-medium'>
+                    <span className='mt-2 block text-sm font-medium text-theme-primary'>
                       내 진행: 채점 완료 {examGradedTotal} / {examQuestionTotal}문항
                     </span>
                   )}
                 </p>
-                <div className='flex flex-wrap gap-2 text-xs mb-3'>
-                  {examBlocksMemo.map((b) => (
-                    <span
-                      key={b.range}
-                      className='px-2 py-1 bg-theme-secondary text-theme-primary rounded border border-theme-tertiary'
-                    >
-                      {b.range} ({b.quizzes?.length ?? 0}문항)
-                    </span>
-                  ))}
-                </div>
+                <ul className='mb-4 overflow-hidden rounded-lg border border-theme-tertiary/80 bg-theme-secondary'>
+                  {examBlocksMemo.map((b, idx) => {
+                    const n = b.quizzes?.length ?? 0
+                    return (
+                      <li
+                        key={`${idx}-${b.range}`}
+                        className='flex items-center justify-between gap-3 border-b border-theme-tertiary/60 px-3 py-2.5 last:border-b-0'
+                      >
+                        <span
+                          className='min-w-0 flex-1 text-sm text-theme-primary leading-snug'
+                          title={b.range}
+                        >
+                          {b.range}
+                        </span>
+                        <span className='shrink-0 rounded-md bg-accent-theme/12 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-theme'>
+                          {n}문항
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
                 <button
                   type='button'
                   onClick={() => router.push(`${base}/reading-exam`)}
-                  className='w-full py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm font-medium rounded-lg transition-colors'
+                  className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
                 >
                   이해도 점검 하기
                 </button>
-              </div>
-              {userData?.isAdmin && (
-                <button
-                  type='button'
-                  onClick={() => setReadingExamUploadOpen(true)}
-                  className='w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-theme-tertiary hover:border-accent-theme text-theme-secondary hover:text-accent-theme rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>JSON 다시 등록하기</span>
-                </button>
-              )}
             </div>
           )}
         </div>
 
         {/* 발췌 요약 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-6'>
-          <div className='flex items-center justify-between mb-3'>
-            <h2 className='text-lg font-semibold text-theme-primary flex items-center gap-2'>
-              <BookMarked className='h-5 w-5 text-accent-theme shrink-0' />
-              발췌 요약
-            </h2>
-            {excerptProgressSummary.total > 0 && (
-              <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full shrink-0'>
-                {excerptProgressSummary.total}개 챕터
-              </span>
+          <div className='flex items-start justify-between gap-3 mb-3'>
+            <div className='min-w-0 flex-1'>
+              <h2 className='text-lg font-semibold text-theme-primary flex items-center gap-2'>
+                <BookMarked className='h-5 w-5 text-accent-theme shrink-0' />
+                발췌 요약
+              </h2>
+              {excerptProgressSummary.total > 0 && (
+                <div className='mt-2 flex flex-wrap items-center gap-2'>
+                  <span className='inline-flex items-center rounded-md bg-accent-theme/15 px-2.5 py-1 text-xs font-semibold text-accent-theme'>
+                    챕터 {excerptProgressSummary.total}개
+                  </span>
+                  {userUid && (
+                    <span className='inline-flex items-center rounded-md bg-theme-tertiary/90 px-2.5 py-1 text-xs font-semibold text-theme-primary'>
+                      제출 {excerptProgressSummary.done} / {excerptProgressSummary.total}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            {userData?.isAdmin && (
+              <button
+                type='button'
+                onClick={() => setReadingExcerptUploadOpen(true)}
+                className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
+                title='발췌 요약 JSON 등록·갱신'
+                aria-label='발췌 요약 JSON 등록·갱신'
+              >
+                <Plus className='h-4 w-4' />
+              </button>
             )}
           </div>
 
           {excerptProgressSummary.total === 0 ? (
-            <div className='text-center py-6'>
-              <div className='text-4xl mb-4'>📑</div>
-              <p className='text-theme-secondary mb-4'>
+            <div className='rounded-lg border border-dashed border-theme-tertiary bg-theme-tertiary/20 px-4 py-8 text-center'>
+              <p className='text-sm text-theme-secondary'>
                 아직 발췌 요약 자료가 없습니다.
                 <br />
-                <span className='text-sm'>JSON 파일로 챕터 요약을 등록해 보세요!</span>
+                <span className='text-xs text-theme-tertiary'>
+                  {userData?.isAdmin
+                    ? "우측 상단 + 버튼으로 JSON을 등록할 수 있습니다."
+                    : "자료가 준비되면 이곳에서 시작할 수 있습니다."}
+                </span>
               </p>
-              {userData?.isAdmin && (
-                <button
-                  type='button'
-                  onClick={() => setReadingExcerptUploadOpen(true)}
-                  className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>발췌 요약 JSON 등록하기</span>
-                </button>
-              )}
             </div>
           ) : (
-            <div className='space-y-3'>
-              <div className='bg-theme-tertiary rounded-lg p-4'>
-                <p className='text-sm text-theme-secondary mb-3'>
-                  챕터별 참고 요약을 보고 나만의 요약을 쓰면 AI가 이해도를 점수로
-                  피드백합니다.
-                  {userUid && excerptProgressSummary.done > 0 && (
-                    <span className='block mt-1 text-theme-primary font-medium'>
-                      내 진행: 제출 완료 {excerptProgressSummary.done} /{" "}
-                      {excerptProgressSummary.total}챕터
-                    </span>
-                  )}
-                </p>
-                <button
-                  type='button'
-                  onClick={() => router.push(`${base}/reading-excerpt`)}
-                  className='w-full py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm font-medium rounded-lg transition-colors'
-                >
-                  발췌 요약 쓰기
-                </button>
-              </div>
-              {userData?.isAdmin && (
-                <button
-                  type='button'
-                  onClick={() => setReadingExcerptUploadOpen(true)}
-                  className='w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-theme-tertiary hover:border-accent-theme text-theme-secondary hover:text-accent-theme rounded-lg transition-colors'
-                >
-                  <Plus className='h-4 w-4' />
-                  <span>JSON 다시 등록하기</span>
-                </button>
-              )}
+            <div className='rounded-lg border border-theme-tertiary bg-theme-tertiary/25 p-4'>
+              <p className='text-sm text-theme-secondary mb-4'>
+                챕터별 참고 요약을 보고 나만의 요약을 쓰면 AI가 이해도를 점수로
+                피드백합니다.
+                {userUid && excerptProgressSummary.done > 0 && (
+                  <span className='mt-2 block text-sm font-medium text-theme-primary'>
+                    내 진행: 제출 완료 {excerptProgressSummary.done} /{" "}
+                    {excerptProgressSummary.total}챕터
+                  </span>
+                )}
+              </p>
+              <button
+                type='button'
+                onClick={() => router.push(`${base}/reading-excerpt`)}
+                className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
+              >
+                발췌 요약 쓰기
+              </button>
             </div>
           )}
         </div>
