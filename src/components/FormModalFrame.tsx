@@ -16,7 +16,7 @@ type FormModalFrameProps = {
 }
 
 /**
- * focus-level 스타일: 백드롭 클릭으로 닫기, rounded-xl 패널, modal-form-shell 너비.
+ * focus-level 스타일: 스크림(bg-theme-backdrop) 클릭으로 닫기, modal-dialog-surface 패널, modal-form-shell 너비.
  */
 export default function FormModalFrame({
   isOpen,
@@ -35,12 +35,12 @@ export default function FormModalFrame({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden overscroll-none p-3 sm:p-4">
       <div
-        className="absolute inset-0 bg-black/30"
+        className="absolute inset-0 bg-theme-backdrop"
         aria-hidden
         onClick={onClose}
       />
       <div
-        className={`${shellClass} relative z-10 min-w-0 max-h-[90vh] overflow-y-auto rounded-xl border-card bg-theme-primary p-4 shadow-xl sm:p-6`}
+        className={`${shellClass} modal-dialog-surface relative z-10 min-w-0 max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"

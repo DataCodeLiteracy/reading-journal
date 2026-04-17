@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { QueryProvider } from "@/providers/QueryProvider"
 import { SettingsProvider } from "@/contexts/SettingsContext"
 import { DataProvider } from "@/contexts/DataContext"
 import { ReadingTimerSheetProvider } from "@/contexts/ReadingTimerSheetContext"
@@ -28,14 +29,16 @@ export default function RootLayout({
     >
       <body className={inter.className}>
         <AuthProvider>
-          <SettingsProvider>
-            <DataProvider>
-              <ReadingTimerSheetProvider>
-                {children}
-                <BottomNavigation />
-              </ReadingTimerSheetProvider>
-            </DataProvider>
-          </SettingsProvider>
+          <QueryProvider>
+            <SettingsProvider>
+              <DataProvider>
+                <ReadingTimerSheetProvider>
+                  {children}
+                  <BottomNavigation />
+                </ReadingTimerSheetProvider>
+              </DataProvider>
+            </SettingsProvider>
+          </QueryProvider>
         </AuthProvider>
       </body>
     </html>

@@ -3,11 +3,9 @@
 import { useState, useEffect, useMemo, useRef } from "react"
 import {
   BookOpen,
-  AlertCircle,
   Clock,
   TrendingUp,
   Target,
-  User,
   Bookmark,
   CheckCircle,
   Calendar,
@@ -23,20 +21,16 @@ import { Book } from "@/types/book"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
-import { BookService } from "@/services/bookService"
-import { ChecklistService } from "@/services/checklistService"
 // 체크리스트 컴포넌트 (현재 사용하지 않음, 나중에 사용할 수 있도록 유지)
 // import LongTermChecklistSection from "@/components/LongTermChecklistSection"
 
-import { ApiError } from "@/lib/apiClient"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
 import {
   getLastWeekRangeKST,
   getLastWeekISOStringKST,
   getWeekdayLabelKST,
 } from "@/utils/timeUtils"
-import { ReadingSessionService } from "@/services/readingSessionService"
-import { ReadingSession } from "@/types/user"
+import { sortBooksByLastReadFromSessions } from "@/utils/booksSortByLastRead"
 import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import WeeklyRecapModal, { DaySummary } from "@/components/WeeklyRecapModal"
 import { HomePageSkeleton } from "@/components/skeletons"
@@ -49,6 +43,7 @@ export default function Home() {
   const { settings } = useSettings()
   const {
     allBooks,
+    allReadingSessions,
     userStatistics,
     userDataInitialized,
   } = useData()
@@ -68,8 +63,6 @@ export default function Home() {
     return totalRating / allBooks.length
   }
 
-  const [recentReadingBooks, setRecentReadingBooks] = useState<Book[]>([])
-  const [error, setError] = useState<string | null>(null)
   const [showRecapModal, setShowRecapModal] = useState(false)
   const [recapData, setRecapData] = useState<{
     weekLabel: string
@@ -84,36 +77,13 @@ export default function Home() {
   /** 같은 주·같은 lastWeekISO에 대해 요약 로드를 한 번만 시도 (의존성 재실행 시 모달 반복 방지) */
   const weeklyRecapLoadRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    if (!isLoggedIn || !userUid) return
-
-    const loadRecentReading = async () => {
-      try {
-        setError(null)
-        if (!userUid) {
-          setError("사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.")
-          return
-        }
-        const booksData = await BookService.getUserBooksByStatusPaginated(
-          userUid,
-          "reading",
-          1,
-          RECENT_BOOKS_LIMIT,
-          true
-        )
-        setRecentReadingBooks(booksData.books)
-      } catch (error) {
-        console.error("Error loading recent books:", error)
-        if (error instanceof ApiError) {
-          setError(error.message)
-        } else {
-          setError("책 목록을 불러오는 중 오류가 발생했습니다.")
-        }
-      }
-    }
-
-    loadRecentReading()
-  }, [isLoggedIn, userUid])
+  const recentReadingBooks = useMemo(() => {
+    const reading = allBooks.filter((b) => b.status === "reading")
+    return sortBooksByLastReadFromSessions(reading, allReadingSessions).slice(
+      0,
+      RECENT_BOOKS_LIMIT,
+    )
+  }, [allBooks, allReadingSessions])
 
   // 지난주 독서 요약: 해당 주차에 대해 확인(닫기)한 적 없으면 월~일 중 첫 접속 시 표시. 확인 시 localStorage에 저장해 재표시 안 함.
   useEffect(() => {
@@ -125,59 +95,62 @@ export default function Home() {
     if (weeklyRecapLoadRef.current === lastWeekISO) return
     weeklyRecapLoadRef.current = lastWeekISO
 
-    const load = async () => {
-      try {
-        const { monday, sunday } = getLastWeekRangeKST()
-        const weekLabel = `${monday.slice(5).replace("-", "/")} ~ ${sunday.slice(5).replace("-", "/")}`
-        const sessions: ReadingSession[] =
-          await ReadingSessionService.getUserReadingSessions(userUid)
-        const inRange = sessions.filter((s) => s.date >= monday && s.date <= sunday)
-        const totalSeconds = inRange.reduce((sum, s) => sum + (s.duration ?? 0), 0)
-        const goalHours =
-          userStatistics?.weeklyReadingGoalHours ??
-          settings.weeklyReadingGoalHours ??
-          5
-        const goalMet = totalSeconds >= goalHours * 3600
-        const bonusExp =
-          userStatistics?.lastWeeklyBonusWeek === lastWeekISO ? goalHours * 20 : null
+    try {
+      const { monday, sunday } = getLastWeekRangeKST()
+      const weekLabel = `${monday.slice(5).replace("-", "/")} ~ ${sunday.slice(5).replace("-", "/")}`
+      const inRange = allReadingSessions.filter(
+        (s) => s.date >= monday && s.date <= sunday,
+      )
+      const totalSeconds = inRange.reduce((sum, s) => sum + (s.duration ?? 0), 0)
+      const goalHours =
+        userStatistics?.weeklyReadingGoalHours ??
+        settings.weeklyReadingGoalHours ??
+        5
+      const goalMet = totalSeconds >= goalHours * 3600
+      const bonusExp =
+        userStatistics?.lastWeeklyBonusWeek === lastWeekISO ? goalHours * 20 : null
 
-        const byDate: Record<string, { bookId: string; duration: number }[]> = {}
-        inRange.forEach((s) => {
-          if (!byDate[s.date]) byDate[s.date] = []
-          const existing = byDate[s.date].find((x) => x.bookId === s.bookId)
-          if (existing) existing.duration += s.duration ?? 0
-          else byDate[s.date].push({ bookId: s.bookId, duration: s.duration ?? 0 })
+      const byDate: Record<string, { bookId: string; duration: number }[]> = {}
+      inRange.forEach((s) => {
+        if (!byDate[s.date]) byDate[s.date] = []
+        const existing = byDate[s.date].find((x) => x.bookId === s.bookId)
+        if (existing) existing.duration += s.duration ?? 0
+        else byDate[s.date].push({ bookId: s.bookId, duration: s.duration ?? 0 })
+      })
+      const daySummaries: DaySummary[] = Object.keys(byDate)
+        .sort()
+        .map((date) => {
+          const items = byDate[date].map(({ bookId, duration }) => ({
+            bookTitle: allBooks.find((b) => b.id === bookId)?.title ?? "알 수 없는 책",
+            duration,
+          }))
+          return {
+            date,
+            weekday: getWeekdayLabelKST(date),
+            items,
+          }
         })
-        const daySummaries: DaySummary[] = Object.keys(byDate)
-          .sort()
-          .map((date) => {
-            const items = byDate[date].map(({ bookId, duration }) => ({
-              bookTitle: allBooks.find((b) => b.id === bookId)?.title ?? "알 수 없는 책",
-              duration,
-            }))
-            return {
-              date,
-              weekday: getWeekdayLabelKST(date),
-              items,
-            }
-          })
 
-        setRecapData({
-          weekLabel,
-          daySummaries,
-          totalSeconds,
-          goalHours,
-          goalMet,
-          bonusExp,
-        })
-        setShowRecapModal(true)
-      } catch (e) {
-        console.error("Failed to load weekly recap:", e)
-      }
+      setRecapData({
+        weekLabel,
+        daySummaries,
+        totalSeconds,
+        goalHours,
+        goalMet,
+        bonusExp,
+      })
+      setShowRecapModal(true)
+    } catch (e) {
+      console.error("Failed to load weekly recap:", e)
     }
-
-    load()
-  }, [userUid, userDataInitialized, userStatistics, settings.weeklyReadingGoalHours, allBooks])
+  }, [
+    userUid,
+    userDataInitialized,
+    allReadingSessions,
+    userStatistics,
+    settings.weeklyReadingGoalHours,
+    allBooks,
+  ])
 
   const handleCloseRecapModal = () => {
     const lastWeekISO = getLastWeekISOStringKST()
@@ -226,17 +199,10 @@ export default function Home() {
     <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-6'>
         <header className='mb-6'>
-          <div className='flex items-center justify-between mb-4'>
+          <div className='mb-4'>
             <h1 className='text-3xl font-bold text-theme-primary'>
               📚 독서 기록장
             </h1>
-            <button
-              onClick={() => router.push("/mypage")}
-              className='flex items-center gap-2 text-theme-secondary hover:text-theme-primary transition-colors'
-            >
-              <User className='h-5 w-5' />
-              <span className='text-sm'>마이페이지</span>
-            </button>
           </div>
           <p className='text-theme-secondary text-sm'>
             나만의 독서 여정을 기록하고 관리해보세요
@@ -247,15 +213,6 @@ export default function Home() {
             </p>
           )}
         </header>
-        {error && (
-          <div className='mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
-            <div className='flex items-center gap-2'>
-              <AlertCircle className='h-5 w-5 text-red-500' />
-              <p className='text-red-700 dark:text-red-400 text-sm'>{error}</p>
-            </div>
-          </div>
-        )}
-
         {/* 장기 체크리스트 섹션 - 현재 서비스에서는 사용하지 않음 */}
         {/* 나중에 사용할 수 있도록 컴포넌트로 분리되어 있음 */}
         {/* 

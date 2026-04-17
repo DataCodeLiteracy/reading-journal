@@ -19,7 +19,6 @@
   --warning-secondary: #d97706;
   --error-primary: #ef4444;
   --error-secondary: #dc2626;
-  --backdrop-color: rgba(0, 0, 0, 0.5);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
@@ -49,7 +48,6 @@
   --warning-secondary: #fbbf24;
   --error-primary: #ef4444;
   --error-secondary: #f87171;
-  --backdrop-color: rgba(0, 0, 0, 0.7);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3),
@@ -212,14 +210,59 @@ body {
   );
 }
 
-/* Backdrop utility class */
+/* Backdrop: 모달·시트 전용 스크림 (페이지 그라데이션과 확실히 구분, 라이트/다크 공통) */
 .bg-theme-backdrop {
-  background-color: var(--backdrop-color);
+  background-color: rgba(15, 23, 42, 0.2);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+
+[data-theme="dark"] .bg-theme-backdrop {
+  background-color: rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 /* 카드/박스 공통 테두리 - 자연스럽고 깔끔한 구분 */
 .border-card {
   border: 1px solid color-mix(in srgb, var(--border-primary) 65%, transparent);
+}
+
+/**
+ * 모달 본문 패널: 배경보다 한 단 떠 있는 표면 + 테두리 + 그림자
+ * (다크에서 primary와 같은 톤으로 묻히는 현상 완화)
+ */
+.modal-dialog-surface {
+  background-color: var(--background-secondary);
+  border: 1px solid var(--border-primary);
+  box-shadow:
+    0 22px 45px -10px rgb(0 0 0 / 0.2),
+    0 0 0 1px color-mix(in srgb, var(--border-secondary) 55%, transparent);
+}
+
+[data-theme="dark"] .modal-dialog-surface {
+  background-color: color-mix(
+    in srgb,
+    var(--background-secondary) 93%,
+    var(--background-tertiary) 7%
+  );
+  border-color: color-mix(in srgb, var(--border-secondary) 88%, transparent);
+  box-shadow:
+    0 26px 55px -12px rgb(0 0 0 / 0.72),
+    0 0 0 1px color-mix(in srgb, var(--border-secondary) 48%, transparent);
+}
+
+/* 서평/체크리스트 등 기존 밝은·그레이 패널용 — 테마 백드롭과 조화되는 띠·그림자만 */
+.modal-legacy-panel {
+  box-shadow:
+    0 22px 48px -12px rgb(0 0 0 / 0.24),
+    0 0 0 1px rgb(15 23 42 / 0.08);
+}
+
+[data-theme="dark"] .modal-legacy-panel {
+  box-shadow:
+    0 26px 55px -12px rgb(0 0 0 / 0.78),
+    0 0 0 1px rgb(248 250 252 / 0.12);
 }
 
 /**

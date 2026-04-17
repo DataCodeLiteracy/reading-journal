@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query"
 import { Comment, ContentType } from "@/types/content"
 import {
   MessageSquare,
@@ -17,6 +18,7 @@ import { UserService } from "@/services/userService"
 import { User } from "@/types/user"
 import ConfirmModal from "@/components/ConfirmModal"
 import { CommentThreadSkeleton } from "@/components/skeletons"
+import { queryKeys } from "@/lib/queryKeys"
 
 interface CommentSectionProps {
   contentType: ContentType
@@ -32,70 +34,83 @@ export default function CommentSection({
   initialCommentsCount = 0,
 }: CommentSectionProps) {
   const { userUid } = useAuth()
-  const [comments, setComments] = useState<Comment[]>([])
-  const [commentAuthors, setCommentAuthors] = useState<Record<string, User>>({})
+  const queryClient = useQueryClient()
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const commentsQuery = useQuery({
+    queryKey: queryKeys.comments.list(contentType, contentId),
+    queryFn: () => CommentService.getContentComments(contentType, contentId),
+    enabled: isPublic,
+    staleTime: 30_000,
+  })
+
+  const comments = commentsQuery.data ?? []
+
+  const authorIds = useMemo(
+    () => [...new Set(comments.map((c) => c.user_id))],
+    [comments],
+  )
+
+  const authorQueries = useQueries({
+    queries: authorIds.map((id) => ({
+      queryKey: queryKeys.user.byId(id),
+      queryFn: () => UserService.getUser(id),
+      enabled: isPublic && Boolean(id),
+      staleTime: 300_000,
+    })),
+  })
+
+  const commentAuthors = useMemo(() => {
+    const m: Record<string, User> = {}
+    authorIds.forEach((id, i) => {
+      const u = authorQueries[i]?.data
+      if (u) m[id] = u
+    })
+    return m
+  }, [authorIds, authorQueries])
+
+  const isLoading =
+    commentsQuery.isPending ||
+    (authorIds.length > 0 &&
+      authorQueries.some((q) => q.isPending && !q.data))
   const [commentLikeState, setCommentLikeState] = useState<Record<string, { isLiked: boolean; count: number }>>({})
   const [togglingLikeCommentId, setTogglingLikeCommentId] = useState<string | null>(null)
   const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null)
 
-  // 댓글 목록 로드
   useEffect(() => {
-    if (!isPublic) {
-      setIsLoading(false)
+    if (!isPublic || comments.length === 0) {
+      setCommentLikeState({})
       return
     }
 
-    const loadComments = async () => {
-      try {
-        setIsLoading(true)
-        const loadedComments = await CommentService.getContentComments(
-          contentType,
-          contentId
-        )
-        setComments(loadedComments)
-
-        // 작성자 정보 로드
-        const authorIds = [...new Set(loadedComments.map((c) => c.user_id))]
-        const authors: Record<string, User> = {}
-        for (const authorId of authorIds) {
-          const author = await UserService.getUser(authorId)
-          if (author) {
-            authors[authorId] = author
-          }
-        }
-        setCommentAuthors(authors)
-
-        // 댓글별 좋아요 상태 초기화 및 현재 유저 좋아요 여부 로드
-        const nextLikeState: Record<string, { isLiked: boolean; count: number }> = {}
-        for (const c of loadedComments) {
-          nextLikeState[c.id] = { isLiked: false, count: c.likesCount || 0 }
-        }
-        if (userUid) {
-          await Promise.all(
-            loadedComments.map(async (c) => {
-              const like = await LikeService.getUserLike(userUid, "comment", c.id)
-              nextLikeState[c.id] = {
-                isLiked: !!like,
-                count: c.likesCount || 0,
-              }
-            })
-          )
-        }
-        setCommentLikeState(nextLikeState)
-      } catch (error) {
-        console.error("Error loading comments:", error)
-      } finally {
-        setIsLoading(false)
+    const loadLikes = async () => {
+      const nextLikeState: Record<string, { isLiked: boolean; count: number }> =
+        {}
+      for (const c of comments) {
+        nextLikeState[c.id] = { isLiked: false, count: c.likesCount || 0 }
       }
+      if (userUid) {
+        await Promise.all(
+          comments.map(async (c) => {
+            const like = await LikeService.getUserLike(
+              userUid,
+              "comment",
+              c.id,
+            )
+            nextLikeState[c.id] = {
+              isLiked: !!like,
+              count: c.likesCount || 0,
+            }
+          }),
+        )
+      }
+      setCommentLikeState(nextLikeState)
     }
 
-    loadComments()
-  }, [contentType, contentId, isPublic, userUid])
+    void loadLikes()
+  }, [isPublic, comments, userUid])
 
   const handleSubmitComment = async () => {
     if (!userUid || !newComment.trim() || isSubmitting) return
@@ -110,25 +125,18 @@ export default function CommentSection({
         true
       )
 
-      // 댓글 목록 새로고침
-      const updatedComments = await CommentService.getContentComments(
-        contentType,
-        contentId
-      )
-      setComments(updatedComments)
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.comments.list(contentType, contentId),
+      })
+      if (userUid) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.user.byId(userUid),
+        })
+      }
       setCommentLikeState((prev) => ({
         ...prev,
         [commentId]: { isLiked: false, count: 0 },
       }))
-
-      // 새 댓글 작성자 정보 추가
-      const currentUser = await UserService.getUser(userUid)
-      if (currentUser) {
-        setCommentAuthors((prev) => ({
-          ...prev,
-          [userUid]: currentUser,
-        }))
-      }
 
       setNewComment("")
     } catch (error) {
@@ -154,12 +162,9 @@ export default function CommentSection({
       setIsSubmitting(true)
       await CommentService.updateComment(commentId, editingContent)
 
-      // 댓글 목록 새로고침
-      const updatedComments = await CommentService.getContentComments(
-        contentType,
-        contentId
-      )
-      setComments(updatedComments)
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.comments.list(contentType, contentId),
+      })
 
       setEditingCommentId(null)
       setEditingContent("")
@@ -195,11 +200,9 @@ export default function CommentSection({
       setIsSubmitting(true)
       await CommentService.deleteComment(commentToDeleteId, contentType, contentId)
 
-      const updatedComments = await CommentService.getContentComments(
-        contentType,
-        contentId
-      )
-      setComments(updatedComments)
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.comments.list(contentType, contentId),
+      })
       setCommentToDeleteId(null)
     } catch (error) {
       console.error("Error deleting comment:", error)

@@ -3,6 +3,12 @@
 import { useState, useEffect, useMemo, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
+import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
+import {
   BookOpen,
   Search,
   User,
@@ -21,7 +27,14 @@ import {
   type BookField,
 } from "@/types/book"
 import { BookService } from "@/services/bookService"
+import {
+  countExploreBooksForExplore,
+  fetchExploreBooksForExplore,
+  type ExploreBooksListParams,
+} from "@/services/explorePaginatedService"
+import { queryKeys } from "@/lib/queryKeys"
 import { UserService } from "@/services/userService"
+import type { ExploreTitleGroup } from "@/types/explore"
 import Pagination from "@/components/Pagination"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -32,15 +45,6 @@ import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import ReadingExamUploadModal from "@/components/ReadingExamUploadModal"
 import ReadingExcerptUploadModal from "@/components/ReadingExcerptUploadModal"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
-
-type GroupedBook = {
-  title: string
-  books: Book[]
-  author: string
-  userCount: number
-  avgRating: number
-  statuses: Set<Book["status"]>
-}
 
 const STATUS_LABELS: Record<Book["status"], string> = {
   reading: "읽는 중",
@@ -71,11 +75,10 @@ export default function ExplorePage() {
 function ExplorePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const { userUid, loading, isLoggedIn, userData } = useAuth()
   const { addBook, allBooks: myBooksFromContext } = useData()
-  const [allBooks, setAllBooks] = useState<Book[]>([])
   const [userNames, setUserNames] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // URL 쿼리 파라미터에서 초기 검색어 가져오기
@@ -117,7 +120,75 @@ function ExplorePageContent() {
 
   useBodyScrollLock(isAddingBook)
 
-  const itemsPerPage = 15
+  const EXPLORE_PAGE_SIZE = 10
+
+  const exploreListParams = useMemo(
+    (): ExploreBooksListParams => ({
+      statusFilter,
+      levelFilter,
+      categoryFilter,
+      userIdFilter,
+      authorFilter,
+      minRatingFilter,
+      onlyNotMineFilter,
+      searchPrefix: searchQuery.trim() || undefined,
+      sortBy,
+      currentUserUid: userUid ?? null,
+    }),
+    [
+      statusFilter,
+      levelFilter,
+      categoryFilter,
+      userIdFilter,
+      authorFilter,
+      minRatingFilter,
+      onlyNotMineFilter,
+      searchQuery,
+      sortBy,
+      userUid,
+    ],
+  )
+
+  const exploreListFiltersKey = useMemo(
+    () => JSON.stringify(exploreListParams),
+    [exploreListParams],
+  )
+
+  const exploreCountQuery = useQuery({
+    queryKey: queryKeys.explore.booksFlatCount(exploreListFiltersKey),
+    queryFn: () => countExploreBooksForExplore(exploreListParams),
+    enabled: isLoggedIn,
+    staleTime: 30_000,
+  })
+
+  const explorePageQuery = useQuery({
+    queryKey: queryKeys.explore.booksFlatPage(
+      exploreListFiltersKey,
+      currentPage,
+    ),
+    queryFn: async () => {
+      let cursor: QueryDocumentSnapshot<DocumentData> | null = null
+      for (let p = 1; p < currentPage; p++) {
+        const batch = await fetchExploreBooksForExplore({
+          ...exploreListParams,
+          pageSize: EXPLORE_PAGE_SIZE,
+          startAfterSnapshot: cursor,
+        })
+        if (!batch.hasMore) {
+          return { items: [] as Book[], hasMore: false }
+        }
+        cursor = batch.lastVisible
+      }
+      return fetchExploreBooksForExplore({
+        ...exploreListParams,
+        pageSize: EXPLORE_PAGE_SIZE,
+        startAfterSnapshot: cursor,
+      })
+    },
+    enabled: isLoggedIn,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+  })
 
   // URL 쿼리 파라미터 변경 시 검색어 업데이트
   useEffect(() => {
@@ -130,50 +201,38 @@ function ExplorePageContent() {
   useEffect(() => {
     if (!loading && !isLoggedIn) {
       router.push("/login")
-      return
     }
-    if (!isLoggedIn) return
-
-    const load = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        const books = await BookService.getAllBooks()
-        setAllBooks(books)
-
-        const uids = [...new Set(books.map((b) => b.user_id))]
-        const limit = 150
-        const names: Record<string, string> = {}
-        await Promise.all(
-          uids.slice(0, limit).map(async (uid) => {
-            try {
-              const u = await UserService.getUser(uid)
-              names[uid] = u?.displayName || u?.email || uid
-            } catch {
-              names[uid] = uid
-            }
-          }),
-        )
-        setUserNames(names)
-      } catch (e) {
-        console.error(e)
-        setError("책 목록을 불러오는 중 오류가 발생했습니다.")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    load()
   }, [isLoggedIn, loading, router])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [exploreListFiltersKey])
+
+  const exploreTotalPages = Math.max(
+    1,
+    Math.ceil((exploreCountQuery.data ?? 0) / EXPLORE_PAGE_SIZE),
+  )
+
+  useEffect(() => {
+    if (currentPage > exploreTotalPages) {
+      setCurrentPage(exploreTotalPages)
+    }
+  }, [currentPage, exploreTotalPages])
+
+  const catalogForGrouping = useMemo(
+    () => explorePageQuery.data?.items ?? [],
+    [explorePageQuery.data],
+  )
 
   const grouped = useMemo(() => {
     const byTitle = new Map<string, Book[]>()
-    for (const book of allBooks) {
+    for (const book of catalogForGrouping) {
       const t = (book.title || "").trim()
       if (!t) continue
       if (!byTitle.has(t)) byTitle.set(t, [])
       byTitle.get(t)!.push(book)
     }
-    const list: GroupedBook[] = []
+    const list: ExploreTitleGroup[] = []
     byTitle.forEach((books, title) => {
       const author = books[0]?.author || "저자 미상"
       const userCount = new Set(books.map((b) => b.user_id)).size
@@ -183,7 +242,7 @@ function ExplorePageContent() {
       list.push({ title, books, author, userCount, avgRating, statuses })
     })
     return list
-  }, [allBooks])
+  }, [catalogForGrouping])
 
   const uniqueAuthors = useMemo(() => {
     const set = new Set<string>()
@@ -199,98 +258,36 @@ function ExplorePageContent() {
     return Array.from(set)
   }, [grouped])
 
-  const filtered = useMemo(() => {
-    let list = grouped
-    const q = searchQuery.trim().toLowerCase()
-    if (q) {
-      list = list.filter(
-        (g) =>
-          g.title.toLowerCase().includes(q) ||
-          g.author.toLowerCase().includes(q),
-      )
-    }
-    if (statusFilter) {
-      list = list.filter((g) => g.statuses.has(statusFilter))
-    }
-    if (authorFilter) {
-      list = list.filter(
-        (g) => g.author.toLowerCase() === authorFilter.toLowerCase(),
-      )
-    }
-    if (userIdFilter) {
-      list = list.filter((g) => g.books.some((b) => b.user_id === userIdFilter))
-    }
-    if (onlyNotMineFilter && userUid) {
-      list = list.filter((g) => !g.books.some((b) => b.user_id === userUid))
-    }
-    if (levelFilter) {
-      list = list.filter((g) => g.books.some((b) => b.level === levelFilter))
-    }
-    if (categoryFilter) {
-      list = list.filter((g) =>
-        g.books.some((b) => b.category === categoryFilter),
-      )
-    }
-    const minR = minRatingFilter === "" ? 0 : parseFloat(minRatingFilter)
-    if (!Number.isNaN(minR) && minR > 0) {
-      list = list.filter((g) => g.avgRating >= minR)
-    }
-    const sorted = [...list]
-    switch (sortBy) {
-      case "title-asc":
-        sorted.sort((a, b) => a.title.localeCompare(b.title))
-        break
-      case "title-desc":
-        sorted.sort((a, b) => b.title.localeCompare(a.title))
-        break
-      case "users-desc":
-        sorted.sort((a, b) => b.userCount - a.userCount)
-        break
-      case "users-asc":
-        sorted.sort((a, b) => a.userCount - b.userCount)
-        break
-      case "rating-desc":
-        sorted.sort((a, b) => b.avgRating - a.avgRating)
-        break
-      case "author-asc":
-        sorted.sort((a, b) => a.author.localeCompare(b.author))
-        break
-    }
-    return sorted
-  }, [
-    grouped,
-    searchQuery,
-    statusFilter,
-    authorFilter,
-    userIdFilter,
-    onlyNotMineFilter,
-    userUid,
-    levelFilter,
-    categoryFilter,
-    minRatingFilter,
-    sortBy,
-  ])
-
-  const totalItems = filtered.length
-  const start = (currentPage - 1) * itemsPerPage
-  const paginated = useMemo(
-    () => filtered.slice(start, start + itemsPerPage),
-    [filtered, start, itemsPerPage],
-  )
+  /** 검색·필터·정렬·내 책 제외는 서버에서 반영된 뒤 이 페이지 책만 묶습니다. */
+  const paginated = grouped
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [
-    searchQuery,
-    statusFilter,
-    authorFilter,
-    userIdFilter,
-    onlyNotMineFilter,
-    levelFilter,
-    categoryFilter,
-    minRatingFilter,
-    sortBy,
-  ])
+    if (!isLoggedIn || paginated.length === 0) return
+    let cancelled = false
+    const run = async () => {
+      const uids = [
+        ...new Set(paginated.flatMap((g) => g.books.map((b) => b.user_id))),
+      ].slice(0, 150)
+      const names: Record<string, string> = {}
+      await Promise.all(
+        uids.map(async (uid) => {
+          try {
+            const u = await UserService.getUser(uid)
+            names[uid] = u?.displayName || u?.email || uid
+          } catch {
+            names[uid] = uid
+          }
+        }),
+      )
+      if (!cancelled) {
+        setUserNames((prev) => ({ ...prev, ...names }))
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [paginated, isLoggedIn])
 
   const userBookTitleKeys = useMemo(
     () => myBooksFromContext.map((b) => normalizeBookTitleKey(b.title)),
@@ -298,6 +295,16 @@ function ExplorePageContent() {
   )
 
   if (!isLoggedIn) return null
+
+  const isExploreLoading =
+    explorePageQuery.isPending && !explorePageQuery.data
+
+  const exploreLoadError =
+    explorePageQuery.error ?? exploreCountQuery.error
+
+  const exploreLoadErrorMessage = exploreLoadError
+    ? "목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    : null
 
   const handleAddBookFromExplore = async (
     book: Omit<Book, "id" | "user_id">,
@@ -319,7 +326,7 @@ function ExplorePageContent() {
       }
       const created = await BookService.createBook(bookData)
       addBook(created)
-      setAllBooks((prev) => [...prev, created])
+      await queryClient.invalidateQueries({ queryKey: queryKeys.explore.all })
       setAddModalOpen(false)
       setAddModalInitial(null)
     } catch (e) {
@@ -343,6 +350,14 @@ function ExplorePageContent() {
           </p>
         </header>
 
+        {exploreLoadError && exploreLoadErrorMessage && (
+          <div className='mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
+            <p className='text-red-700 dark:text-red-400 text-sm'>
+              {exploreLoadErrorMessage}
+            </p>
+          </div>
+        )}
+
         {error && (
           <div className='mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
             <p className='text-red-700 dark:text-red-400 text-sm'>{error}</p>
@@ -354,7 +369,7 @@ function ExplorePageContent() {
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-theme-tertiary' />
             <input
               type='text'
-              placeholder='제목 또는 저자로 검색'
+              placeholder='제목이 입력한 글로 시작하는 책 (서버 검색)'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className='w-full pl-10 pr-4 py-2.5 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
@@ -373,7 +388,7 @@ function ExplorePageContent() {
               필터 / 정렬
               {!filterOpen && (
                 <span className='text-xs font-normal text-theme-secondary'>
-                  · 총 {filtered.length}권
+                  {` · 이 페이지 ${catalogForGrouping.length}권 · 제목 그룹 ${paginated.length}개`}
                 </span>
               )}
             </span>
@@ -541,13 +556,15 @@ function ExplorePageContent() {
                 )}
               </div>
               <p className='text-xs text-theme-tertiary'>
-                총 {filtered.length}권 (제목 기준 중복 제외)
+                검색·상태·저자·평점·레벨·분야·유저·정렬·내 책 제외는 모두 서버에서 적용된 뒤, 10권 단위로
+                불러옵니다. 같은 제목은 한 줄로 묶어 보여 줍니다. «등록 유저 많은/적은 순»은 등록 시각
+                기준으로 정렬합니다.
               </p>
             </div>
           )}
         </div>
 
-        {isLoading ? (
+        {isExploreLoading ? (
           <ExploreListSkeleton count={6} />
         ) : paginated.length === 0 ? (
           <div className='py-12 text-center text-theme-secondary'>
@@ -718,16 +735,14 @@ function ExplorePageContent() {
           </div>
         )}
 
-        {totalItems > 0 && (
-          <div className='mt-6'>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={Math.ceil(totalItems / itemsPerPage)}
-              onPageChange={setCurrentPage}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-            />
-          </div>
+        {(exploreCountQuery.data ?? 0) > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={exploreTotalPages}
+            onPageChange={setCurrentPage}
+            totalItems={exploreCountQuery.data ?? 0}
+            itemsPerPage={EXPLORE_PAGE_SIZE}
+          />
         )}
       </div>
 
@@ -775,8 +790,8 @@ function ExplorePageContent() {
         userBookTitleKeys={userBookTitleKeys}
       />
       {isAddingBook && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/50'>
-          <div className='bg-theme-secondary rounded-lg px-6 py-4 shadow-lg'>
+        <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
+          <div className='modal-dialog-surface rounded-xl px-6 py-4'>
             <p className='text-theme-primary'>책 추가 중...</p>
           </div>
         </div>

@@ -49,8 +49,8 @@ export default function ChecklistModal({
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black bg-opacity-50 p-2 sm:p-4'>
-      <div className='bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh]'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-2 sm:p-4'>
+      <div className='modal-legacy-panel rounded-xl border border-slate-200/90 bg-white dark:border-slate-600/80 dark:bg-gray-800 w-full max-w-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh]'>
         {/* 헤더 */}
         <div className='flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>
           <div className='flex-1 min-w-0'>

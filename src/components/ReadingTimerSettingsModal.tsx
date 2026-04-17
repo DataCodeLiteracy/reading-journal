@@ -100,13 +100,13 @@ export default function ReadingTimerSettingsModal({
       role='presentation'
     >
       <div
-        className='absolute inset-0 bg-black/45'
+        className='absolute inset-0 bg-theme-backdrop'
         aria-hidden
         onClick={onClose}
       />
       <div
         ref={sheetRef}
-        className='modal-form-shell relative z-10 mt-auto flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-card border-b-0 bg-theme-primary shadow-2xl sm:mt-0 sm:max-h-[min(90dvh,32rem)] sm:rounded-xl sm:border-b'
+        className='modal-form-shell modal-dialog-surface relative z-10 mt-auto flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-b-0 sm:mt-0 sm:max-h-[min(90dvh,32rem)] sm:rounded-xl sm:border-b'
         role='dialog'
         aria-modal='true'
         aria-labelledby='reading-timer-settings-title'

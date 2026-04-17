@@ -1,6 +1,8 @@
+import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { ApiClient, ApiError } from "@/lib/apiClient"
 import { Book } from "@/types/book"
 import { ReadingSessionService } from "@/services/readingSessionService"
+import { sortBooksByLastReadFromSessions } from "@/utils/booksSortByLastRead"
 
 export class BookService {
   /**
@@ -147,17 +149,7 @@ export class BookService {
       this.getUserBooksByStatus(user_id, status),
       ReadingSessionService.getUserReadingSessions(user_id),
     ])
-    const bookIdToLatestTime = new Map<string, number>()
-    for (const s of sessions) {
-      const t = new Date(s.endTime).getTime()
-      const cur = bookIdToLatestTime.get(s.bookId)
-      if (cur === undefined || t > cur) bookIdToLatestTime.set(s.bookId, t)
-    }
-    return statusBooks.slice().sort((a, b) => {
-      const timeA = bookIdToLatestTime.get(a.id) ?? 0
-      const timeB = bookIdToLatestTime.get(b.id) ?? 0
-      return timeB - timeA
-    })
+    return sortBooksByLastReadFromSessions(statusBooks, sessions)
   }
 
   static async searchUserBooksByStatus(
@@ -194,6 +186,92 @@ export class BookService {
       console.error("BookService.searchUserBooksByStatus error:", error)
       throw error
     }
+  }
+
+  private static librarySortOrder(
+    sort: "recently_added" | "recently_updated" | "recently_read",
+    titlePrefix?: string,
+  ): { field: string; dir: "asc" | "desc" } {
+    if (titlePrefix?.trim()) {
+      return { field: "title", dir: "asc" }
+    }
+    if (sort === "recently_added") return { field: "created_at", dir: "desc" }
+    if (sort === "recently_updated") return { field: "updated_at", dir: "desc" }
+    // `last_read_at` 없는 책은 Firestore orderBy에서 결과에서 빠져 목록이 비는 문제가 있어,
+    // 항상 채워지는 `updated_at`으로 정렬(독서 세션 시에도 갱신됨).
+    return { field: "updated_at", dir: "desc" }
+  }
+
+  /** 서재·탐색 등 Firestore 커서 페이지 (복합 인덱스 필요할 수 있음) */
+  static async queryUserBooksByStatusPage(options: {
+    user_id: string
+    status: Book["status"]
+    sort: "recently_added" | "recently_updated" | "recently_read"
+    level?: string
+    category?: string
+    titlePrefix?: string
+    pageSize: number
+    startAfterSnapshot: QueryDocumentSnapshot<DocumentData> | null
+  }) {
+    const {
+      user_id,
+      status,
+      sort,
+      level,
+      category,
+      titlePrefix,
+      pageSize,
+      startAfterSnapshot,
+    } = options
+    const conditions: Array<[string, string, unknown]> = [
+      ["user_id", "==", user_id],
+      ["status", "==", status],
+    ]
+    if (level) conditions.push(["level", "==", level])
+    if (category) conditions.push(["category", "==", category])
+    const tp = titlePrefix?.trim()
+    if (tp) {
+      conditions.push(["title", ">=", tp])
+      conditions.push(["title", "<=", `${tp}\uf8ff`])
+    }
+    const { field, dir } = this.librarySortOrder(sort, titlePrefix)
+    return ApiClient.queryCollectionPage<Book>({
+      collectionName: "books",
+      conditions,
+      orderByField: field,
+      orderDirection: dir,
+      pageSize,
+      startAfterSnapshot,
+    })
+  }
+
+  static async countUserBooksTotal(user_id: string): Promise<number> {
+    return ApiClient.countCollection({
+      collectionName: "books",
+      conditions: [["user_id", "==", user_id]],
+    })
+  }
+
+  static async countUserBooksByStatus(
+    user_id: string,
+    status: Book["status"],
+    options?: { level?: string; category?: string; titlePrefix?: string },
+  ): Promise<number> {
+    const conditions: Array<[string, string, unknown]> = [
+      ["user_id", "==", user_id],
+      ["status", "==", status],
+    ]
+    if (options?.level) conditions.push(["level", "==", options.level])
+    if (options?.category) conditions.push(["category", "==", options.category])
+    const tp = options?.titlePrefix?.trim()
+    if (tp) {
+      conditions.push(["title", ">=", tp])
+      conditions.push(["title", "<=", `${tp}\uf8ff`])
+    }
+    return ApiClient.countCollection({
+      collectionName: "books",
+      conditions,
+    })
   }
 
   static async deleteBook(bookId: string): Promise<void> {

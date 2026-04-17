@@ -435,8 +435,8 @@ export default function ChecklistsPage() {
 
       {/* 편집 모달 */}
       {isEditModalOpen && selectedChecklist && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black bg-opacity-50 p-4'>
-          <div className='bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden'>
+        <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4'>
+          <div className='modal-legacy-panel max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl border border-slate-200/90 bg-white dark:border-slate-600/80 dark:bg-gray-800'>
             <div className='flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700'>
               <h2 className='text-xl font-semibold text-gray-900 dark:text-white'>
                 체크리스트 편집

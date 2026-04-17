@@ -26,7 +26,7 @@ export default function CompleteBookModal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
-      <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-md mx-4 shadow-lg'>
+      <div className='modal-dialog-surface w-full max-w-md rounded-xl p-6 mx-4'>
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-lg font-semibold text-theme-primary'>
             완독 처리

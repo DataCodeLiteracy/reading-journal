@@ -57,7 +57,7 @@ export class RecordService {
         [["isBookPublic", "==", true]],
         "created_at",
         "desc",
-        1000 // 최대 1000개
+        400
       )
 
       // 내 데이터만 보기인 경우, 내 책도 포함 (공개 여부와 관계없이)
@@ -226,7 +226,7 @@ export class RecordService {
             [["reviewIsPublic", "==", true]],
             "created_at",
             "desc",
-            1000
+            400
           )
           booksWithReviews = booksWithPublicReviews.filter(
             (b) => b.review && targetBookIds.includes(b.id)
@@ -339,7 +339,7 @@ export class RecordService {
         [["isBookPublic", "==", true]],
         "created_at",
         "desc",
-        1000
+        400
       )
 
       let books: Book[] = [...allPublicBooks]

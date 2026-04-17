@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo, Suspense } from "react"
+import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   BookOpen,
   Plus,
@@ -18,12 +20,13 @@ import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "
 import AddBookModal from "@/components/AddBookModal"
 import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
 import ConfirmModal from "@/components/ConfirmModal"
-import Pagination from "@/components/Pagination"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
+import { queryKeys } from "@/lib/queryKeys"
 import { GenericRouteSkeleton, SkLine } from "@/components/skeletons"
+import Pagination from "@/components/Pagination"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
@@ -40,6 +43,7 @@ export default function BooksPage() {
 function BooksPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const { user, loading, isLoggedIn, userUid } = useAuth()
   const {
     allBooks,
@@ -54,9 +58,6 @@ function BooksPageContent() {
 
   const [error, setError] = useState<string | null>(null)
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
-
   const [activeTab, setActiveTab] = useState<
     "reading" | "completed" | "want-to-read" | "on-hold"
   >("reading")
@@ -70,10 +71,8 @@ function BooksPageContent() {
     "recently_added" | "recently_updated" | "recently_read"
   >("recently_read")
 
-  const [booksByLastRead, setBooksByLastRead] = useState<Book[]>([])
-  const [loadingLastReadSort, setLoadingLastReadSort] = useState(false)
-
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
 
   // 필터
   const [levelFilter, setLevelFilter] = useState<BookLevel | "">("")
@@ -89,15 +88,113 @@ function BooksPageContent() {
 
   useBodyScrollLock(isNavigating)
 
-  const getTotalBooks = () => allBooks.length
-  const getReadingBooks = () =>
-    allBooks.filter((book) => book.status === "reading").length
-  const getCompletedBooks = () =>
-    allBooks.filter((book) => book.status === "completed").length
-  const getWantToReadBooks = () =>
-    allBooks.filter((book) => book.status === "want-to-read").length
-  const getOnHoldBooks = () =>
-    allBooks.filter((book) => book.status === "on-hold").length
+  const countsQuery = useQuery({
+    queryKey: queryKeys.user.libraryCounts(userUid!),
+    queryFn: async () => {
+      const uid = userUid!
+      const [total, reading, completed, want, onHoldCount] = await Promise.all([
+        BookService.countUserBooksTotal(uid),
+        BookService.countUserBooksByStatus(uid, "reading"),
+        BookService.countUserBooksByStatus(uid, "completed"),
+        BookService.countUserBooksByStatus(uid, "want-to-read"),
+        BookService.countUserBooksByStatus(uid, "on-hold"),
+      ])
+      return { total, reading, completed, want, onHold: onHoldCount }
+    },
+    enabled: Boolean(userUid),
+    staleTime: 30_000,
+  })
+
+  const PAGE_SIZE = 10
+
+  const titlePrefix = useMemo(() => {
+    const t = searchQuery.trim()
+    return t.length > 0 ? t : undefined
+  }, [searchQuery])
+
+  const tabCountQuery = useQuery({
+    queryKey: queryKeys.user.libraryTabCount(
+      userUid!,
+      activeTab,
+      levelFilter,
+      categoryFilter,
+      titlePrefix ?? "",
+    ),
+    queryFn: () =>
+      BookService.countUserBooksByStatus(userUid!, activeTab, {
+        level: levelFilter || undefined,
+        category: categoryFilter || undefined,
+        titlePrefix,
+      }),
+    enabled: Boolean(userUid),
+    staleTime: 15_000,
+  })
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil((tabCountQuery.data ?? 0) / PAGE_SIZE),
+  )
+
+  const booksPageQuery = useQuery({
+    queryKey: queryKeys.user.libraryPage(
+      userUid!,
+      activeTab,
+      sortOrder,
+      levelFilter,
+      categoryFilter,
+      titlePrefix ?? "",
+      currentPage,
+    ),
+    queryFn: async () => {
+      let cursor: QueryDocumentSnapshot<DocumentData> | null = null
+      for (let p = 1; p < currentPage; p++) {
+        const batch = await BookService.queryUserBooksByStatusPage({
+          user_id: userUid!,
+          status: activeTab,
+          sort: sortOrder,
+          level: levelFilter || undefined,
+          category: categoryFilter || undefined,
+          titlePrefix,
+          pageSize: PAGE_SIZE,
+          startAfterSnapshot: cursor,
+        })
+        if (!batch.hasMore) {
+          return { items: [] as Book[], hasMore: false }
+        }
+        cursor = batch.lastVisible
+      }
+      return BookService.queryUserBooksByStatusPage({
+        user_id: userUid!,
+        status: activeTab,
+        sort: sortOrder,
+        level: levelFilter || undefined,
+        category: categoryFilter || undefined,
+        titlePrefix,
+        pageSize: PAGE_SIZE,
+        startAfterSnapshot: cursor,
+      })
+    },
+    enabled: Boolean(userUid),
+    staleTime: 15_000,
+  })
+
+  const visibleBooks = booksPageQuery.data?.items ?? []
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, sortOrder, levelFilter, categoryFilter, titlePrefix])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const getTotalBooks = () => countsQuery.data?.total ?? 0
+  const getReadingBooks = () => countsQuery.data?.reading ?? 0
+  const getCompletedBooks = () => countsQuery.data?.completed ?? 0
+  const getWantToReadBooks = () => countsQuery.data?.want ?? 0
+  const getOnHoldBooks = () => countsQuery.data?.onHold ?? 0
 
   // URL ?tab= 에서 탭 복원 (전체 보기 등에서 진입 시)
   useEffect(() => {
@@ -113,99 +210,11 @@ function BooksPageContent() {
     }
   }, [searchParams])
 
-  // "최근 읽은 순"일 때 API로 정렬된 목록 로드 (읽는 중/완독/보류)
-  useEffect(() => {
-    const useLastRead =
-      (activeTab === "reading" || activeTab === "completed" || activeTab === "on-hold") &&
-      sortOrder === "recently_read" &&
-      !!userUid
-    if (!useLastRead) {
-      setBooksByLastRead([])
-      return
-    }
-    let cancelled = false
-    setLoadingLastReadSort(true)
-    BookService.getUserBooksByStatusSortedByLastRead(userUid, activeTab)
-      .then((books) => {
-        if (!cancelled) setBooksByLastRead(books)
-      })
-      .catch(() => {
-        if (!cancelled) setBooksByLastRead([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingLastReadSort(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [activeTab, sortOrder, userUid])
-
-  // 필터링된 책 목록 (탭 + 검색 + 레벨/분야 + 정렬)
-  const filteredBooks = useMemo(() => {
-    let list: Book[]
-
-    const useLastReadList =
-      (activeTab === "reading" || activeTab === "completed" || activeTab === "on-hold") &&
-      sortOrder === "recently_read" &&
-      booksByLastRead.length >= 0
-
-    if (useLastReadList && booksByLastRead.length > 0) {
-      list = [...booksByLastRead]
-    } else {
-      list = allBooks.filter((book) => book.status === activeTab)
-      const getTime = (b: Book) => {
-        if (sortOrder === "recently_added") {
-          return (b.created_at ? new Date(b.created_at).getTime() : 0)
-        }
-        return (b.updated_at ? new Date(b.updated_at).getTime() : b.created_at ? new Date(b.created_at).getTime() : 0)
-      }
-      list.sort((a, b) => getTime(b) - getTime(a))
-    }
-
-    // 검색어 필터
-    const q = searchQuery.trim().toLowerCase()
-    if (q) {
-      list = list.filter(
-        (book) =>
-          book.title.toLowerCase().includes(q) ||
-          (book.author && book.author.toLowerCase().includes(q))
-      )
-    }
-
-    // 레벨 필터
-    if (levelFilter) {
-      list = list.filter((book) => book.level === levelFilter)
-    }
-
-    // 분야 필터
-    if (categoryFilter) {
-      list = list.filter((book) => book.category === categoryFilter)
-    }
-
-    return list
-  }, [allBooks, activeTab, searchQuery, levelFilter, categoryFilter, sortOrder, booksByLastRead])
-
-  // 페이지네이션
-  const totalItems = filteredBooks.length
-  const paginatedBooks = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage
-    return filteredBooks.slice(start, start + itemsPerPage)
-  }, [filteredBooks, currentPage, itemsPerPage])
-
   useEffect(() => {
     if (!loading && !isLoggedIn) {
       router.push("/login")
     }
   }, [isLoggedIn, loading, router])
-
-  // 필터/정렬 변경 시 페이지 리셋
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab, searchQuery, levelFilter, categoryFilter, sortOrder])
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
 
   const handleTabChange = (
     tab: "reading" | "completed" | "want-to-read" | "on-hold"
@@ -252,8 +261,12 @@ function BooksPageContent() {
       }
 
       addBook(createdBook)
-
-      setCurrentPage(1)
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.user.libraryRoot(userUid),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.user.libraryCounts(userUid),
+      })
     } catch (error) {
       console.error("handleAddBook error:", error)
       if (error instanceof ApiError) {
@@ -275,6 +288,12 @@ function BooksPageContent() {
       await BookService.updateBookStatus(bookId, newStatus, userUid)
 
       removeBook(bookId)
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.user.libraryRoot(userUid),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.user.libraryCounts(userUid),
+      })
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -300,6 +319,12 @@ function BooksPageContent() {
       await BookService.deleteBook(bookToDelete.id)
 
       removeBook(bookToDelete.id)
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.user.libraryRoot(userUid),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.user.libraryCounts(userUid),
+      })
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -394,11 +419,14 @@ function BooksPageContent() {
 
         {/* 검색 섹션 */}
         <div className='mb-4'>
+          <p className='text-xs text-theme-tertiary mb-1'>
+            검색어를 입력하면 제목이 그 글자로 시작하는 책만 서버에서 불러옵니다.
+          </p>
           <div className='relative'>
             <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
             <input
               type='text'
-              placeholder='책 제목이나 저자로 검색...'
+              placeholder='제목으로 검색 (앞부분 일치)...'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className='w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent'
@@ -520,7 +548,15 @@ function BooksPageContent() {
           </button>
         </div>
 
-        {paginatedBooks.length === 0 ? (
+        {(booksPageQuery.isError || tabCountQuery.isError) && (
+          <div className='mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300'>
+            목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+          </div>
+        )}
+
+        {booksPageQuery.isPending && !booksPageQuery.data ? (
+          <GenericRouteSkeleton rows={4} />
+        ) : visibleBooks.length === 0 ? (
           <div className='text-center py-12'>
             <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
             <h3 className='text-lg font-medium text-theme-primary mb-2'>
@@ -563,7 +599,7 @@ function BooksPageContent() {
           </div>
         ) : (
           <div className='grid grid-cols-1 gap-3'>
-            {paginatedBooks.map((book: Book) => (
+            {visibleBooks.map((book: Book) => (
               <div
                 key={book.id}
                 onClick={() => handleBookClick(book.id)}
@@ -628,17 +664,14 @@ function BooksPageContent() {
           </div>
         )}
 
-        {/* 페이지네이션 */}
-        {paginatedBooks.length > 0 && (
-          <div className='mt-8 mb-8 pb-8'>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={Math.ceil(totalItems / itemsPerPage)}
-              onPageChange={handlePageChange}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-            />
-          </div>
+        {(tabCountQuery.data ?? 0) > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={tabCountQuery.data ?? 0}
+            itemsPerPage={PAGE_SIZE}
+          />
         )}
       </div>
 
@@ -669,12 +702,12 @@ function BooksPageContent() {
 
       {isNavigating && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop"
           aria-busy="true"
           aria-label="페이지 이동 중"
         >
           <span className="sr-only">페이지 이동 중</span>
-          <div className="w-[min(100%-2rem,20rem)] space-y-3 rounded-xl border border-white/10 bg-theme-secondary/95 p-6 shadow-xl dark:bg-theme-primary/95">
+          <div className="modal-dialog-surface w-[min(100%-2rem,20rem)] space-y-3 rounded-xl p-6">
             <SkLine className="h-4 w-3/4" />
             <SkLine className="h-4 w-full" />
             <SkLine className="h-4 w-5/6" />

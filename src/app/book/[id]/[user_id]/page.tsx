@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
   Star,
@@ -48,6 +49,7 @@ import { UserStatisticsService } from "@/services/userStatisticsService"
 import { ChecklistService } from "@/services/checklistService"
 import { getKoreaDate } from "@/utils/timeUtils"
 import { ApiError } from "@/lib/apiClient"
+import { queryKeys } from "@/lib/queryKeys"
 import { RereadService } from "@/services/rereadService"
 import { Reread } from "@/types/reread"
 import { BookDetailRouteSkeleton } from "@/components/skeletons"
@@ -84,7 +86,6 @@ export default function BookDetailPage({
 
   const [book, setBook] = useState<Book | null>(null)
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [resolvedParams, setResolvedParams] = useState<{
     id: string
@@ -212,130 +213,106 @@ export default function BookDetailPage({
     })
   }, [params])
 
-  useEffect(() => {
-    if (!resolvedParams) return
+  const bundleBookId = resolvedParams?.id
+  const bundleOwnerId = resolvedParams?.user_id
 
-    const loadBook = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
+  const bookBundleQuery = useQuery({
+    queryKey: queryKeys.book.bundle(bundleBookId ?? "", bundleOwnerId ?? ""),
+    enabled: Boolean(bundleBookId && bundleOwnerId),
+    queryFn: async () => {
+      const id = bundleBookId!
+      const user_id = bundleOwnerId!
+      const bookData = await BookService.getBook(id)
+      if (!bookData) return { kind: "missing" as const }
 
-        const bookData = await BookService.getBook(resolvedParams.id)
+      let book = bookData
+      const [sessionsData, rereadsData] = await Promise.all([
+        ReadingSessionService.getBookReadingSessions(id),
+        RereadService.getBookRereads(id),
+      ])
+      let sessions = sessionsData
+      let rereads = rereadsData
 
-        if (!bookData) {
-          setError("책을 찾을 수 없습니다.")
-          return
-        }
-
-        setBook(bookData)
-
+      if (
+        bookData.status === "completed" &&
+        bookData.completedDate &&
+        rereadsData.length === 0
+      ) {
         try {
-          const [sessionsData, rereadsData] = await Promise.all([
-            ReadingSessionService.getBookReadingSessions(resolvedParams.id),
-            RereadService.getBookRereads(resolvedParams.id),
-          ])
-          setReadingSessions(sessionsData)
-          setRereads(rereadsData)
-
-          // 이미 완독된 책인데 회독 기록이 없는 경우 자동 생성
-          if (
-            bookData.status === "completed" &&
-            bookData.completedDate &&
-            rereadsData.length === 0
-          ) {
-            try {
-              // 시작일 찾기
-              let startDate: string
-              if (sessionsData.length > 0) {
-                // 가장 오래된 독서 세션 날짜
-                const sortedSessions = [...sessionsData].sort((a, b) =>
-                  a.date.localeCompare(b.date)
-                )
-                startDate = sortedSessions[0].date
-              } else {
-                // 독서 세션이 없으면 책의 시작일 또는 완독일 사용
-                startDate = bookData.startDate || bookData.completedDate
-              }
-
-              const currentRereadCount = bookData.rereadCount ?? 0
-              const rereadNumber = currentRereadCount > 0 ? currentRereadCount : 1
-
-              // 회독 기록 생성
-              await RereadService.createReread({
-                bookId: resolvedParams.id,
-                user_id: resolvedParams.user_id,
-                rereadNumber: rereadNumber,
-                startDate: startDate,
-                completedDate: bookData.completedDate,
-              })
-
-              // 회독 기록 다시 로드
-              const updatedRereads = await RereadService.getBookRereads(resolvedParams.id)
-              setRereads(updatedRereads)
-
-              // 회독 수가 없으면 업데이트
-              if (!bookData.rereadCount || bookData.rereadCount === 0) {
-                await BookService.updateBook(resolvedParams.id, {
-                  rereadCount: rereadNumber,
-                })
-                const updatedBookData = await BookService.getBook(resolvedParams.id)
-                if (updatedBookData) {
-                  setBook(updatedBookData)
-                }
-              }
-            } catch (error) {
-              console.error("기존 완독 책 회독 기록 생성 오류:", error)
-              // 오류가 발생해도 계속 진행
-            }
+          let startDate: string
+          if (sessionsData.length > 0) {
+            const sortedSessions = [...sessionsData].sort((a, b) =>
+              a.date.localeCompare(b.date),
+            )
+            startDate = sortedSessions[0]!.date
+          } else {
+            startDate = bookData.startDate || bookData.completedDate
           }
 
-          // 체크리스트 데이터 로드 (현재 서비스에서는 사용하지 않음)
-          // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
-          // if (userUid) {
-          //   const checklistData = await ChecklistService.getUserChecklist(
-          //     userUid
-          //   )
-          //   setUserChecklist(checklistData)
+          const currentRereadCount = bookData.rereadCount ?? 0
+          const rereadNumber = currentRereadCount > 0 ? currentRereadCount : 1
 
-          //   // 시스템 체크리스트 로드 (실패 시 기본값 사용)
-          //   try {
-          //     const systemChecklist = await ChecklistService.getSystemChecklist(
-          //       "pre-reading"
-          //     )
-          //     if (systemChecklist) {
-          //       setPreReadingChecklist(systemChecklist.items)
-          //     } else {
-          //       setPreReadingChecklist(
-          //         ChecklistService.getDefaultPreReadingChecklist()
-          //       )
-          //     }
-          //   } catch (error) {
-          //     console.error(
-          //       "Failed to load system checklist, using default:",
-          //       error
-          //     )
-          //     setPreReadingChecklist(
-          //       ChecklistService.getDefaultPreReadingChecklist()
-          //     )
-          //   }
-          // }
-        } catch (error) {
-          console.error("Error loading reading sessions:", error)
-          setError("독서 세션을 불러오는 중 오류가 발생했습니다.")
+          await RereadService.createReread({
+            bookId: id,
+            user_id,
+            rereadNumber,
+            startDate,
+            completedDate: bookData.completedDate,
+          })
+
+          rereads = await RereadService.getBookRereads(id)
+
+          if (!bookData.rereadCount || bookData.rereadCount === 0) {
+            await BookService.updateBook(id, { rereadCount: rereadNumber })
+            const updatedBookData = await BookService.getBook(id)
+            if (updatedBookData) book = updatedBookData
+          }
+        } catch (err) {
+          console.error("기존 완독 책 회독 기록 생성 오류:", err)
         }
-      } catch (error) {
-        if (error instanceof ApiError) {
-          setError(error.message)
-        } else {
-          setError("책 정보를 불러오는 중 오류가 발생했습니다.")
-        }
-      } finally {
-        setIsLoading(false)
       }
+
+      return { kind: "ok" as const, book, sessions, rereads }
+    },
+  })
+
+  useEffect(() => {
+    if (!resolvedParams) return
+    if (bookBundleQuery.isPending) return
+
+    if (bookBundleQuery.isError) {
+      const err = bookBundleQuery.error
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "책 정보를 불러오는 중 오류가 발생했습니다.",
+      )
+      setBook(null)
+      return
     }
 
-    loadBook()
-  }, [resolvedParams, userUid])
+    const payload = bookBundleQuery.data
+    if (!payload) return
+
+    if (payload.kind === "missing") {
+      setError("책을 찾을 수 없습니다.")
+      setBook(null)
+      return
+    }
+
+    setError(null)
+    setBook(payload.book)
+    setReadingSessions(payload.sessions)
+    setRereads(payload.rereads)
+  }, [
+    resolvedParams,
+    bookBundleQuery.isPending,
+    bookBundleQuery.isError,
+    bookBundleQuery.error,
+    bookBundleQuery.data,
+  ])
+
+  const isLoading = !resolvedParams || bookBundleQuery.isPending
 
   // 타이머 업데이트
   useEffect(() => {

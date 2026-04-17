@@ -9,6 +9,16 @@ export class ReadingSessionService {
       "readingSessions",
       sessionData
     )
+    try {
+      const t = sessionData.endTime
+        ? new Date(sessionData.endTime)
+        : new Date()
+      await ApiClient.updateDocument("books", sessionData.bookId, {
+        last_read_at: t,
+      } as Record<string, unknown>)
+    } catch (e) {
+      console.warn("ReadingSessionService: last_read_at 갱신 실패", e)
+    }
     return sessionId
   }
 
@@ -102,6 +112,21 @@ export class ReadingSessionService {
   ): Promise<void> {
     try {
       await ApiClient.updateDocument("readingSessions", sessionId, sessionData)
+      const full = await ApiClient.getDocument<ReadingSession>(
+        "readingSessions",
+        sessionId,
+      )
+      if (full?.bookId) {
+        const end = full.endTime
+        const t = end ? new Date(end) : new Date()
+        try {
+          await ApiClient.updateDocument("books", full.bookId, {
+            last_read_at: t,
+          } as Record<string, unknown>)
+        } catch (e) {
+          console.warn("ReadingSessionService: last_read_at 갱신 실패", e)
+        }
+      }
     } catch (error) {
       throw error
     }

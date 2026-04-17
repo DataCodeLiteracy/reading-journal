@@ -1,0 +1,461 @@
+import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
+import { ApiClient } from "@/lib/apiClient"
+import type { Book } from "@/types/book"
+import type { ExploreTitleGroup } from "@/types/explore"
+
+const READ_BATCH = 100
+const MAX_ROUNDS = 80
+
+function buildGroup(books: Book[]): ExploreTitleGroup {
+  const title = books[0]?.title?.trim() || ""
+  const author = books[0]?.author || "저자 미상"
+  const userCount = new Set(books.map((b) => b.user_id)).size
+  const avgRating =
+    books.reduce((s, b) => s + (b.rating ?? 0), 0) / books.length
+  const statuses = new Set(books.map((b) => b.status))
+  return { title, books, author, userCount, avgRating, statuses }
+}
+
+export type ExploreTitleGroupsPageResult = {
+  groups: ExploreTitleGroup[]
+  nextPageCursor: QueryDocumentSnapshot<DocumentData> | null
+  done: boolean
+}
+
+/**
+ * `title` 오름/내림차순으로 books를 읽으며, 완결된 제목 그룹을 `groupsTarget`개 채울 때까지 Firestore를 순회합니다.
+ */
+export type ExploreTitlePageFirestoreCondition = [string, string, unknown]
+
+export async function fetchExploreTitleGroupsPage(options: {
+  groupsTarget: number
+  orderTitle: "asc" | "desc"
+  startAfterSnapshot: QueryDocumentSnapshot<DocumentData> | null
+  /** `title` 정렬과 함께 사용할 Firestore equality 조건 (복합 인덱스 필요) */
+  conditions?: ExploreTitlePageFirestoreCondition[]
+}): Promise<ExploreTitleGroupsPageResult> {
+  const {
+    groupsTarget,
+    orderTitle,
+    startAfterSnapshot,
+    conditions = [],
+  } = options
+
+  const completed: ExploreTitleGroup[] = []
+  let openKey: string | null = null
+  let openBooks: Book[] = []
+  let openSnaps: QueryDocumentSnapshot<DocumentData>[] = []
+  let lastSnapClosedLastGroup: QueryDocumentSnapshot<DocumentData> | null =
+    null
+
+  const flushOpen = () => {
+    if (openKey !== null && openBooks.length > 0) {
+      completed.push(buildGroup(openBooks))
+      lastSnapClosedLastGroup = openSnaps[openSnaps.length - 1]!
+    }
+    openKey = null
+    openBooks = []
+    openSnaps = []
+  }
+
+  let firestoreCursor: QueryDocumentSnapshot<DocumentData> | null =
+    startAfterSnapshot
+  let rounds = 0
+
+  while (completed.length < groupsTarget && rounds < MAX_ROUNDS) {
+    rounds += 1
+    const batch = await ApiClient.queryCollectionPage<Book>({
+      collectionName: "books",
+      conditions,
+      orderByField: "title",
+      orderDirection: orderTitle,
+      pageSize: READ_BATCH,
+      startAfterSnapshot: firestoreCursor,
+    })
+
+    if (batch.items.length === 0) {
+      flushOpen()
+      return {
+        groups: completed.slice(0, groupsTarget),
+        nextPageCursor: lastSnapClosedLastGroup,
+        done: true,
+      }
+    }
+
+    for (let i = 0; i < batch.items.length; i++) {
+      const book = batch.items[i]!
+      const snap = batch.snapshots[i]!
+      const raw = (book.title || "").trim()
+      if (!raw) continue
+      const k = raw.toLowerCase()
+
+      if (openKey === null) {
+        openKey = k
+        openBooks = [book]
+        openSnaps = [snap]
+        continue
+      }
+
+      if (k === openKey) {
+        openBooks.push(book)
+        openSnaps.push(snap)
+        continue
+      }
+
+      flushOpen()
+      if (completed.length >= groupsTarget) {
+        return {
+          groups: completed.slice(0, groupsTarget),
+          nextPageCursor: lastSnapClosedLastGroup,
+          done: !batch.hasMore,
+        }
+      }
+
+      openKey = k
+      openBooks = [book]
+      openSnaps = [snap]
+    }
+
+    firestoreCursor = batch.lastVisible
+    if (!batch.hasMore) {
+      flushOpen()
+      return {
+        groups: completed.slice(0, groupsTarget),
+        nextPageCursor: lastSnapClosedLastGroup,
+        done: true,
+      }
+    }
+  }
+
+  flushOpen()
+  if (openBooks.length > 0 && completed.length < groupsTarget) {
+    completed.push(buildGroup(openBooks))
+    lastSnapClosedLastGroup = openSnaps[openSnaps.length - 1]!
+  }
+
+  return {
+    groups: completed.slice(0, groupsTarget),
+    nextPageCursor: lastSnapClosedLastGroup,
+    done: true,
+  }
+}
+
+export function buildExploreTitlePageConditions(params: {
+  statusFilter: string
+  levelFilter: string
+  categoryFilter: string
+  userIdFilter: string
+}): ExploreTitlePageFirestoreCondition[] {
+  const c: ExploreTitlePageFirestoreCondition[] = []
+  if (params.statusFilter)
+    c.push(["status", "==", params.statusFilter])
+  if (params.levelFilter) c.push(["level", "==", params.levelFilter])
+  if (params.categoryFilter)
+    c.push(["category", "==", params.categoryFilter])
+  const uid = params.userIdFilter.trim()
+  if (uid) c.push(["user_id", "==", uid])
+  return c
+}
+
+/** 탐색 «제목 그룹»이 아닐 때 단건 책 커서 페이지 (검색은 제목 접두 일치) */
+export function exploreBooksFlatSortParams(
+  sortBy: string,
+  searchHasPrefix: boolean,
+): { field: string; dir: "asc" | "desc" } {
+  if (searchHasPrefix) return { field: "title", dir: "asc" }
+  switch (sortBy) {
+    case "title-asc":
+      return { field: "title", dir: "asc" }
+    case "title-desc":
+      return { field: "title", dir: "desc" }
+    case "rating-desc":
+      return { field: "rating", dir: "desc" }
+    case "author-asc":
+      return { field: "author", dir: "asc" }
+    case "users-desc":
+      return { field: "created_at", dir: "desc" }
+    case "users-asc":
+      return { field: "created_at", dir: "asc" }
+    default:
+      return { field: "created_at", dir: "desc" }
+  }
+}
+
+/** 탐색 단건 목록용 where (내 책 제외 `!=`는 넣지 않음 — `count`·소프트 제외에서 별도 처리) */
+export function buildExploreBooksQueryConditions(params: {
+  statusFilter: string
+  levelFilter: string
+  categoryFilter: string
+  userIdFilter: string
+  authorFilter: string
+  minRatingFilter: string
+  searchPrefix?: string
+}): ExploreTitlePageFirestoreCondition[] {
+  const c = buildExploreTitlePageConditions({
+    statusFilter: params.statusFilter,
+    levelFilter: params.levelFilter,
+    categoryFilter: params.categoryFilter,
+    userIdFilter: params.userIdFilter,
+  })
+  const sp = params.searchPrefix?.trim()
+  if (sp) {
+    c.push(["title", ">=", sp])
+    c.push(["title", "<=", `${sp}\uf8ff`])
+  }
+  const author = params.authorFilter.trim()
+  if (author) c.push(["author", "==", author])
+  const minR = parseFloat(params.minRatingFilter)
+  if (!Number.isNaN(minR) && minR > 0) c.push(["rating", ">=", minR])
+  return c
+}
+
+export type ExploreBooksListParams = {
+  statusFilter: string
+  levelFilter: string
+  categoryFilter: string
+  userIdFilter: string
+  authorFilter: string
+  minRatingFilter: string
+  onlyNotMineFilter: boolean
+  searchPrefix?: string
+  sortBy: string
+  currentUserUid?: string | null
+}
+
+function listConditionsHasTitleRange(
+  conds: ExploreTitlePageFirestoreCondition[],
+): boolean {
+  return conds.some((x) => x[0] === "title" && x[1] === ">=")
+}
+
+function listConditionsHasRatingMin(
+  conds: ExploreTitlePageFirestoreCondition[],
+): boolean {
+  return conds.some((x) => x[0] === "rating" && x[1] === ">=")
+}
+
+/**
+ * Firestore `user_id !=` 는 해당 필드로 먼저 orderBy 해야 해서, 제외 시 2단 정렬을 씁니다.
+ */
+export function getExploreBooksOrderByChain(params: {
+  sortBy: string
+  hasSearchPrefix: boolean
+  firestoreExcludeMine: boolean
+}): ReadonlyArray<{ field: string; direction: "asc" | "desc" }> {
+  if (!params.firestoreExcludeMine) {
+    const { field, dir } = exploreBooksFlatSortParams(
+      params.sortBy,
+      params.hasSearchPrefix,
+    )
+    return [{ field, direction: dir }]
+  }
+  if (params.hasSearchPrefix) {
+    return [
+      { field: "user_id", direction: "asc" },
+      { field: "title", direction: "asc" },
+    ]
+  }
+  switch (params.sortBy) {
+    case "title-desc":
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "title", direction: "desc" },
+      ]
+    case "title-asc":
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "title", direction: "asc" },
+      ]
+    case "rating-desc":
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "rating", direction: "desc" },
+      ]
+    case "author-asc":
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "author", direction: "asc" },
+      ]
+    case "users-desc":
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "created_at", direction: "desc" },
+      ]
+    case "users-asc":
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "created_at", direction: "asc" },
+      ]
+    default:
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "created_at", direction: "desc" },
+      ]
+  }
+}
+
+const SOFT_PAGE_READ = 50
+const SOFT_PAGE_MAX_ROUNDS = 80
+
+async function fetchExploreBooksPageSoftMineExclude(options: {
+  conditions: ExploreTitlePageFirestoreCondition[]
+  sortBy: string
+  searchPrefix?: string
+  pageSize: number
+  startAfterSnapshot: QueryDocumentSnapshot<DocumentData> | null
+  excludeUserId: string
+}): Promise<{
+  items: Book[]
+  snapshots: QueryDocumentSnapshot<DocumentData>[]
+  lastVisible: QueryDocumentSnapshot<DocumentData> | null
+  hasMore: boolean
+}> {
+  const sp = options.searchPrefix?.trim()
+  const hasSearch = Boolean(sp)
+  const { field, dir } = exploreBooksFlatSortParams(options.sortBy, hasSearch)
+  const collected: Book[] = []
+  const snaps: QueryDocumentSnapshot<DocumentData>[] = []
+  let firestoreCursor: QueryDocumentSnapshot<DocumentData> | null =
+    options.startAfterSnapshot
+  let lastScanned: QueryDocumentSnapshot<DocumentData> | null = null
+  let rounds = 0
+
+  while (collected.length < options.pageSize && rounds < SOFT_PAGE_MAX_ROUNDS) {
+    rounds += 1
+    const batch = await ApiClient.queryCollectionPage<Book>({
+      collectionName: "books",
+      conditions: options.conditions,
+      orderByField: field,
+      orderDirection: dir,
+      pageSize: SOFT_PAGE_READ,
+      startAfterSnapshot: firestoreCursor,
+    })
+    if (batch.items.length === 0) {
+      return {
+        items: collected,
+        snapshots: snaps,
+        lastVisible: lastScanned,
+        hasMore: false,
+      }
+    }
+    for (let i = 0; i < batch.items.length; i++) {
+      const book = batch.items[i]!
+      const snap = batch.snapshots[i]!
+      lastScanned = snap
+      if (book.user_id !== options.excludeUserId) {
+        collected.push(book)
+        snaps.push(snap)
+      }
+      if (collected.length >= options.pageSize) {
+        const moreInBatch = i + 1 < batch.items.length
+        return {
+          items: collected,
+          snapshots: snaps,
+          lastVisible: lastScanned,
+          hasMore: moreInBatch || batch.hasMore,
+        }
+      }
+    }
+    firestoreCursor = batch.lastVisible
+    if (!batch.hasMore) break
+  }
+
+  return {
+    items: collected,
+    snapshots: snaps,
+    lastVisible: lastScanned,
+    hasMore: false,
+  }
+}
+
+/** 조건에 맞는 책 권수. «내 책 제외»는 (전체 − 내 uid 일치)로 같은 필터에서 정확히 계산 */
+export async function countExploreBooksForExplore(
+  params: ExploreBooksListParams,
+): Promise<number> {
+  const conds = buildExploreBooksQueryConditions({
+    statusFilter: params.statusFilter,
+    levelFilter: params.levelFilter,
+    categoryFilter: params.categoryFilter,
+    userIdFilter: params.userIdFilter,
+    authorFilter: params.authorFilter,
+    minRatingFilter: params.minRatingFilter,
+    searchPrefix: params.searchPrefix,
+  })
+  const base = await ApiClient.countCollection({
+    collectionName: "books",
+    conditions: conds,
+  })
+  const me = params.currentUserUid?.trim()
+  if (!params.onlyNotMineFilter || !me || params.userIdFilter.trim()) {
+    return base
+  }
+  const mine = await ApiClient.countCollection({
+    collectionName: "books",
+    conditions: [...conds, ["user_id", "==", me]],
+  })
+  return Math.max(0, base - mine)
+}
+
+export async function fetchExploreBooksForExplore(
+  params: ExploreBooksListParams & {
+    pageSize: number
+    startAfterSnapshot: QueryDocumentSnapshot<DocumentData> | null
+  },
+): Promise<{
+  items: Book[]
+  snapshots: QueryDocumentSnapshot<DocumentData>[]
+  lastVisible: QueryDocumentSnapshot<DocumentData> | null
+  hasMore: boolean
+}> {
+  const conds = buildExploreBooksQueryConditions({
+    statusFilter: params.statusFilter,
+    levelFilter: params.levelFilter,
+    categoryFilter: params.categoryFilter,
+    userIdFilter: params.userIdFilter,
+    authorFilter: params.authorFilter,
+    minRatingFilter: params.minRatingFilter,
+    searchPrefix: params.searchPrefix,
+  })
+  const sp = params.searchPrefix?.trim()
+  const hasSearch = Boolean(sp)
+  const me = params.currentUserUid?.trim()
+  const wantMineExcluded =
+    Boolean(params.onlyNotMineFilter && me && !params.userIdFilter.trim())
+  const titleRange = listConditionsHasTitleRange(conds)
+  const ratingMin = listConditionsHasRatingMin(conds)
+  const useFirestoreNotEqual =
+    wantMineExcluded && !titleRange && !ratingMin
+
+  if (wantMineExcluded && !useFirestoreNotEqual) {
+    return fetchExploreBooksPageSoftMineExclude({
+      conditions: conds,
+      sortBy: params.sortBy,
+      searchPrefix: params.searchPrefix,
+      pageSize: params.pageSize,
+      startAfterSnapshot: params.startAfterSnapshot,
+      excludeUserId: me!,
+    })
+  }
+
+  const qConds: ExploreTitlePageFirestoreCondition[] =
+    useFirestoreNotEqual && me
+      ? [...conds, ["user_id", "!=", me]]
+      : conds
+
+  const orderByChain = getExploreBooksOrderByChain({
+    sortBy: params.sortBy,
+    hasSearchPrefix: hasSearch,
+    firestoreExcludeMine: useFirestoreNotEqual,
+  })
+  const { field, dir } = exploreBooksFlatSortParams(params.sortBy, hasSearch)
+
+  return ApiClient.queryCollectionPage<Book>({
+    collectionName: "books",
+    conditions: qConds,
+    orderByChain,
+    orderByField: field,
+    orderDirection: dir,
+    pageSize: params.pageSize,
+    startAfterSnapshot: params.startAfterSnapshot,
+  })
+}

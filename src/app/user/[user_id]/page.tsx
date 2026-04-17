@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
   User,
@@ -20,6 +21,7 @@ import { BookService } from "@/services/bookService"
 import { User as UserType, UserStatistics } from "@/types/user"
 import { Book } from "@/types/book"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { queryKeys } from "@/lib/queryKeys"
 
 export default function UserProfilePage({
   params,
@@ -30,56 +32,56 @@ export default function UserProfilePage({
   const [resolvedParams, setResolvedParams] = useState<{
     user_id: string
   } | null>(null)
-  const [profileUser, setProfileUser] = useState<UserType | null>(null)
-  const [userStats, setUserStats] = useState<UserStatistics | null>(null)
-  const [completedBooks, setCompletedBooks] = useState<Book[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
   useEffect(() => {
     params.then((resolved) => {
       setResolvedParams(resolved)
     })
   }, [params])
 
-  useEffect(() => {
-    if (!resolvedParams) return
+  const uid = resolvedParams?.user_id
 
-    const loadUserProfile = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
+  const profileQuery = useQuery({
+    queryKey: queryKeys.publicUser.profile(uid!),
+    queryFn: () => UserService.getUser(uid!),
+    enabled: Boolean(uid),
+    staleTime: 60_000,
+  })
 
-        const [user, stats] = await Promise.all([
-          UserService.getUser(resolvedParams.user_id),
-          UserStatisticsService.getUserStatistics(resolvedParams.user_id),
-        ])
+  const statsQuery = useQuery({
+    queryKey: queryKeys.user.statistics(uid!),
+    queryFn: () => UserStatisticsService.getUserStatistics(uid!),
+    enabled: Boolean(uid),
+    staleTime: 60_000,
+  })
 
-        if (!user) {
-          setError("사용자를 찾을 수 없습니다.")
-          return
-        }
+  const profileUser = profileQuery.data ?? null
+  const userStats = statsQuery.data ?? null
+  const statsPublic = userStats ? userStats.isProfilePublic !== false : false
 
-        setProfileUser(user)
-        setUserStats(stats)
+  const booksQuery = useQuery({
+    queryKey: queryKeys.publicUser.books(uid!),
+    queryFn: async () => {
+      const books = await BookService.getUserBooks(uid!)
+      return books.filter((book) => book.status === "completed")
+    },
+    enabled: Boolean(uid) && statsPublic,
+    staleTime: 60_000,
+  })
 
-        // 프로필이 공개되어 있거나 통계가 공개되어 있는 경우에만 통계 로드
-        if (stats && (stats.isProfilePublic !== false)) {
-          // 완독한 책 수 조회
-          const books = await BookService.getUserBooks(resolvedParams.user_id)
-          const completed = books.filter((book) => book.status === "completed")
-          setCompletedBooks(completed)
-        }
-      } catch (error) {
-        console.error("Error loading user profile:", error)
-        setError("프로필을 불러오는 중 오류가 발생했습니다.")
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  const completedBooks: Book[] = booksQuery.data ?? []
 
-    loadUserProfile()
-  }, [resolvedParams])
+  const isLoading =
+    !resolvedParams ||
+    profileQuery.isPending ||
+    statsQuery.isPending ||
+    (statsPublic && booksQuery.isPending)
+
+  const error =
+    profileQuery.isError || statsQuery.isError || booksQuery.isError
+      ? "프로필을 불러오는 중 오류가 발생했습니다."
+      : profileQuery.isSuccess && profileUser === null
+        ? "사용자를 찾을 수 없습니다."
+        : null
 
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600)

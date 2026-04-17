@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { UserStatisticsService } from "@/services/userStatisticsService"
-import { ReadingSession } from "@/types/user"
 import { formatReadingTimeFromSeconds, getCurrentWeekRangeKST, getISOWeekStringKST } from "@/utils/timeUtils"
 import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
+import { useAuth } from "@/contexts/AuthContext"
+import { queryKeys } from "@/lib/queryKeys"
 import { SkLine } from "@/components/skeletons"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
@@ -27,7 +29,26 @@ function getWeekLabel(monday: string, sunday: string): string {
 
 export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardProps) {
   const { settings } = useSettings()
-  const { userStatistics, refreshAllData, userDataInitialized } = useData()
+  const { userUid } = useAuth()
+  const {
+    allReadingSessions,
+    userStatistics,
+    refreshAllData,
+    userDataInitialized,
+  } = useData()
+
+  const isSelf = Boolean(userUid && userId && userUid === userId)
+
+  const otherSessionsQuery = useQuery({
+    queryKey: queryKeys.user.readingSessions(userId),
+    queryFn: () => ReadingSessionService.getUserReadingSessions(userId),
+    enabled: Boolean(userId) && !isSelf,
+    staleTime: 60_000,
+  })
+
+  const sessionsForWeek = isSelf
+    ? allReadingSessions
+    : (otherSessionsQuery.data ?? [])
 
   const goalHours =
     userStatistics?.weeklyReadingGoalHours ??
@@ -35,44 +56,28 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
     5
   const goalSeconds = goalHours * 3600
 
-  const [totalSeconds, setTotalSeconds] = useState<number>(0)
-  const [weekLabel, setWeekLabel] = useState<string>("")
-  const [sessionsLoading, setSessionsLoading] = useState(true)
-  /** 통계(주간 목표)·세션 합산 준비 전까지 — 기본 5시간이 잠깐 보이는 현상 방지 */
-  const showCardLoading = !userDataInitialized || sessionsLoading
+  const weekSummary = useMemo(() => {
+    const { monday, sunday } = getCurrentWeekRangeKST()
+    const label = getWeekLabel(monday, sunday)
+    const inRange = sessionsForWeek.filter(
+      (s) => s.date >= monday && s.date <= sunday,
+    )
+    const total = inRange.reduce((sum, s) => sum + (s.duration ?? 0), 0)
+    return { weekLabel: label, totalSeconds: total }
+  }, [sessionsForWeek])
+
+  const totalSeconds = weekSummary.totalSeconds
+  const weekLabel = weekSummary.weekLabel
+  /** 대시보드(본인) 또는 타인 세션 쿼리 준비 전까지 — 기본 5시간이 잠깐 보이는 현상 방지 */
+  const showCardLoading =
+    !userId ||
+    (isSelf ? !userDataInitialized : otherSessionsQuery.isPending)
   const [showBonusModal, setShowBonusModal] = useState(false)
   const [bonusExpThisWeek, setBonusExpThisWeek] = useState<number | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const bonusCheckedRef = useRef(false)
 
   useBodyScrollLock(showBonusModal && bonusExpThisWeek !== null)
-
-  useEffect(() => {
-    if (!userId) return
-
-    const load = async () => {
-      setSessionsLoading(true)
-      try {
-        const { monday, sunday } = getCurrentWeekRangeKST()
-        setWeekLabel(getWeekLabel(monday, sunday))
-
-        const sessions: ReadingSession[] =
-          await ReadingSessionService.getUserReadingSessions(userId)
-        const inRange = sessions.filter(
-          (s) => s.date >= monday && s.date <= sunday
-        )
-        const total = inRange.reduce((sum, s) => sum + (s.duration ?? 0), 0)
-        setTotalSeconds(total)
-      } catch (error) {
-        console.error("Weekly reading time load error:", error)
-        setTotalSeconds(0)
-      } finally {
-        setSessionsLoading(false)
-      }
-    }
-
-    load()
-  }, [userId])
 
   useEffect(() => {
     if (showCardLoading || !userId) return
@@ -261,12 +266,12 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
 
       {showBonusModal && bonusExpThisWeek !== null && (
         <div
-          className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none p-4 bg-black/50'
+          className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4'
           role='dialog'
           aria-modal='true'
           aria-labelledby='weekly-bonus-title'
         >
-          <div className='w-full max-w-sm rounded-xl bg-theme-secondary p-5 shadow-lg'>
+          <div className='modal-dialog-surface w-full max-w-sm rounded-xl p-5'>
             <h2 id='weekly-bonus-title' className='text-lg font-bold text-theme-primary mb-2'>
               이번 주 목표 달성
             </h2>

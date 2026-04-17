@@ -1,34 +1,31 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
+import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { PenSquare, Search, Filter, X, Globe, User, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { RecordService, RecordContent } from "@/services/recordService"
+import {
+  RECORD_PAGE_SIZE,
+  countQuoteRecordsPage,
+  fetchQuoteRecordsPage,
+} from "@/services/recordPaginatedService"
 import { Book } from "@/types/book"
 import RecordContentCard from "@/components/RecordContentCard"
 import RecordListLoading from "@/components/RecordListLoading"
 import Pagination from "@/components/Pagination"
+import { queryKeys } from "@/lib/queryKeys"
 
 export default function QuotesPage() {
   const router = useRouter()
   const { isLoggedIn, loading, userUid } = useAuth()
-  const [records, setRecords] = useState<RecordContent[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   // 필터 및 검색 상태
   const [selectedBookId, setSelectedBookId] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState("")
   const [showOnlyMine, setShowOnlyMine] = useState(true) // 기본값: 내 데이터만 보기
-
-  // 페이지네이션
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
-  const [itemsPerPage] = useState(10)
-
-  // 책 목록 (필터용)
-  const [availableBooks, setAvailableBooks] = useState<Book[]>([])
 
   useEffect(() => {
     if (!loading && !isLoggedIn) {
@@ -36,72 +33,97 @@ export default function QuotesPage() {
     }
   }, [isLoggedIn, loading, router])
 
-  // 책 목록 로드
-  useEffect(() => {
-    if (!isLoggedIn || !userUid) return
+  const booksQuery = useQuery({
+    queryKey: queryKeys.record.availableBooks(userUid!, showOnlyMine),
+    queryFn: () => RecordService.getAvailableBooks(userUid!, showOnlyMine),
+    enabled: Boolean(isLoggedIn && userUid),
+    staleTime: 30_000,
+  })
 
-    const loadBooks = async () => {
-      try {
-        const books = await RecordService.getAvailableBooks(userUid, showOnlyMine)
-        setAvailableBooks(books)
-      } catch (error) {
-        console.error("Error loading books:", error)
-      }
+  const scopeKey = useMemo(
+    () => [selectedBookId, searchQuery, String(showOnlyMine)].join("\u001f"),
+    [selectedBookId, searchQuery, showOnlyMine],
+  )
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [scopeKey])
+
+  const countQuery = useQuery({
+    queryKey: queryKeys.record.contentCount(userUid!, "quote", scopeKey),
+    queryFn: () =>
+      countQuoteRecordsPage({
+        userUid: userUid!,
+        showOnlyMine,
+        bookId: selectedBookId || undefined,
+        searchQuery,
+      }),
+    enabled: Boolean(isLoggedIn && userUid),
+    staleTime: 15_000,
+  })
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil((countQuery.data ?? 0) / RECORD_PAGE_SIZE),
+  )
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
     }
+  }, [currentPage, totalPages])
 
-    loadBooks()
-  }, [isLoggedIn, userUid, showOnlyMine])
-
-  // 기록 로드
-  useEffect(() => {
-    if (!isLoggedIn || !userUid) return
-
-    const loadRecords = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-
-        const result = await RecordService.getAllRecords(
-          userUid,
-          "quote",
-          selectedBookId || undefined,
-          searchQuery || undefined,
+  const recordsQuery = useQuery({
+    queryKey: queryKeys.record.contentPage(
+      userUid!,
+      "quote",
+      scopeKey,
+      currentPage,
+    ),
+    queryFn: async () => {
+      let cursor: QueryDocumentSnapshot<DocumentData> | null = null
+      for (let p = 1; p < currentPage; p++) {
+        const batch = await fetchQuoteRecordsPage({
+          userUid: userUid!,
           showOnlyMine,
-          currentPage,
-          itemsPerPage
-        )
-
-        setRecords(result.records)
-        setTotalItems(result.total)
-      } catch (error) {
-        console.error("Error loading records:", error)
-        setError("구절 기록을 불러오는 중 오류가 발생했습니다.")
-      } finally {
-        setIsLoading(false)
+          bookId: selectedBookId || undefined,
+          searchQuery,
+          startAfterSnapshot: cursor,
+        })
+        if (batch.done || !batch.nextCursor) {
+          return { records: [] as RecordContent[], done: true as const }
+        }
+        cursor = batch.nextCursor
       }
-    }
+      return fetchQuoteRecordsPage({
+        userUid: userUid!,
+        showOnlyMine,
+        bookId: selectedBookId || undefined,
+        searchQuery,
+        startAfterSnapshot: cursor,
+      })
+    },
+    enabled: Boolean(isLoggedIn && userUid),
+    staleTime: 15_000,
+  })
 
-    loadRecords()
-  }, [isLoggedIn, userUid, selectedBookId, searchQuery, showOnlyMine, currentPage, itemsPerPage])
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
+  const availableBooks: Book[] = booksQuery.data ?? []
+  const records: RecordContent[] = recordsQuery.data?.records ?? []
+  const isLoading = recordsQuery.isPending && !recordsQuery.data
+  const error = recordsQuery.isError
+    ? "구절 기록을 불러오는 중 오류가 발생했습니다."
+    : null
 
   const handleBookFilterChange = (bookId: string) => {
     setSelectedBookId(bookId)
-    setCurrentPage(1)
   }
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
-    setCurrentPage(1)
   }
 
   const handleToggleShowOnlyMine = () => {
     setShowOnlyMine(!showOnlyMine)
-    setCurrentPage(1)
   }
 
   if (loading) {
@@ -241,7 +263,7 @@ export default function QuotesPage() {
           <>
             <div className='mb-4 flex items-center justify-between'>
               <p className='text-sm text-theme-secondary'>
-                총 {totalItems}개의 구절 기록
+                총 {countQuery.data ?? 0}건 · 이 페이지 {records.length}건
               </p>
             </div>
             <div className='space-y-4 mb-6'>
@@ -250,14 +272,13 @@ export default function QuotesPage() {
               ))}
             </div>
 
-            {/* 페이지네이션 */}
-            {totalItems > itemsPerPage && (
+            {(countQuery.data ?? 0) > 0 && (
               <Pagination
                 currentPage={currentPage}
-                totalPages={Math.ceil(totalItems / itemsPerPage)}
-                onPageChange={handlePageChange}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={countQuery.data ?? 0}
+                itemsPerPage={RECORD_PAGE_SIZE}
               />
             )}
           </>

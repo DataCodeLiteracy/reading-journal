@@ -36,12 +36,12 @@ export default function WeeklyRecapModal({
 
   return (
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none p-4 bg-black/50'
+      className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4'
       role='dialog'
       aria-modal='true'
       aria-labelledby='weekly-recap-title'
     >
-      <div className='w-full max-w-md max-h-[70vh] flex flex-col rounded-xl bg-theme-secondary shadow-lg border border-theme-tertiary'>
+      <div className='modal-dialog-surface flex w-full max-w-md max-h-[70vh] flex-col rounded-xl'>
         <div className='flex items-center justify-between p-3 border-b border-theme-tertiary flex-shrink-0'>
           <h2 id='weekly-recap-title' className='text-lg font-bold text-theme-primary'>
             지난주 독서 요약

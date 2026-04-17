@@ -281,12 +281,12 @@ export default function AdminBookRegisterPage() {
 
         {completePopup && (
           <div
-            className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none p-4 bg-black/50'
+            className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4'
             role='dialog'
             aria-modal='true'
             aria-labelledby='complete-popup-title'
           >
-            <div className='w-full max-w-sm rounded-xl bg-theme-secondary p-5 shadow-lg'>
+            <div className='modal-dialog-surface w-full max-w-sm rounded-xl p-5'>
               <h2 id='complete-popup-title' className='text-lg font-bold text-theme-primary mb-2'>
                 처리 완료
               </h2>

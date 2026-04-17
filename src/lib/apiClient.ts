@@ -8,6 +8,7 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
   updateDoc,
   deleteDoc,
   serverTimestamp,
@@ -15,7 +16,10 @@ import {
   Timestamp,
   DocumentData,
   QuerySnapshot,
+  QueryDocumentSnapshot,
+  type QueryConstraint,
   deleteField,
+  getCountFromServer,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
@@ -47,6 +51,7 @@ const convertFirestoreData = (data: any, docId?: string): any => {
     id: docId,
     created_at: convertTimestampToDate(data.created_at),
     updated_at: convertTimestampToDate(data.updated_at),
+    last_read_at: convertTimestampToDate(data.last_read_at),
   }
 }
 
@@ -245,6 +250,129 @@ export class ApiClient {
       throw new ApiError(
         `문서를 조회하는 중 오류가 발생했습니다: ${
           error.message || error.code
+        }`,
+        "DOCUMENT_QUERY_ERROR"
+      )
+    }
+  }
+
+  /**
+   * Firestore 커서 페이지 (limit+1로 hasMore 판별). startAfterSnapshot 없으면 첫 페이지.
+   */
+  /**
+   * 조건에 맞는 문서 개수 (집계 쿼리, 읽기 비용이 별도로 부과됩니다).
+   */
+  static async countCollection(options: {
+    collectionName: string
+    conditions?: Array<[string, string, unknown]>
+  }): Promise<number> {
+    const { collectionName, conditions = [] } = options
+    try {
+      const collectionRef = collection(db, collectionName)
+      const parts: QueryConstraint[] = []
+      for (const [field, operator, value] of conditions) {
+        parts.push(where(field, operator as any, value))
+      }
+      const q = query(collectionRef, ...parts)
+      const agg = await getCountFromServer(q)
+      return agg.data().count
+    } catch (error: unknown) {
+      const err = error as { code?: string; message?: string }
+      console.error("ApiClient.countCollection error:", error)
+      if (err.code === "permission-denied") {
+        throw new ApiError(
+          "데이터에 접근할 권한이 없습니다.",
+          "PERMISSION_DENIED",
+        )
+      }
+      throw new ApiError(
+        `개수를 조회하는 중 오류가 발생했습니다: ${
+          err.message || err.code || String(error)
+        }`,
+        "COUNT_QUERY_ERROR",
+      )
+    }
+  }
+
+  static async queryCollectionPage<T extends DocumentData>(options: {
+    collectionName: string
+    conditions?: Array<[string, string, unknown]>
+    /** `orderByChain`이 있으면 이 순서로만 정렬합니다(복합 정렬·`!=` 조합용). */
+    orderByChain?: ReadonlyArray<{
+      field: string
+      direction: "asc" | "desc"
+    }>
+    orderByField: string
+    orderDirection?: "asc" | "desc"
+    pageSize: number
+    startAfterSnapshot?: QueryDocumentSnapshot<DocumentData> | null
+  }): Promise<{
+    items: T[]
+    snapshots: QueryDocumentSnapshot<DocumentData>[]
+    lastVisible: QueryDocumentSnapshot<DocumentData> | null
+    hasMore: boolean
+  }> {
+    const {
+      collectionName,
+      conditions = [],
+      orderByChain,
+      orderByField,
+      orderDirection = "asc",
+      pageSize,
+      startAfterSnapshot,
+    } = options
+
+    try {
+      const collectionRef = collection(db, collectionName)
+      const parts: QueryConstraint[] = []
+      for (const [field, operator, value] of conditions) {
+        parts.push(where(field, operator as any, value))
+      }
+      if (orderByChain && orderByChain.length > 0) {
+        for (const ob of orderByChain) {
+          parts.push(orderBy(ob.field, ob.direction))
+        }
+      } else {
+        parts.push(orderBy(orderByField, orderDirection))
+      }
+      if (startAfterSnapshot) {
+        parts.push(startAfter(startAfterSnapshot))
+      }
+      parts.push(limit(pageSize + 1))
+      const q = query(collectionRef, ...parts)
+      const querySnapshot = await getDocs(q)
+      const docs = querySnapshot.docs
+      const hasMore = docs.length > pageSize
+      const take = hasMore ? docs.slice(0, pageSize) : docs
+      const items = take.map((d) => {
+        const data = d.data() as DocumentData
+        return convertFirestoreData(data, d.id) as T
+      })
+      const snapshots = take
+      const lastVisible =
+        take.length > 0 ? take[take.length - 1]! : null
+      return { items, snapshots, lastVisible, hasMore }
+    } catch (error: unknown) {
+      const err = error as { code?: string; message?: string }
+      console.error("ApiClient.queryCollectionPage error:", error)
+      if (err.code === "permission-denied") {
+        throw new ApiError(
+          "데이터에 접근할 권한이 없습니다.",
+          "PERMISSION_DENIED"
+        )
+      }
+      if (err.code === "unavailable") {
+        throw new ApiError("네트워크 연결을 확인해주세요.", "NETWORK_ERROR")
+      }
+      if (err.code === "failed-precondition") {
+        throw new ApiError(
+          "필요한 인덱스가 없습니다. Firebase Console에서 인덱스를 생성해주세요.",
+          "INDEX_ERROR"
+        )
+      }
+      throw new ApiError(
+        `문서를 조회하는 중 오류가 발생했습니다: ${
+          err.message || err.code || String(error)
         }`,
         "DOCUMENT_QUERY_ERROR"
       )

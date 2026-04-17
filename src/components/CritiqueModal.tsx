@@ -83,8 +83,8 @@ export default function CritiqueModal({
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black bg-opacity-50 p-4'>
-      <div className='bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4'>
+      <div className='modal-legacy-panel rounded-xl border border-slate-200/90 bg-white dark:border-slate-600/80 dark:bg-gray-800 w-full max-w-3xl max-h-[90vh] flex flex-col'>
         {/* 헤더 */}
         <div className='flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>
           <div className='flex-1 min-w-0'>

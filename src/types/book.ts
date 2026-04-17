@@ -75,4 +75,6 @@ export interface Book {
   publisher?: string
   created_at?: Date
   updated_at?: Date
+  /** 마지막 독서 세션 종료 시각(UTC). 서재 «최근 읽은 순» Firestore 정렬용 */
+  last_read_at?: Date
 }

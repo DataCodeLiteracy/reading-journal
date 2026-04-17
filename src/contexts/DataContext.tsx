@@ -3,10 +3,11 @@
 import {
   createContext,
   useContext,
-  useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Book } from "@/types/book"
 import { UserStatistics } from "@/types/user"
 import { ReadingSession } from "@/types/user"
@@ -18,219 +19,317 @@ import {
   TimePatternAnalysis,
 } from "@/services/timePatternService"
 import { useAuth } from "./AuthContext"
+import { queryKeys } from "@/lib/queryKeys"
+
+export type UserDashboardData = {
+  books: Book[]
+  sessions: ReadingSession[]
+  statistics: UserStatistics | null
+  timePatterns: TimePatternAnalysis | null
+}
 
 interface DataContextType {
-  // Books
   allBooks: Book[]
   setAllBooks: (books: Book[]) => void
   updateBook: (bookId: string, updatedBook: Book) => void
   addBook: (book: Book) => void
   removeBook: (bookId: string) => void
 
-  // Statistics
   userStatistics: UserStatistics | null
   setUserStatistics: (stats: UserStatistics | null) => void
   updateStatistics: () => Promise<void>
 
-  // Reading Sessions
   allReadingSessions: ReadingSession[]
   setAllReadingSessions: (sessions: ReadingSession[]) => void
-  addReadingSession: (session: ReadingSession) => void
-  removeReadingSession: (sessionId: string) => void
+  addReadingSession: (session: ReadingSession) => Promise<void>
+  removeReadingSession: (sessionId: string) => Promise<void>
 
-  // Time Patterns
   timePatterns: TimePatternAnalysis | null
   updateTimePatterns: () => void
 
-  // Loading states
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
-  /** 로그인 후 첫 refreshAllData(책·세션·통계) 완료 여부 — UI에서 목표 등 통계 기반 값 깜빡임 방지용 */
   userDataInitialized: boolean
 
-  // Refresh function
   refreshAllData: () => Promise<void>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const { userUid, isLoggedIn } = useAuth()
-  const [allBooks, setAllBooks] = useState<Book[]>([])
-  const [userStatistics, setUserStatistics] = useState<UserStatistics | null>(
-    null
-  )
-  const [allReadingSessions, setAllReadingSessions] = useState<
-    ReadingSession[]
-  >([])
-  const [timePatterns, setTimePatterns] = useState<TimePatternAnalysis | null>(
-    null
-  )
-  const [isLoading, setIsLoading] = useState(false)
-  const [userDataInitialized, setUserDataInitialized] = useState(false)
 
-  // 모든 데이터를 새로고침하는 함수
-  const refreshAllData = async () => {
-    if (!userUid || !isLoggedIn) return
-
-    try {
-      setIsLoading(true)
-
-      // 먼저 책과 세션 데이터를 로드
+  const dashboardQuery = useQuery({
+    queryKey: queryKeys.user.dashboard(userUid),
+    queryFn: async (): Promise<UserDashboardData> => {
       const [booksData, sessionsData] = await Promise.all([
-        BookService.getUserBooks(userUid),
-        ReadingSessionService.getUserReadingSessions(userUid),
+        BookService.getUserBooks(userUid!),
+        ReadingSessionService.getUserReadingSessions(userUid!),
       ])
-
-      setAllBooks(booksData)
-      setAllReadingSessions(sessionsData)
-
-      // 세션 데이터를 사용하여 통계 계산 (중복 로딩 방지)
       const statisticsData =
         await UserStatisticsService.getUserStatisticsWithSessions(
-          userUid,
+          userUid!,
           sessionsData
         )
-
-      setUserStatistics(statisticsData)
-
-      // 시간대별 패턴 분석
-      if (sessionsData.length > 0) {
-        const patterns = TimePatternService.analyzeTimePatterns(sessionsData)
-        setTimePatterns(patterns)
+      const patterns =
+        sessionsData.length > 0
+          ? TimePatternService.analyzeTimePatterns(sessionsData)
+          : null
+      return {
+        books: booksData,
+        sessions: sessionsData,
+        statistics: statisticsData,
+        timePatterns: patterns,
       }
-    } catch (error) {
-      console.error("Error refreshing data:", error)
-    } finally {
-      setIsLoading(false)
-      setUserDataInitialized(true)
+    },
+    enabled: Boolean(userUid && isLoggedIn),
+    staleTime: 30_000,
+  })
+
+  const data = dashboardQuery.data
+
+  useEffect(() => {
+    if (!isLoggedIn || !userUid) {
+      queryClient.removeQueries({ queryKey: ["userDashboard"] })
     }
-  }
+  }, [isLoggedIn, userUid, queryClient])
 
-  // 통계 업데이트 함수
-  const updateStatistics = async () => {
+  const refreshAllData = useCallback(async () => {
+    if (!userUid || !isLoggedIn) return
+    await queryClient.refetchQueries({
+      queryKey: queryKeys.user.dashboard(userUid),
+    })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.explore.all })
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.user.libraryRoot(userUid),
+    })
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.user.libraryCounts(userUid),
+    })
+  }, [userUid, isLoggedIn, queryClient])
+
+  const updateStatistics = useCallback(async () => {
     if (!userUid) return
-
+    const snap = queryClient.getQueryData<UserDashboardData>(
+      queryKeys.user.dashboard(userUid)
+    )
+    if (!snap) return
     try {
-      // 이미 로드된 세션 데이터를 사용
       const updatedStats =
         await UserStatisticsService.getUserStatisticsWithSessions(
           userUid,
-          allReadingSessions
+          snap.sessions
         )
-      setUserStatistics(updatedStats)
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) =>
+          old ? { ...old, statistics: updatedStats } : old
+      )
     } catch (error) {
       console.error("Error updating statistics:", error)
     }
-  }
+  }, [userUid, queryClient])
 
-  // 책 관련 함수들
-  const updateBook = (bookId: string, updatedBook: Book) => {
-    setAllBooks((prev) =>
-      prev.map((book) => (book.id === bookId ? updatedBook : book))
+  const updateBook = useCallback(
+    (bookId: string, updatedBook: Book) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) =>
+          old
+            ? {
+                ...old,
+                books: old.books.map((b) =>
+                  b.id === bookId ? updatedBook : b
+                ),
+              }
+            : old
+      )
+    },
+    [queryClient, userUid]
+  )
+
+  const addBook = useCallback(
+    (book: Book) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) => (old ? { ...old, books: [book, ...old.books] } : old)
+      )
+    },
+    [queryClient, userUid]
+  )
+
+  const removeBook = useCallback(
+    (bookId: string) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) =>
+          old
+            ? { ...old, books: old.books.filter((b) => b.id !== bookId) }
+            : old
+      )
+    },
+    [queryClient, userUid]
+  )
+
+  const updateTimePatterns = useCallback(() => {
+    if (!userUid) return
+    queryClient.setQueryData<UserDashboardData>(
+      queryKeys.user.dashboard(userUid),
+      (old) => {
+        if (!old || old.sessions.length === 0) return old
+        return {
+          ...old,
+          timePatterns: TimePatternService.analyzeTimePatterns(old.sessions),
+        }
+      }
     )
-  }
+  }, [queryClient, userUid])
 
-  const addBook = (book: Book) => {
-    setAllBooks((prev) => [book, ...prev])
-  }
-
-  const removeBook = (bookId: string) => {
-    setAllBooks((prev) => prev.filter((book) => book.id !== bookId))
-  }
-
-  // 시간대별 패턴 업데이트 함수
-  const updateTimePatterns = () => {
-    if (allReadingSessions.length > 0) {
-      const patterns =
-        TimePatternService.analyzeTimePatterns(allReadingSessions)
-      setTimePatterns(patterns)
-    }
-  }
-
-  // 독서 세션 관련 함수들
-  const addReadingSession = async (session: ReadingSession) => {
-    console.log("Adding reading session:", session)
-    console.log("Current sessions count:", allReadingSessions.length)
-
-    const updatedSessions = [session, ...allReadingSessions]
-    setAllReadingSessions(updatedSessions)
-
-    console.log("Updated sessions count:", updatedSessions.length)
-
-    // 세션 추가 후 통계 자동 업데이트
-    if (userUid) {
+  const addReadingSession = useCallback(
+    async (session: ReadingSession) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) =>
+          old ? { ...old, sessions: [session, ...old.sessions] } : old
+      )
+      const snap = queryClient.getQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid)
+      )
+      if (!snap) return
       try {
-        console.log(
-          "Updating statistics with sessions:",
-          updatedSessions.length
-        )
         const updatedStats =
           await UserStatisticsService.getUserStatisticsWithSessions(
             userUid,
-            updatedSessions
+            snap.sessions
           )
-        console.log("Updated statistics:", updatedStats)
-        setUserStatistics(updatedStats)
+        queryClient.setQueryData<UserDashboardData>(
+          queryKeys.user.dashboard(userUid),
+          (old) =>
+            old
+              ? {
+                  ...old,
+                  statistics: updatedStats,
+                  timePatterns:
+                    snap.sessions.length > 0
+                      ? TimePatternService.analyzeTimePatterns(snap.sessions)
+                      : null,
+                }
+              : old
+        )
       } catch (error) {
         console.error("Error updating statistics after adding session:", error)
       }
-    }
-  }
+    },
+    [queryClient, userUid]
+  )
 
-  const removeReadingSession = async (sessionId: string) => {
-    const updatedSessions = allReadingSessions.filter(
-      (session) => session.id !== sessionId
-    )
-    setAllReadingSessions(updatedSessions)
-
-    // 세션 제거 후 통계 자동 업데이트
-    if (userUid) {
+  const removeReadingSession = useCallback(
+    async (sessionId: string) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) =>
+          old
+            ? {
+                ...old,
+                sessions: old.sessions.filter((s) => s.id !== sessionId),
+              }
+            : old
+      )
+      const snap = queryClient.getQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid)
+      )
+      if (!snap) return
       try {
         const updatedStats =
           await UserStatisticsService.getUserStatisticsWithSessions(
             userUid,
-            updatedSessions
+            snap.sessions
           )
-        setUserStatistics(updatedStats)
+        queryClient.setQueryData<UserDashboardData>(
+          queryKeys.user.dashboard(userUid),
+          (old) =>
+            old
+              ? {
+                  ...old,
+                  statistics: updatedStats,
+                  timePatterns:
+                    snap.sessions.length > 0
+                      ? TimePatternService.analyzeTimePatterns(snap.sessions)
+                      : null,
+                }
+              : old
+        )
       } catch (error) {
         console.error(
           "Error updating statistics after removing session:",
           error
         )
       }
-    }
-  }
+    },
+    [queryClient, userUid]
+  )
 
-  // 사용자가 로그인하면 데이터 로드
-  useEffect(() => {
-    if (isLoggedIn && userUid) {
-      refreshAllData()
-    } else {
-      // 로그아웃 시 데이터 초기화
-      setAllBooks([])
-      setUserStatistics(null)
-      setAllReadingSessions([])
-      setUserDataInitialized(false)
-    }
-  }, [isLoggedIn, userUid])
+  const setAllBooks = useCallback(
+    (books: Book[]) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) => (old ? { ...old, books } : old)
+      )
+    },
+    [queryClient, userUid]
+  )
+
+  const setUserStatistics = useCallback(
+    (stats: UserStatistics | null) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) => (old ? { ...old, statistics: stats } : old)
+      )
+    },
+    [queryClient, userUid]
+  )
+
+  const setAllReadingSessions = useCallback(
+    (sessions: ReadingSession[]) => {
+      if (!userUid) return
+      queryClient.setQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+        (old) => (old ? { ...old, sessions } : old)
+      )
+    },
+    [queryClient, userUid]
+  )
+
+  const setIsLoading = useCallback(() => {}, [])
+
+  const userDataInitialized =
+    Boolean(userUid && isLoggedIn) &&
+    (dashboardQuery.isSuccess || dashboardQuery.isFetched)
 
   const value: DataContextType = {
-    allBooks,
+    allBooks: data?.books ?? [],
     setAllBooks,
     updateBook,
     addBook,
     removeBook,
-    userStatistics,
+    userStatistics: data?.statistics ?? null,
     setUserStatistics,
     updateStatistics,
-    allReadingSessions,
+    allReadingSessions: data?.sessions ?? [],
     setAllReadingSessions,
     addReadingSession,
     removeReadingSession,
-    timePatterns,
+    timePatterns: data?.timePatterns ?? null,
     updateTimePatterns,
-    isLoading,
+    isLoading: dashboardQuery.isFetching,
     setIsLoading,
     userDataInitialized,
     refreshAllData,

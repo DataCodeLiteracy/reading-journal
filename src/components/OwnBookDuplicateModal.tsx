@@ -22,11 +22,11 @@ export default function OwnBookDuplicateModal({
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-hidden overscroll-none p-3 sm:p-4">
       <div
-        className="absolute inset-0 bg-black/30"
+        className="absolute inset-0 bg-theme-backdrop"
         aria-hidden
         onClick={onClose}
       />
-      <div className="modal-form-shell relative z-10 min-w-0 rounded-xl border-card bg-theme-primary p-6 pt-5 shadow-xl">
+      <div className="modal-form-shell modal-dialog-surface relative z-10 min-w-0 rounded-xl p-6 pt-5">
         <button
           type="button"
           onClick={onClose}

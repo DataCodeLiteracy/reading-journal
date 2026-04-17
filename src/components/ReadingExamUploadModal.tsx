@@ -66,7 +66,7 @@ export default function ReadingExamUploadModal({
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4">
-      <div className="bg-theme-secondary rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+      <div className="modal-dialog-surface w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-theme-primary">이해도 점검 JSON 등록</h2>
           <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-theme-tertiary">
