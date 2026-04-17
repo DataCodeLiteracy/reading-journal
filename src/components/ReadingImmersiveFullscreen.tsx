@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { Clock, Pause, Play, RotateCcw, Settings } from "lucide-react"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 type CosmosState = "off" | "on" | "fail"
 
@@ -61,13 +62,7 @@ export default function ReadingImmersiveFullscreen({
     return () => cancelAnimationFrame(id)
   }, [mounted])
 
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
+  useBodyScrollLock(mounted)
 
   if (!mounted) return null
 

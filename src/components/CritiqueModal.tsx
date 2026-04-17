@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { X, BookOpen, Lock, Globe } from "lucide-react"
 import { Critique } from "@/types/content"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface CritiqueModalProps {
   isOpen: boolean
@@ -49,6 +50,8 @@ export default function CritiqueModal({
     }
   }, [isOpen, existingCritique])
 
+  useBodyScrollLock(isOpen)
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!content.trim()) {
@@ -80,7 +83,7 @@ export default function CritiqueModal({
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black bg-opacity-50 p-4'>
       <div className='bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col'>
         {/* 헤더 */}
         <div className='flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>

@@ -25,6 +25,7 @@ import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton, SkLine } from "@/components/skeletons"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 export default function BooksPage() {
   return (
@@ -85,6 +86,8 @@ function BooksPageContent() {
   const [isNavigating, setIsNavigating] = useState(false)
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
   const [duplicateModalTitle, setDuplicateModalTitle] = useState("")
+
+  useBodyScrollLock(isNavigating)
 
   const getTotalBooks = () => allBooks.length
   const getReadingBooks = () =>
@@ -666,7 +669,7 @@ function BooksPageContent() {
 
       {isNavigating && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/50 backdrop-blur-sm"
           aria-busy="true"
           aria-label="페이지 이동 중"
         >

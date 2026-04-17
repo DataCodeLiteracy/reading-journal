@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { X, Upload, FileJson, AlertCircle } from "lucide-react"
 import { ReadingContentPackService } from "@/services/readingContentPackService"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 import type { ReadingExcerptSummaryJson } from "@/types/readingContent"
 
 interface ReadingExcerptUploadModalProps {
@@ -31,6 +32,8 @@ export default function ReadingExcerptUploadModal({
       setError(null)
     }
   }, [isOpen])
+
+  useBodyScrollLock(isOpen)
 
   const handleUpload = async () => {
     setError(null)
@@ -62,7 +65,7 @@ export default function ReadingExcerptUploadModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-theme-backdrop p-4">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4">
       <div className="bg-theme-secondary rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-theme-primary">발췌 요약 JSON 등록</h2>

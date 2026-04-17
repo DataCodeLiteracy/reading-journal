@@ -8,6 +8,7 @@ import { BookService } from "@/services/bookService"
 import { UserService } from "@/services/userService"
 import { Book } from "@/types/book"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 function parseCSVLine(line: string): string[] {
   const out: string[] = []
@@ -78,6 +79,8 @@ export default function AdminBookRegisterPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [completePopup, setCompletePopup] = useState<{ updated: number; created: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useBodyScrollLock(completePopup !== null)
 
   useEffect(() => {
     if (!userData?.isAdmin) return
@@ -278,7 +281,7 @@ export default function AdminBookRegisterPage() {
 
         {completePopup && (
           <div
-            className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50'
+            className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none p-4 bg-black/50'
             role='dialog'
             aria-modal='true'
             aria-labelledby='complete-popup-title'

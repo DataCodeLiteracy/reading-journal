@@ -8,6 +8,7 @@ import {
   READING_TIMER_BG_PRESETS,
 } from "@/constants/readingTimerMedia"
 import { useReadingTimerSheet } from "@/contexts/ReadingTimerSheetContext"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 const CLOSE_DRAG_PX = 96
 
@@ -29,7 +30,7 @@ export default function ReadingTimerSettingsModal({
   onTimerBgChange,
 }: Props) {
   const [mounted, setMounted] = useState(false)
-  const { setSheetOpen, immersiveOpen } = useReadingTimerSheet()
+  const { setSheetOpen } = useReadingTimerSheet()
   const sheetRef = useRef<HTMLDivElement>(null)
   const dragY = useRef(0)
   const dragStartY = useRef(0)
@@ -42,19 +43,16 @@ export default function ReadingTimerSettingsModal({
     return () => setSheetOpen(false)
   }, [isOpen, setSheetOpen])
 
+  useBodyScrollLock(isOpen && mounted)
+
   useEffect(() => {
     if (!isOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()
     }
     document.addEventListener("keydown", onKey)
-    return () => {
-      document.body.style.overflow = immersiveOpen ? "hidden" : prev
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [isOpen, onClose, immersiveOpen])
+    return () => document.removeEventListener("keydown", onKey)
+  }, [isOpen, onClose])
 
   const applySheetTransform = (y: number) => {
     const el = sheetRef.current
@@ -98,7 +96,7 @@ export default function ReadingTimerSettingsModal({
 
   const node = (
     <div
-      className='fixed inset-0 z-[340] flex items-end justify-center p-0 sm:items-center sm:p-4'
+      className='fixed inset-0 z-[340] flex items-end justify-center overflow-hidden overscroll-none p-0 sm:items-center sm:p-4'
       role='presentation'
     >
       <div

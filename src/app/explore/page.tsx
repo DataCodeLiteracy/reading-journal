@@ -31,6 +31,7 @@ import { ExploreListSkeleton, GenericRouteSkeleton } from "@/components/skeleton
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import ReadingExamUploadModal from "@/components/ReadingExamUploadModal"
 import ReadingExcerptUploadModal from "@/components/ReadingExcerptUploadModal"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 type GroupedBook = {
   title: string
@@ -113,6 +114,8 @@ function ExplorePageContent() {
   const [exploreExamModalOpen, setExploreExamModalOpen] = useState(false)
   const [exploreExcerptModalOpen, setExploreExcerptModalOpen] = useState(false)
   const [exploreAdminTitle, setExploreAdminTitle] = useState("")
+
+  useBodyScrollLock(isAddingBook)
 
   const itemsPerPage = 15
 
@@ -772,7 +775,7 @@ function ExplorePageContent() {
         userBookTitleKeys={userBookTitleKeys}
       />
       {isAddingBook && (
-        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+        <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black/50'>
           <div className='bg-theme-secondary rounded-lg px-6 py-4 shadow-lg'>
             <p className='text-theme-primary'>책 추가 중...</p>
           </div>

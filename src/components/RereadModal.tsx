@@ -1,6 +1,7 @@
 "use client"
 
 import { X, RotateCcw } from "lucide-react"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface RereadModalProps {
   isOpen: boolean
@@ -15,6 +16,7 @@ export default function RereadModal({
   onConfirm,
   bookTitle,
 }: RereadModalProps) {
+  useBodyScrollLock(isOpen)
   const handleConfirm = () => {
     onConfirm()
     onClose()
@@ -23,7 +25,7 @@ export default function RereadModal({
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
       <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-md mx-4 shadow-lg'>
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-lg font-semibold text-theme-primary'>

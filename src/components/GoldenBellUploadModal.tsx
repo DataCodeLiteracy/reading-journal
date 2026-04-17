@@ -9,6 +9,7 @@ import {
   GOLDEN_BELL_DIFFICULTIES,
 } from "@/types/goldenBell"
 import ConfirmModal from "@/components/ConfirmModal"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface GoldenBellUploadModalProps {
   isOpen: boolean
@@ -49,6 +50,8 @@ export default function GoldenBellUploadModal({
       setDifficulty(reregisterDifficulty)
     }
   }, [isOpen, reregisterDifficulty])
+
+  useBodyScrollLock(isOpen)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -177,7 +180,7 @@ export default function GoldenBellUploadModal({
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
       <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto shadow-lg'>
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-lg font-semibold text-theme-primary'>

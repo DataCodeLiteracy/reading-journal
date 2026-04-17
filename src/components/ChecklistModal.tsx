@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { X, CheckCircle, Circle, AlertCircle } from "lucide-react"
 import { ChecklistItem } from "@/types/user"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface ChecklistModalProps {
   isOpen: boolean
@@ -43,10 +44,12 @@ export default function ChecklistModal({
 
   const allChecked = checkedItems.size === checklist.length
 
+  useBodyScrollLock(isOpen)
+
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-black bg-opacity-50 p-2 sm:p-4'>
       <div className='bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh]'>
         {/* 헤더 */}
         <div className='flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>

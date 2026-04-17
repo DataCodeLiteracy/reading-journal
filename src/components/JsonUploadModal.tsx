@@ -5,6 +5,7 @@ import { Upload, X, AlertCircle, CheckCircle } from "lucide-react"
 import { BookQuestionsImport } from "@/types/question"
 import type { QuestionType } from "@/types/question"
 import { QuestionService } from "@/services/questionService"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface JsonUploadModalProps {
   isOpen: boolean
@@ -91,6 +92,8 @@ export default function JsonUploadModal({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 
@@ -219,7 +222,7 @@ export default function JsonUploadModal({
   }
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
       <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-2xl mx-4 shadow-lg max-h-[90vh] overflow-y-auto'>
         <div className='flex items-center justify-between mb-4'>
           <div className='flex items-center gap-3'>

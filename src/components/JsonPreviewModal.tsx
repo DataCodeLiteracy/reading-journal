@@ -1,6 +1,7 @@
 "use client"
 
 import { Upload, X } from "lucide-react"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface JsonPreviewModalProps {
   isOpen: boolean
@@ -21,10 +22,11 @@ export default function JsonPreviewModal({
   title = "JSON 데이터 미리보기",
   description = "다음 데이터를 업로드하시겠습니까?",
 }: JsonPreviewModalProps) {
+  useBodyScrollLock(isOpen)
   if (!isOpen) return null
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
       <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-2xl mx-4 shadow-lg max-h-[90vh] overflow-y-auto'>
         <div className='flex items-center justify-between mb-4'>
           <div className='flex items-center gap-3'>

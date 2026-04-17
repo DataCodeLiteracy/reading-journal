@@ -9,6 +9,7 @@ import { formatReadingTimeFromSeconds, getCurrentWeekRangeKST, getISOWeekStringK
 import { useSettings } from "@/contexts/SettingsContext"
 import { useData } from "@/contexts/DataContext"
 import { SkLine } from "@/components/skeletons"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 const WEEKLY_POPUP_KEY = "weeklyGoalPopup_"
 
@@ -43,6 +44,8 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
   const [bonusExpThisWeek, setBonusExpThisWeek] = useState<number | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const bonusCheckedRef = useRef(false)
+
+  useBodyScrollLock(showBonusModal && bonusExpThisWeek !== null)
 
   useEffect(() => {
     if (!userId) return
@@ -258,7 +261,7 @@ export default function WeeklyReadingTimeCard({ userId }: WeeklyReadingTimeCardP
 
       {showBonusModal && bonusExpThisWeek !== null && (
         <div
-          className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50'
+          className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none p-4 bg-black/50'
           role='dialog'
           aria-modal='true'
           aria-labelledby='weekly-bonus-title'

@@ -2,6 +2,7 @@
 
 import { X, BookOpen, Clock, Zap } from "lucide-react"
 import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 export interface DaySummary {
   date: string
@@ -30,11 +31,12 @@ export default function WeeklyRecapModal({
   goalMet,
   bonusExp,
 }: WeeklyRecapModalProps) {
+  useBodyScrollLock(isOpen)
   if (!isOpen) return null
 
   return (
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50'
+      className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none p-4 bg-black/50'
       role='dialog'
       aria-modal='true'
       aria-labelledby='weekly-recap-title'

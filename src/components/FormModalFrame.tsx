@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react"
 import type { ReactNode } from "react"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 type FormModalFrameProps = {
   isOpen: boolean
@@ -25,13 +26,14 @@ export default function FormModalFrame({
   children,
   headerStart,
 }: FormModalFrameProps) {
+  useBodyScrollLock(isOpen)
   if (!isOpen) return null
 
   const shellClass =
     size === "wide" ? "modal-form-shell-wide" : "modal-form-shell"
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden overscroll-none p-3 sm:p-4">
       <div
         className="absolute inset-0 bg-black/30"
         aria-hidden

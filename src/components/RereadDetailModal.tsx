@@ -2,6 +2,7 @@
 
 import { X, Calendar, Clock, BookOpen } from "lucide-react"
 import { Reread } from "@/types/reread"
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface RereadDetailModalProps {
   isOpen: boolean
@@ -16,6 +17,7 @@ export default function RereadDetailModal({
   rereads,
   bookTitle,
 }: RereadDetailModalProps) {
+  useBodyScrollLock(isOpen)
   if (!isOpen) return null
 
   const formatDate = (dateString: string): string => {
@@ -28,7 +30,7 @@ export default function RereadDetailModal({
   }
 
   return (
-    <div className='fixed inset-0 bg-theme-backdrop flex items-center justify-center z-50'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
       <div className='bg-theme-secondary rounded-lg p-6 w-full max-w-md mx-4 shadow-lg max-h-[80vh] overflow-y-auto'>
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-lg font-semibold text-theme-primary'>
