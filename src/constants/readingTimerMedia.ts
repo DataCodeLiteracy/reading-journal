@@ -7,13 +7,34 @@ export type ReadingTimerAmbientTrack = {
   src: string | null
 }
 
+/** `public/audio` 실제 파일명(영문) — 공백은 URL 인코딩 */
 export const READING_TIMER_AMBIENT_TRACKS: ReadingTimerAmbientTrack[] = [
   { id: "off", label: "끔", src: null },
-  { id: "audio1", label: "오두막", src: "/audio/audio1.mp3" },
-  { id: "audio2", label: "창가에 내리는 비", src: "/audio/audio2.mp3" },
-  { id: "audio3", label: "오래된 책방의 오후", src: "/audio/audio3.mp3" },
-  { id: "audio4", label: "밤하늘 아래 서재", src: "/audio/audio4.mp3" },
-  { id: "audio5", label: "새벽의 과수원", src: "/audio/audio5.mp3" },
+  {
+    id: "early-light",
+    label: "이른 빛",
+    src: "/audio/Early%20Light.mp3",
+  },
+  {
+    id: "staring",
+    label: "머무는 시선",
+    src: "/audio/Staring.mp3",
+  },
+  {
+    id: "blue-wednesday",
+    label: "푸른 수요일",
+    src: "/audio/Blue%20Wednesday.mp3",
+  },
+  {
+    id: "snowfall",
+    label: "눈 내림",
+    src: "/audio/Snowfall.mp3",
+  },
+  {
+    id: "purrple-cat",
+    label: "보랏빛 고양이",
+    src: "/audio/Purrple%20Cat.mp3",
+  },
 ]
 
 export type ReadingTimerBgPreset = {
