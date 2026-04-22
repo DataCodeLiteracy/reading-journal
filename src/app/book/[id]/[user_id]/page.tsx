@@ -25,6 +25,8 @@ import {
   NotebookPen,
   Sparkles,
   Settings,
+  ListTree,
+  Tag,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -67,6 +69,14 @@ import {
   isValidAmbientTrackId,
   isValidTimerBgId,
 } from "@/constants/readingTimerMedia"
+import PreReadTimerPromptModal from "@/components/PreReadTimerPromptModal"
+import { isPreReadNotesEmpty } from "@/utils/preReadNotes"
+import {
+  isPreReadTimerPromptDismissedToday,
+  setPreReadTimerPromptDismissedToday,
+} from "@/utils/preReadingTimerPrompt"
+import { withReturnQuery } from "@/utils/navigateBack"
+import { startPostCompleteReadingFlow } from "@/utils/postCompleteReadingFlow"
 
 export default function BookDetailPage({
   params,
@@ -116,6 +126,7 @@ export default function BookDetailPage({
   const [ambientTrackId, setAmbientTrackId] = useState("off")
   const [timerBgId, setTimerBgId] = useState(READING_TIMER_DEFAULT_BG_ID)
   const [isTimerSettingsOpen, setIsTimerSettingsOpen] = useState(false)
+  const [preReadTimerPromptOpen, setPreReadTimerPromptOpen] = useState(false)
   const [cosmosOverlay, setCosmosOverlay] = useState<"off" | "on" | "fail">("off")
   /** 타이머 정지 후 전환 애니메이션 동안에도 마운트 유지 */
   const [immersiveVisible, setImmersiveVisible] = useState(false)
@@ -324,18 +335,8 @@ export default function BookDetailPage({
     }
   }, [isTimerRunning, timerStartTime])
 
-  const startTimer = async () => {
-    if (isTimerProcessing) return // 이미 처리 중이면 무시
-
-    // 체크리스트 확인 여부 체크 (현재 서비스에서는 사용하지 않음)
-    // 나중에 사용할 수 있도록 코드는 유지하되 주석 처리
-    // const isChecklistValid =
-    //   ChecklistService.isPreReadingCheckValid(userChecklist)
-    // if (!isChecklistValid) {
-    //   setShowChecklistReminder(true)
-    //   return
-    // }
-
+  const beginTimerSession = async () => {
+    if (isTimerProcessing) return
     try {
       setIsTimerProcessing(true)
       const now = new Date()
@@ -351,7 +352,6 @@ export default function BookDetailPage({
             resolvedParams?.user_id || ""
           )
 
-          // DataContext의 책 상태 업데이트
           const updatedBook = {
             ...book,
             status: "reading" as const,
@@ -359,15 +359,32 @@ export default function BookDetailPage({
           }
           setBook(updatedBook)
           updateBook(resolvedParams?.id || "", updatedBook)
-        } catch (error) {
+        } catch {
           setError("책 상태를 업데이트하는 중 오류가 발생했습니다.")
         }
       }
-    } catch (error) {
+    } catch {
       setError("타이머를 시작하는 중 오류가 발생했습니다.")
     } finally {
       setIsTimerProcessing(false)
     }
+  }
+
+  const requestStartTimer = () => {
+    if (isTimerProcessing) return
+    if (!book?.id) return
+    if (userUid !== resolvedParams?.user_id) {
+      void beginTimerSession()
+      return
+    }
+    if (
+      isPreReadNotesEmpty(book) &&
+      !isPreReadTimerPromptDismissedToday(book.id)
+    ) {
+      setPreReadTimerPromptOpen(true)
+      return
+    }
+    void beginTimerSession()
   }
 
   const stopTimer = async () => {
@@ -487,7 +504,7 @@ export default function BookDetailPage({
     })
   }
 
-  const markAsCompleted = async () => {
+  const markAsCompleted = async (mode: "default" | "excerpt" = "default") => {
     try {
       setError(null)
       console.log("[완독하기] 시작", { bookId: resolvedParams?.id })
@@ -602,13 +619,32 @@ export default function BookDetailPage({
         // DataContext 업데이트 실패는 치명적이지 않으므로 무시
       }
 
-      // 성공 모달 표시
+      setIsCompleteModalOpen(false)
+
+      if (resolvedParams?.id) {
+        startPostCompleteReadingFlow(resolvedParams.id)
+      }
+
+      if (
+        mode === "excerpt" &&
+        resolvedParams?.id &&
+        resolvedParams?.user_id
+      ) {
+        const detail = `/book/${resolvedParams.id}/${resolvedParams.user_id}`
+        router.push(
+          withReturnQuery(
+            `${detail}/reading-excerpt?focus=overall&fromComplete=1`,
+            detail,
+          ),
+        )
+        return
+      }
+
       setSuccessModalTitle("완독 처리 완료")
       setSuccessModalMessage(
-        `"${book?.title}" 책을 완독한 책으로 표시했습니다. ${newRereadNumber}회독이 기록되었습니다.`
+        `"${book?.title}" 책을 완독한 책으로 표시했습니다. ${newRereadNumber}회독이 기록되었습니다.`,
       )
       setIsSuccessModalOpen(true)
-      setIsCompleteModalOpen(false)
     } catch (error) {
       console.error("[완독하기] 에러 발생:", error)
       if (error instanceof ApiError) {
@@ -1011,15 +1047,64 @@ export default function BookDetailPage({
             }`}
           >
             <div
-              className={`bg-theme-tertiary rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
-                isTimerRunning ? "w-12 h-16 opacity-100" : "w-16 h-20 opacity-100"
+              className={`flex shrink-0 flex-col items-stretch transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                isTimerRunning ? "gap-0" : "gap-2"
               }`}
             >
-              <BookOpen
-                className={`text-gray-400 transition-all duration-500 ${
-                  isTimerRunning ? "h-6 w-6" : "h-8 w-8"
+              <div
+                className={`bg-theme-tertiary rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
+                  isTimerRunning
+                    ? "mx-auto h-16 w-12 opacity-100"
+                    : "h-20 w-16 opacity-100"
                 }`}
-              />
+              >
+                <BookOpen
+                  className={`text-gray-400 transition-all duration-500 ${
+                    isTimerRunning ? "h-6 w-6" : "h-8 w-8"
+                  }`}
+                />
+              </div>
+              {!isTimerRunning && resolvedParams && userUid === book.user_id && (
+                <nav
+                  className='flex w-16 flex-col gap-1.5'
+                  aria-label='목차·준비·핵심'
+                >
+                  <Link
+                    href={withReturnQuery(
+                      `/book/${resolvedParams.id}/${resolvedParams.user_id}/toc`,
+                      `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
+                    )}
+                    className='inline-flex w-full items-center justify-center gap-0.5 rounded-lg border border-theme-tertiary px-1 py-1.5 text-center text-[11px] font-medium leading-tight text-theme-secondary transition-colors hover:border-accent-theme/50 hover:text-accent-theme sm:text-xs'
+                  >
+                    <ListTree className='h-3 w-3 shrink-0' aria-hidden />
+                    목차
+                  </Link>
+                  <Link
+                    href={`/book/${resolvedParams.id}/${resolvedParams.user_id}/pre-reading?return=${encodeURIComponent(
+                      `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
+                    )}`}
+                    aria-label='읽기 준비 메모'
+                    className='flex w-full items-center justify-center gap-1 rounded-lg border border-theme-tertiary px-1 py-1.5 text-[11px] font-medium leading-tight text-theme-secondary transition-colors hover:border-accent-theme/50 hover:text-accent-theme sm:gap-0.5 sm:text-xs'
+                  >
+                    <Sparkles
+                      className='h-3.5 w-3.5 shrink-0 sm:h-3 sm:w-3'
+                      aria-hidden
+                    />
+                    <span className='text-center leading-[1.15]'>준비</span>
+                  </Link>
+                  <Link
+                    href={withReturnQuery(
+                      `/book/${resolvedParams.id}/${resolvedParams.user_id}/takeaways`,
+                      `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
+                    )}
+                    className='inline-flex w-full items-center justify-center gap-0.5 rounded-lg border border-theme-tertiary px-1 py-1.5 text-center text-[11px] font-medium leading-tight text-theme-secondary transition-colors hover:border-accent-theme/50 hover:text-accent-theme sm:text-xs'
+                    aria-label='이 책의 키워드와 핵심 메시지'
+                  >
+                    <Tag className='h-3 w-3 shrink-0' aria-hidden />
+                    핵심
+                  </Link>
+                </nav>
+              )}
             </div>
             <div className='flex-1 min-w-0'>
               <h2
@@ -1203,7 +1288,7 @@ export default function BookDetailPage({
                 ) : (
                   <button
                     type='button'
-                    onClick={startTimer}
+                    onClick={requestStartTimer}
                     disabled={isTimerProcessing}
                     className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-theme px-4 py-3 font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50'
                   >
@@ -1220,7 +1305,10 @@ export default function BookDetailPage({
         {resolvedParams && (
           <div className='mb-4 grid gap-3 sm:grid-cols-2'>
             <Link
-              href={`/book/${resolvedParams.id}/${resolvedParams.user_id}/journal`}
+              href={withReturnQuery(
+                `/book/${resolvedParams.id}/${resolvedParams.user_id}/journal`,
+                `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
+              )}
               className='group flex rounded-xl border border-theme-tertiary bg-theme-secondary p-4 shadow-sm transition-all hover:border-accent-theme/50 hover:shadow-md'
             >
               <div className='flex w-full items-stretch gap-3'>
@@ -1241,7 +1329,10 @@ export default function BookDetailPage({
               </div>
             </Link>
             <Link
-              href={`/book/${resolvedParams.id}/${resolvedParams.user_id}/activities`}
+              href={withReturnQuery(
+                `/book/${resolvedParams.id}/${resolvedParams.user_id}/activities`,
+                `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
+              )}
               className='group flex rounded-xl border border-theme-tertiary bg-theme-secondary p-4 shadow-sm transition-all hover:border-accent-theme/50 hover:shadow-md'
             >
               <div className='flex w-full items-stretch gap-3'>
@@ -1289,11 +1380,11 @@ export default function BookDetailPage({
                 다시 읽기
               </button>
               <button
-                onClick={() =>
-                  router.push(
-                    `/book/${resolvedParams?.id}/${resolvedParams?.user_id}/review`
-                  )
-                }
+                onClick={() => {
+                  if (!resolvedParams) return
+                  const detail = `/book/${resolvedParams.id}/${resolvedParams.user_id}`
+                  router.push(withReturnQuery(`${detail}/review`, detail))
+                }}
                 disabled={isTimerProcessing}
                 className='flex items-center justify-center gap-2 py-3 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
@@ -1613,6 +1704,30 @@ export default function BookDetailPage({
           onTimerBgChange={setTimerBgId}
         />
 
+        {book && resolvedParams && (
+          <PreReadTimerPromptModal
+            open={preReadTimerPromptOpen}
+            hasTocOutline={(book.tocOutline?.length ?? 0) > 0}
+            onWriteNow={() => {
+              setPreReadTimerPromptOpen(false)
+              router.push(
+                `/book/${resolvedParams.id}/${resolvedParams.user_id}/pre-reading?return=${encodeURIComponent(
+                  `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
+                )}`,
+              )
+            }}
+            onStartTimerOnly={() => {
+              setPreReadTimerPromptOpen(false)
+              void beginTimerSession()
+            }}
+            onDismissToday={() => {
+              setPreReadTimerPromptDismissedToday(book.id)
+              setPreReadTimerPromptOpen(false)
+              void beginTimerSession()
+            }}
+          />
+        )}
+
         <RereadModal
           isOpen={isRereadModalOpen}
           onClose={() => setIsRereadModalOpen(false)}
@@ -1637,7 +1752,8 @@ export default function BookDetailPage({
         <CompleteBookModal
           isOpen={isCompleteModalOpen}
           onClose={() => setIsCompleteModalOpen(false)}
-          onConfirm={markAsCompleted}
+          onCompleteOnly={() => markAsCompleted("default")}
+          onCompleteAndOpenExcerpt={() => markAsCompleted("excerpt")}
           bookTitle={book.title}
         />
 
@@ -1703,8 +1819,8 @@ export default function BookDetailPage({
           onClose={() => setIsChecklistModalOpen(false)}
           onComplete={handleChecklistComplete}
           checklist={preReadingChecklist}
-          title='독서 전 체크리스트'
-          description='독서를 시작하기 전에 다음 항목들을 확인해주세요.'
+          title='읽기 준비 체크리스트'
+          description='책을 펼치기 전에 다음 항목들을 확인해 주세요.'
         />
 
         {showChecklistReminder && (
@@ -1715,8 +1831,8 @@ export default function BookDetailPage({
               setShowChecklistReminder(false)
               setIsChecklistModalOpen(true)
             }}
-            title='독서 전 체크리스트'
-            message='독서를 시작하기 전에 체크리스트를 확인해주세요.'
+            title='읽기 준비 체크리스트'
+            message='책을 펼치기 전에 체크리스트를 확인해 주세요.'
             confirmText='체크리스트 확인'
             cancelText='취소'
             icon={ClipboardList}

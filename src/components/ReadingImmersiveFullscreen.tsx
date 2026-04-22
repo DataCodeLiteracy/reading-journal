@@ -145,7 +145,7 @@ export default function ReadingImmersiveFullscreen({
             </p>
           </div>
 
-          <div className='absolute left-1/2 top-1/2 w-full max-w-sm -translate-x-1/2 translate-y-[122px] sm:translate-y-[136px]'>
+          <div className='absolute left-1/2 top-1/2 w-full max-w-sm -translate-x-1/2 translate-y-[92px] sm:translate-y-[136px]'>
             <div className='reading-timer-glow flex items-baseline justify-center gap-0.5 tabular-nums select-none drop-shadow-[0_2px_16px_rgba(0,0,0,0.55)] sm:gap-1.5'>
             <span className='text-6xl font-extralight leading-none text-white sm:text-7xl'>
               {Math.floor(t / 3600)

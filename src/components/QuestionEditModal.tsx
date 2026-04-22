@@ -5,6 +5,12 @@ import { Edit, Lock, Globe } from "lucide-react"
 import { BookQuestion, QuestionType, Difficulty } from "@/types/question"
 import FormModalFrame from "@/components/FormModalFrame"
 import Select, { type SelectOption } from "@/components/Select"
+import {
+  QUESTION_DIFFICULTY_HELP,
+  QUESTION_FOCUS_OPTIONS,
+  QUESTION_TYPE_HELP,
+  type QuestionFocusKind,
+} from "@/constants/readingMeta"
 
 interface QuestionEditModalProps {
   isOpen: boolean
@@ -23,6 +29,10 @@ export default function QuestionEditModal({
   question,
 }: QuestionEditModalProps) {
   const [questionText, setQuestionText] = useState(question.questionText)
+  const [questionFocus, setQuestionFocus] = useState<QuestionFocusKind>(
+    question.questionFocus ?? "none",
+  )
+  const [questionReason, setQuestionReason] = useState(question.questionReason ?? "")
   const [chapterPath, setChapterPath] = useState<string[]>(question.chapterPath)
   const [questionType, setQuestionType] = useState<QuestionType>(question.questionType)
   const [difficulty, setDifficulty] = useState<Difficulty>(question.difficulty)
@@ -33,6 +43,8 @@ export default function QuestionEditModal({
   useEffect(() => {
     if (isOpen) {
       setQuestionText(question.questionText)
+      setQuestionFocus(question.questionFocus ?? "none")
+      setQuestionReason(question.questionReason ?? "")
       setChapterPath([...question.chapterPath])
       setQuestionType(question.questionType)
       setDifficulty(question.difficulty)
@@ -84,6 +96,8 @@ export default function QuestionEditModal({
       await onSave(question.id, {
         questionText: questionText.trim(),
         chapterPath: normalizedPath,
+        questionFocus: questionFocus === "none" ? undefined : questionFocus,
+        questionReason: questionReason.trim() || undefined,
         questionType,
         difficulty,
         isPublic,
@@ -124,6 +138,12 @@ export default function QuestionEditModal({
           </div>
         )}
 
+        <div className='mb-4 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3 text-xs leading-relaxed text-theme-secondary'>
+          <span className='font-medium text-theme-primary'>질문 유형</span>은 질문의{" "}
+          <em>형식</em>, <span className='font-medium text-theme-primary'>질문의 초점</span>은
+          무엇을 <em>궁금해하는지</em>에 가깝습니다.
+        </div>
+
         <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
@@ -136,6 +156,52 @@ export default function QuestionEditModal({
               placeholder="질문을 입력하세요"
               rows={4}
               required
+            />
+          </div>
+
+          <div>
+            <label className='mb-2 block text-sm font-medium text-theme-primary'>
+              질문의 초점 (선택)
+            </label>
+            <p className='mb-2 text-xs text-theme-secondary'>
+              이 질문이 주로 무엇을 겨냥하는지 한 가지를 골라 주세요.
+            </p>
+            <div className='max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-theme-tertiary bg-theme-primary/30 p-2'>
+              {QUESTION_FOCUS_OPTIONS.map((opt) => (
+                <label
+                  key={opt.value}
+                  className='flex cursor-pointer gap-2 rounded-md p-2 hover:bg-theme-tertiary/50'
+                >
+                  <input
+                    type='radio'
+                    name='questionFocusEdit'
+                    checked={questionFocus === opt.value}
+                    onChange={() => setQuestionFocus(opt.value)}
+                    className='mt-1 border-theme-tertiary text-accent-theme focus:ring-accent-theme'
+                  />
+                  <span className='min-w-0'>
+                    <span className='block text-sm font-medium text-theme-primary'>
+                      {opt.label}
+                    </span>
+                    <span className='mt-0.5 block text-xs leading-snug text-theme-secondary'>
+                      {opt.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+              이 질문을 떠올린 이유 (선택)
+            </label>
+            <textarea
+              value={questionReason}
+              onChange={(e) => setQuestionReason(e.target.value)}
+              className='form-control form-control-textarea resize-none'
+              placeholder='예: 앞 장과 모순되어 궁금해졌다…'
+              rows={3}
             />
           </div>
 
@@ -187,6 +253,9 @@ export default function QuestionEditModal({
               options={questionTypeOptions}
               variant="form-modal"
             />
+            <p className='mt-1.5 text-xs leading-relaxed text-theme-secondary'>
+              {QUESTION_TYPE_HELP[questionType]}
+            </p>
           </div>
 
           <div>
@@ -213,6 +282,9 @@ export default function QuestionEditModal({
                 </button>
               ))}
             </div>
+            <p className='mt-1.5 text-xs leading-relaxed text-theme-secondary'>
+              {QUESTION_DIFFICULTY_HELP[difficulty]}
+            </p>
           </div>
 
           {/* 공개 설정 */}

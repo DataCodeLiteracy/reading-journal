@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import {
-  ArrowLeft,
   ChevronRight,
   MessageSquare,
   PenSquare,
@@ -10,7 +9,9 @@ import {
   Star,
   Trash2,
   Heart,
+  Sparkles,
 } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { BookQuestion } from "@/types/question"
@@ -30,8 +31,15 @@ import { BookService } from "@/services/bookService"
 import { Quote, Critique } from "@/types/content"
 import { ApiError } from "@/lib/apiClient"
 import ConfirmModal from "@/components/ConfirmModal"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import { withReturnQuery } from "@/utils/navigateBack"
 import { useAuth } from "@/contexts/AuthContext"
 import { BookDetailRouteSkeleton } from "@/components/skeletons"
+import {
+  countPreReadFieldsFilled,
+  isPreReadNotesEmpty,
+  preReadNotesJoinedBody,
+} from "@/utils/preReadNotes"
 
 export default function BookJournalHubPage({
   params,
@@ -166,6 +174,8 @@ export default function BookJournalHubPage({
   }
 
   const base = `/book/${resolved.id}/${resolved.user_id}`
+  const journalPath = `${base}/journal`
+  const preReadFilled = countPreReadFieldsFilled(book)
 
   return (
     <div className='min-h-screen bg-theme-gradient pb-20'>
@@ -176,28 +186,61 @@ export default function BookJournalHubPage({
           </div>
         )}
 
-        <div className='flex items-center gap-3 mb-6'>
-          <button
-            type='button'
-            onClick={() => router.push(base)}
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-            aria-label='책으로 돌아가기'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='min-w-0 flex-1'>
-            <p className='text-xs text-theme-tertiary uppercase tracking-wide'>
-              기록
-            </p>
-            <h1 className='text-lg font-semibold text-theme-primary truncate'>
-              {book.title}
-            </h1>
-          </div>
-        </div>
+        <BookSubpageHeader
+          pageTitle='기록'
+          contextTitle={book.title}
+          fallbackPath={base}
+        />
 
         <p className='text-sm text-theme-secondary mb-6'>
           독서 질문, 구절, 완독 후 리뷰와 서평을 한곳에서 다룹니다.
         </p>
+
+        {/* 읽기 준비 메모 */}
+        {userUid === resolved.user_id && (
+          <Link
+            href={withReturnQuery(`${base}/pre-reading`, `${base}/journal`)}
+            className='group mb-6 flex flex-col rounded-lg border border-theme-tertiary bg-theme-secondary p-4 shadow-sm transition-all hover:border-accent-theme/40 hover:shadow-md'
+          >
+            <div className='flex w-full min-w-0 items-center gap-3'>
+              <div className='flex shrink-0 items-center'>
+                <div className='rounded-lg bg-amber-500/15 p-2.5'>
+                  <Sparkles className='h-6 w-6 text-amber-600 dark:text-amber-400' />
+                </div>
+              </div>
+              <h2 className='min-w-0 flex-1 truncate text-lg font-semibold text-theme-primary'>
+                읽기 준비
+              </h2>
+              <div className='flex shrink-0 items-center gap-1.5'>
+                <span
+                  className='text-xs font-semibold tabular-nums text-theme-tertiary'
+                  aria-label={`${preReadFilled}개 입력됨, 총 3칸`}
+                >
+                  {preReadFilled}/3
+                </span>
+                <ChevronRight
+                  className='h-5 w-5 shrink-0 text-theme-tertiary transition-colors group-hover:text-accent-theme'
+                  aria-hidden
+                />
+              </div>
+            </div>
+            {isPreReadNotesEmpty(book) ? (
+              <>
+                <p className='mt-3 w-full text-sm leading-snug text-theme-secondary'>
+                  제목·목차를 보며 떠오른 점, 이 책에서 얻고 싶은 것, 관심사와의 연결을
+                  가볍게 적어 두는 곳이에요.
+                </p>
+                <p className='mt-2 line-clamp-2 w-full text-xs text-theme-tertiary'>
+                  아직 적은 내용이 없어요. 탭해서 시작해 보세요.
+                </p>
+              </>
+            ) : (
+              <p className='mt-3 line-clamp-6 w-full whitespace-pre-wrap text-sm leading-relaxed text-theme-primary'>
+                {preReadNotesJoinedBody(book)}
+              </p>
+            )}
+          </Link>
+        )}
 
         {/* 독서 질문 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-6'>
@@ -238,7 +281,11 @@ export default function BookJournalHubPage({
                 </button>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/questions`)}
+                  onClick={() =>
+                    router.push(
+                      withReturnQuery(`${base}/questions`, `${base}/journal`),
+                    )
+                  }
                   className='inline-flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
                 >
                   <span>질문 목록</span>
@@ -272,7 +319,10 @@ export default function BookJournalHubPage({
                         question={question}
                         showChapterPath={true}
                         showActions={false}
-                        detailHref={`${base}/questions/${question.id}`}
+                        detailHref={withReturnQuery(
+                          `${base}/questions/${question.id}`,
+                          `${base}/journal`,
+                        )}
                       />
                     </div>
                   ))}
@@ -288,7 +338,11 @@ export default function BookJournalHubPage({
                 </button>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/questions`)}
+                  onClick={() =>
+                    router.push(
+                      withReturnQuery(`${base}/questions`, `${base}/journal`),
+                    )
+                  }
                   className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
                 >
                   <span>더보기 ({questions.length}개)</span>
@@ -342,7 +396,9 @@ export default function BookJournalHubPage({
                 </button>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/quotes`)}
+                  onClick={() =>
+                    router.push(withReturnQuery(`${base}/quotes`, journalPath))
+                  }
                   className='inline-flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
                 >
                   <span>구절 기록 목록</span>
@@ -374,7 +430,10 @@ export default function BookJournalHubPage({
                     <QuoteCard
                       quote={quote}
                       bookTitle={book.title}
-                      detailHref={`${base}/quotes/${quote.id}`}
+                      detailHref={withReturnQuery(
+                        `${base}/quotes/${quote.id}`,
+                        journalPath,
+                      )}
                     />
                   </div>
                 ))}
@@ -392,7 +451,9 @@ export default function BookJournalHubPage({
                 </button>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/quotes`)}
+                  onClick={() =>
+                    router.push(withReturnQuery(`${base}/quotes`, journalPath))
+                  }
                   className='w-full flex items-center justify-center gap-2 py-2 px-4 bg-theme-tertiary hover:bg-theme-tertiary/80 text-theme-primary rounded-lg transition-colors'
                 >
                   <span>더보기 ({quotes.length}개)</span>
@@ -413,7 +474,9 @@ export default function BookJournalHubPage({
               {!book.review && (
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/review`)}
+                  onClick={() =>
+                    router.push(withReturnQuery(`${base}/review`, journalPath))
+                  }
                   className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
                   title='리뷰 작성'
                 >
@@ -426,11 +489,13 @@ export default function BookJournalHubPage({
               <div
                 role='button'
                 tabIndex={0}
-                onClick={() => router.push(`${base}/review`)}
+                onClick={() =>
+                  router.push(withReturnQuery(`${base}/review`, journalPath))
+                }
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault()
-                    router.push(`${base}/review`)
+                    router.push(withReturnQuery(`${base}/review`, journalPath))
                   }
                 }}
                 className='rounded-lg border border-theme-tertiary p-4 bg-theme-secondary cursor-pointer hover:border-accent-theme/50 hover:shadow-md transition-shadow'
@@ -533,7 +598,9 @@ export default function BookJournalHubPage({
                 </p>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/review`)}
+                  onClick={() =>
+                    router.push(withReturnQuery(`${base}/review`, journalPath))
+                  }
                   className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
                 >
                   <Plus className='h-4 w-4' />
@@ -555,7 +622,9 @@ export default function BookJournalHubPage({
                 </span>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/critique`)}
+                  onClick={() =>
+                    router.push(withReturnQuery(`${base}/critique`, journalPath))
+                  }
                   className='p-2 text-accent-theme hover:bg-accent-theme/10 rounded-lg transition-colors'
                   title='서평 추가'
                 >
@@ -572,7 +641,9 @@ export default function BookJournalHubPage({
                 </p>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/critique`)}
+                  onClick={() =>
+                    router.push(withReturnQuery(`${base}/critique`, journalPath))
+                  }
                   className='inline-flex items-center gap-2 px-4 py-2 bg-accent-theme hover:bg-accent-theme-secondary text-white rounded-lg transition-colors'
                 >
                   <Plus className='h-4 w-4' />
@@ -587,10 +658,16 @@ export default function BookJournalHubPage({
                       critique={critique}
                       bookTitle={book.title}
                       showCommentSection={false}
-                      detailHref={`${base}/critiques/${critique.id}`}
+                      detailHref={withReturnQuery(
+                        `${base}/critiques/${critique.id}`,
+                        journalPath,
+                      )}
                       onEdit={() =>
                         router.push(
-                          `${base}/critiques/${critique.id}/edit`
+                          withReturnQuery(
+                            `${base}/critiques/${critique.id}/edit`,
+                            journalPath,
+                          ),
                         )
                       }
                       onDelete={(critiqueId) => {

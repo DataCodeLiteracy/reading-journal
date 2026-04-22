@@ -1,4 +1,5 @@
 import { AppDate } from "./firebase"
+import type { QuestionFocusKind } from "@/constants/readingMeta"
 
 export type QuestionType = "comprehension" | "analysis" | "synthesis" | "application" | "general"
 export type Difficulty = "easy" | "medium" | "hard"
@@ -13,11 +14,17 @@ export interface BookQuestion {
   user_id?: string // 질문 작성자 ID (공개 질문의 경우 필요)
   questionText: string
   chapterPath: string[] // 최대 5단계 깊이: ["5부", "1장", "1절", "1항", "1목"]
+  /** 질문이 겨냥하는 초점(고정 목록, questionType과 별개) */
+  questionFocus?: QuestionFocusKind
+  /** 이 질문을 떠올린 맥락·이유 */
+  questionReason?: string
   questionType: QuestionType
   difficulty: Difficulty
   order: number // 같은 목차 내 정렬 순서
   thoughtHint?: string // JSON 보고서의 thought_hint (생각 힌트)
   isPublic?: boolean // 공개 여부 (기본값: false)
+  /** 읽기 준비·읽는 중·읽은 뒤 구분(필터·통계용, 없으면 기존과 동일) */
+  readingPhase?: "pre" | "during" | "post"
   likesCount?: number // 좋아요 수 (캐시된 값)
   commentsCount?: number // 댓글 수 (캐시된 값)
   created_at?: Date

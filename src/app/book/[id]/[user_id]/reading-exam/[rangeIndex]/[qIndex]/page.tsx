@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
+import { Suspense, useEffect, useState, useCallback, useRef, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { BookService } from "@/services/bookService"
 import { ReadingContentPackService } from "@/services/readingContentPackService"
@@ -13,15 +13,17 @@ import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import { nextExamCoords, prevExamCoords } from "@/utils/readingExamNav"
 import { gradeReadingExam } from "@/lib/readingAiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
 
 const MAX_AI_GRADES_PER_QUESTION = 3
 
-export default function ReadingExamQuestionPage({
+function ReadingExamQuestionContent({
   params,
 }: {
   params: Promise<{ id: string; user_id: string; rangeIndex: string; qIndex: string }>
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { userUid } = useAuth()
   const [resolved, setResolved] = useState<{
     id: string
@@ -106,6 +108,11 @@ export default function ReadingExamQuestionPage({
     }
   }, [text, resolved, pack, userUid, book, progress?.grades, progress?.draftAnswers])
 
+  const querySuffix = useMemo(() => {
+    const s = searchParams.toString()
+    return s ? `?${s}` : ""
+  }, [searchParams])
+
   if (!resolved || loading) {
     return <GenericRouteSkeleton rows={4} />
   }
@@ -120,17 +127,18 @@ export default function ReadingExamQuestionPage({
   }
 
   const item = blocks[resolved.rangeIndex]?.quizzes?.[resolved.qIndex]
+  const bookBase = `/book/${resolved.id}/${resolved.user_id}`
+  const hubListPath = `${bookBase}/reading-exam${querySuffix}`
+
   if (!item) {
     return (
       <div className="min-h-screen bg-theme-gradient p-6">
         <button
           type="button"
-          onClick={() =>
-            router.push(`/book/${resolved.id}/${resolved.user_id}/reading-exam`)
-          }
-          className="text-theme-secondary"
+          onClick={() => router.push(hubListPath)}
+          className="text-theme-secondary underline"
         >
-          ← 목록
+          목록
         </button>
         <p className="mt-4 text-theme-secondary">문항을 찾을 수 없습니다.</p>
       </div>
@@ -163,7 +171,7 @@ export default function ReadingExamQuestionPage({
   const next = nextExamCoords(blocks, resolved.rangeIndex, resolved.qIndex)
 
   const path = (ri: number, qi: number) =>
-    `/book/${resolved.id}/${resolved.user_id}/reading-exam/${ri}/${qi}`
+    `${bookBase}/reading-exam/${ri}/${qi}${querySuffix}`
 
   const handleGrade = async () => {
     if (!userUid) return
@@ -214,25 +222,18 @@ export default function ReadingExamQuestionPage({
   return (
     <div className="min-h-screen bg-theme-gradient pb-24">
       <div className="container mx-auto px-4 py-4 max-w-2xl">
-        <button
-          type="button"
-          onClick={() =>
-            router.push(`/book/${resolved.id}/${resolved.user_id}/reading-exam`)
-          }
-          className="mb-4 inline-flex items-center gap-2 text-sm text-theme-secondary"
-        >
-          <ArrowLeft className="h-4 w-4" /> 구간 목록
-        </button>
+        <BookSubpageHeader
+          pageTitle="이해도 점검"
+          contextTitle={`${book.title} · ${blocks[resolved.rangeIndex]?.range} · ${qn}번`}
+          fallbackPath={hubListPath}
+        />
 
-        <p className="text-xs text-theme-tertiary mb-1">
-          {blocks[resolved.rangeIndex]?.range} · {qn}번
-        </p>
         <p className="text-xs font-medium text-accent-theme mb-2">
           이 문항 AI 채점: {remainingGrades}회 남음 (최대 {MAX_AI_GRADES_PER_QUESTION}회)
         </p>
-        <h1 className="text-lg font-semibold text-theme-primary mb-4 whitespace-pre-wrap">
+        <h2 className="text-lg font-semibold text-theme-primary mb-4 whitespace-pre-wrap">
           {item.question}
-        </h1>
+        </h2>
 
         {graded ? (
           <div className="rounded-lg border border-theme-tertiary bg-theme-secondary p-4 mb-4">
@@ -317,5 +318,15 @@ export default function ReadingExamQuestionPage({
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ReadingExamQuestionPage(props: {
+  params: Promise<{ id: string; user_id: string; rangeIndex: string; qIndex: string }>
+}) {
+  return (
+    <Suspense fallback={<GenericRouteSkeleton rows={4} />}>
+      <ReadingExamQuestionContent {...props} />
+    </Suspense>
   )
 }

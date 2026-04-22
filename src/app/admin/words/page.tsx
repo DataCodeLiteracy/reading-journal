@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import { WordAnalysis } from "@/types/admin"
 import { useAuth } from "@/contexts/AuthContext"
 import * as XLSX from "xlsx"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import Select, { type SelectOption } from "@/components/Select"
 
 export default function WordsPage() {
   const router = useRouter()
@@ -137,6 +138,45 @@ export default function WordsPage() {
 
     return monthlyMap
   }
+
+  const wordsYearOptions = useMemo((): SelectOption<string>[] => {
+    const y = new Date().getFullYear()
+    return [
+      { value: "0", label: "전체" },
+      { value: String(y), label: String(y) },
+      { value: String(y - 1), label: String(y - 1) },
+      { value: String(y - 2), label: String(y - 2) },
+    ]
+  }, [])
+
+  const wordsMonthOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "0", label: "전체" },
+      ...Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({
+        value: String(m),
+        label: `${m}월`,
+      })),
+    ],
+    [],
+  )
+
+  const wordsFilterStatusOptions = useMemo(
+    (): SelectOption<"all" | "explained" | "unexplained">[] => [
+      { value: "all", label: "모든 단어" },
+      { value: "explained", label: "설명된 단어" },
+      { value: "unexplained", label: "설명되지 않은 단어" },
+    ],
+    [],
+  )
+
+  const wordsSortByOptions = useMemo(
+    (): SelectOption<"count" | "word" | "firstAppearance">[] => [
+      { value: "count", label: "등장 횟수" },
+      { value: "word", label: "단어 순" },
+      { value: "firstAppearance", label: "첫 등장일" },
+    ],
+    [],
+  )
 
   const handleSearch = () => {
     let filtered = wordAnalysis
@@ -532,40 +572,28 @@ export default function WordsPage() {
                 <Calendar className='h-4 w-4 inline mr-2' />
                 년도
               </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className='w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary focus:border-transparent'
-              >
-                <option value={0}>전체</option>
-                <option value={new Date().getFullYear()}>
-                  {new Date().getFullYear()}
-                </option>
-                <option value={new Date().getFullYear() - 1}>
-                  {new Date().getFullYear() - 1}
-                </option>
-                <option value={new Date().getFullYear() - 2}>
-                  {new Date().getFullYear() - 2}
-                </option>
-              </select>
+              <Select
+                value={String(selectedYear)}
+                onChange={(v) => setSelectedYear(Number(v))}
+                options={wordsYearOptions}
+                variant='toolbar'
+                triggerClassName='py-3 min-h-[3rem]'
+                aria-label='년도'
+              />
             </div>
 
             <div>
               <label className='block text-sm font-medium text-theme-primary mb-2'>
                 <Calendar className='h-4 w-4 inline mr-2' />월
               </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className='w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary focus:border-transparent'
-              >
-                <option value={0}>전체</option>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                  <option key={month} value={month}>
-                    {month}월
-                  </option>
-                ))}
-              </select>
+              <Select
+                value={String(selectedMonth)}
+                onChange={(v) => setSelectedMonth(Number(v))}
+                options={wordsMonthOptions}
+                variant='toolbar'
+                triggerClassName='py-3 min-h-[3rem]'
+                aria-label='월'
+              />
             </div>
 
             <div>
@@ -573,15 +601,16 @@ export default function WordsPage() {
                 <Filter className='h-4 w-4 inline mr-2' />
                 상태
               </label>
-              <select
+              <Select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className='w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary focus:border-transparent'
-              >
-                <option value='all'>모든 단어</option>
-                <option value='explained'>설명된 단어</option>
-                <option value='unexplained'>설명되지 않은 단어</option>
-              </select>
+                onChange={(v) =>
+                  setFilterStatus(v as "all" | "explained" | "unexplained")
+                }
+                options={wordsFilterStatusOptions}
+                variant='toolbar'
+                triggerClassName='py-3 min-h-[3rem]'
+                aria-label='상태 필터'
+              />
             </div>
 
             <div>
@@ -589,15 +618,16 @@ export default function WordsPage() {
                 <TrendingUp className='h-4 w-4 inline mr-2' />
                 정렬
               </label>
-              <select
+              <Select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className='w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary focus:border-transparent'
-              >
-                <option value='count'>등장 횟수</option>
-                <option value='word'>단어 순</option>
-                <option value='firstAppearance'>첫 등장일</option>
-              </select>
+                onChange={(v) =>
+                  setSortBy(v as "count" | "word" | "firstAppearance")
+                }
+                options={wordsSortByOptions}
+                variant='toolbar'
+                triggerClassName='py-3 min-h-[3rem]'
+                aria-label='정렬 기준'
+              />
             </div>
           </div>
 

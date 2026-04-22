@@ -45,7 +45,7 @@ export default function ChecklistsPage() {
           setLongTermChecklist(ChecklistService.getDefaultLongTermChecklist())
         }
 
-        // 독서 전 체크리스트 로드
+        // 읽기 준비 체크리스트 로드
         const systemPreReadingChecklist =
           await ChecklistService.getSystemChecklist("pre-reading")
         if (systemPreReadingChecklist) {
@@ -141,7 +141,7 @@ export default function ChecklistsPage() {
             </p>
           </button>
 
-          {/* 독서 전 체크리스트 */}
+          {/* 읽기 준비 체크리스트 */}
           <button
             onClick={openPreReadingModal}
             className='bg-theme-secondary rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left'
@@ -152,7 +152,7 @@ export default function ChecklistsPage() {
               </div>
               <div>
                 <h3 className='text-lg font-semibold text-theme-primary mb-1'>
-                  독서 전 체크리스트
+                  읽기 준비 체크리스트
                 </h3>
                 <p className='text-sm text-theme-secondary'>
                   독서 시작 전 확인사항
@@ -178,7 +178,7 @@ export default function ChecklistsPage() {
           <div className='space-y-2'>
             <div className='flex items-center justify-between'>
               <span className='text-sm text-theme-secondary'>
-                독서 전 체크리스트
+                읽기 준비 체크리스트
               </span>
               <span
                 className={`text-sm font-medium ${
@@ -227,13 +227,13 @@ export default function ChecklistsPage() {
         isLongTerm={true}
       />
 
-      {/* 독서 전 체크리스트 모달 */}
+      {/* 읽기 준비 체크리스트 모달 */}
       <ChecklistModal
         isOpen={isPreReadingModalOpen}
         onClose={() => setIsPreReadingModalOpen(false)}
         onComplete={handlePreReadingComplete}
         checklist={preReadingChecklist}
-        title='독서 전 체크리스트'
+        title='읽기 준비 체크리스트'
         description='독서를 시작하기 전에 다음 항목들을 확인해주세요.'
         isLongTerm={false}
       />

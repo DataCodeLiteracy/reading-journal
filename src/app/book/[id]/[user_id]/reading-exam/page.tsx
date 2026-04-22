@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, ClipboardCheck, Play } from "lucide-react"
+import { Suspense, useEffect, useState, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ClipboardCheck, Play } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { BookService } from "@/services/bookService"
 import { ReadingContentPackService } from "@/services/readingContentPackService"
@@ -15,17 +15,19 @@ import {
 } from "@/utils/readingExamNav"
 import { labelForAverageScore } from "@/utils/readingScoreBands"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
 
 function introStorageKey(bookId: string) {
   return `readingExamStarted:${bookId}`
 }
 
-export default function ReadingExamHubPage({
+function ReadingExamHubContent({
   params,
 }: {
   params: Promise<{ id: string; user_id: string }>
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { userUid } = useAuth()
   const [resolved, setResolved] = useState<{ id: string; user_id: string } | null>(null)
   const [book, setBook] = useState<Book | null>(null)
@@ -98,6 +100,11 @@ export default function ReadingExamHubPage({
     { score: number } | undefined
   >
 
+  const querySuffix = useMemo(() => {
+    const s = searchParams.toString()
+    return s ? `?${s}` : ""
+  }, [searchParams])
+
   const avg =
     graded > 0 && blocks
       ? (() => {
@@ -138,40 +145,43 @@ export default function ReadingExamHubPage({
     )
   }
 
+  const bookBase = `/book/${resolved.id}/${resolved.user_id}`
+
   if (!blocks?.length) {
     return (
-      <div className="min-h-screen bg-theme-gradient p-6">
-        <button
-          type="button"
-          onClick={() => router.push(`/book/${resolved.id}/${resolved.user_id}`)}
-          className="mb-4 inline-flex items-center gap-2 text-theme-secondary"
-        >
-          <ArrowLeft className="h-4 w-4" /> 돌아가기
-        </button>
-        <p className="text-theme-secondary">이 책 제목으로 등록된 이해도 점검이 없습니다.</p>
+      <div className="min-h-screen bg-theme-gradient pb-24">
+        <div className="container mx-auto max-w-2xl px-4 py-4">
+          <BookSubpageHeader
+            pageTitle="이해도 점검"
+            contextTitle={book.title}
+            fallbackPath={bookBase}
+            leading={
+              <ClipboardCheck className="h-6 w-6 text-accent-theme" aria-hidden />
+            }
+          />
+          <p className="text-theme-secondary">
+            이 책 제목으로 등록된 이해도 점검이 없습니다.
+          </p>
+        </div>
       </div>
     )
   }
 
   const currentBlock = blocks[tab]
   const href = (qi: number) =>
-    `/book/${resolved.id}/${resolved.user_id}/reading-exam/${tab}/${qi}`
+    `${bookBase}/reading-exam/${tab}/${qi}${querySuffix}`
 
   return (
     <div className="min-h-screen bg-theme-gradient pb-24">
       <div className="container mx-auto px-4 py-4 max-w-2xl">
-        <button
-          type="button"
-          onClick={() => router.push(`/book/${resolved.id}/${resolved.user_id}`)}
-          className="mb-4 inline-flex items-center gap-2 text-theme-secondary hover:text-theme-primary"
-        >
-          <ArrowLeft className="h-4 w-4" /> 책 상세
-        </button>
-        <div className="flex items-center gap-2 mb-2">
-          <ClipboardCheck className="h-6 w-6 text-accent-theme" />
-          <h1 className="text-xl font-bold text-theme-primary">이해도 점검</h1>
-        </div>
-        <p className="text-sm text-theme-secondary mb-4">{book.title}</p>
+        <BookSubpageHeader
+          pageTitle="이해도 점검"
+          contextTitle={book.title}
+          fallbackPath={bookBase}
+          leading={
+            <ClipboardCheck className="h-6 w-6 text-accent-theme" aria-hidden />
+          }
+        />
 
         {!started ? (
           <div className="rounded-lg border border-theme-tertiary bg-theme-secondary p-5 shadow-sm">
@@ -258,5 +268,15 @@ export default function ReadingExamHubPage({
         )}
       </div>
     </div>
+  )
+}
+
+export default function ReadingExamHubPage(props: {
+  params: Promise<{ id: string; user_id: string }>
+}) {
+  return (
+    <Suspense fallback={<GenericRouteSkeleton rows={4} />}>
+      <ReadingExamHubContent {...props} />
+    </Suspense>
   )
 }

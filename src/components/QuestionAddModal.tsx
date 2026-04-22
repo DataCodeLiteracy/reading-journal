@@ -5,6 +5,12 @@ import { Plus, Lock, Globe } from "lucide-react"
 import { BookQuestion, QuestionType, Difficulty } from "@/types/question"
 import FormModalFrame from "@/components/FormModalFrame"
 import Select, { type SelectOption } from "@/components/Select"
+import {
+  QUESTION_DIFFICULTY_HELP,
+  QUESTION_FOCUS_OPTIONS,
+  QUESTION_TYPE_HELP,
+  type QuestionFocusKind,
+} from "@/constants/readingMeta"
 
 interface QuestionAddModalProps {
   isOpen: boolean
@@ -12,6 +18,10 @@ interface QuestionAddModalProps {
   onSave: (question: Omit<BookQuestion, "id" | "created_at" | "updated_at" | "order">) => Promise<void>
   bookId: string
   existingQuestions?: BookQuestion[] // order 계산용
+  /** 읽기 준비 단계 직후 등 안내 문구 */
+  bannerMessage?: string | null
+  /** 저장 시 함께 넣을 단계(예: 읽기 준비 질문) */
+  defaultReadingPhase?: BookQuestion["readingPhase"]
 }
 
 export default function QuestionAddModal({
@@ -20,8 +30,12 @@ export default function QuestionAddModal({
   onSave,
   bookId,
   existingQuestions = [],
+  bannerMessage = null,
+  defaultReadingPhase,
 }: QuestionAddModalProps) {
   const [questionText, setQuestionText] = useState("")
+  const [questionFocus, setQuestionFocus] = useState<QuestionFocusKind>("none")
+  const [questionReason, setQuestionReason] = useState("")
   const [hasChapter, setHasChapter] = useState<boolean | null>(null) // null: 선택 안함, true: 있음, false: 없음
   const [chapterPath, setChapterPath] = useState<string[]>([""])
   const [questionType, setQuestionType] = useState<QuestionType>("general")
@@ -33,6 +47,8 @@ export default function QuestionAddModal({
   useEffect(() => {
     if (isOpen) {
       setQuestionText("")
+      setQuestionFocus("none")
+      setQuestionReason("")
       setHasChapter(null)
       setChapterPath([""])
       setQuestionType("general")
@@ -106,9 +122,12 @@ export default function QuestionAddModal({
         bookId,
         questionText: questionText.trim(),
         chapterPath: normalizedPath,
+        questionFocus: questionFocus === "none" ? undefined : questionFocus,
+        questionReason: questionReason.trim() || undefined,
         questionType,
         difficulty,
         isPublic,
+        ...(defaultReadingPhase ? { readingPhase: defaultReadingPhase } : {}),
       })
       onClose()
     } catch (err) {
@@ -146,6 +165,20 @@ export default function QuestionAddModal({
           </div>
         )}
 
+        {bannerMessage ? (
+          <div className='mb-4 rounded-lg border border-accent-theme/40 bg-accent-theme/10 p-3 text-sm text-theme-secondary'>
+            {bannerMessage}
+          </div>
+        ) : null}
+
+        <div className='mb-4 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3 text-xs leading-relaxed text-theme-secondary'>
+          <span className='font-medium text-theme-primary'>질문 유형</span>은 질문의{" "}
+          <em>형식</em>(사실 파악·인과·주제 등)이고,{" "}
+          <span className='font-medium text-theme-primary'>질문의 초점</span>은 지금 무엇을{" "}
+          <em>궁금해하는지</em>(내용·해석·문장·연결 등)에 가깝습니다. 둘 다 안 골라도
+          되지만, 나중에 모아보기 쉽게 적어 두면 도움이 됩니다.
+        </div>
+
         <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
@@ -159,6 +192,55 @@ export default function QuestionAddModal({
               rows={4}
               required
             />
+          </div>
+
+          <div>
+            <label className='mb-2 block text-sm font-medium text-theme-primary'>
+              질문의 초점 (선택)
+            </label>
+            <p className='mb-2 text-xs text-theme-secondary'>
+              이 질문이 주로 무엇을 겨냥하는지 한 가지를 골라 주세요.
+            </p>
+            <div className='max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-theme-tertiary bg-theme-primary/30 p-2'>
+              {QUESTION_FOCUS_OPTIONS.map((opt) => (
+                <label
+                  key={opt.value}
+                  className='flex cursor-pointer gap-2 rounded-md p-2 hover:bg-theme-tertiary/50'
+                >
+                  <input
+                    type='radio'
+                    name='questionFocus'
+                    checked={questionFocus === opt.value}
+                    onChange={() => setQuestionFocus(opt.value)}
+                    className='mt-1 border-theme-tertiary text-accent-theme focus:ring-accent-theme'
+                  />
+                  <span className='min-w-0'>
+                    <span className='block text-sm font-medium text-theme-primary'>
+                      {opt.label}
+                    </span>
+                    <span className='mt-0.5 block text-xs leading-snug text-theme-secondary'>
+                      {opt.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+              질문과 함께 남기는 나의 생각 (선택)
+            </label>
+            <textarea
+              value={questionReason}
+              onChange={(e) => setQuestionReason(e.target.value)}
+              className='form-control form-control-textarea resize-none'
+              placeholder='예: 이 질문을 적는 나의 생각, 책이 던지는 핵심 질문에 대한 내 해석이나 궁금증…'
+              rows={3}
+            />
+            <p className='mt-1 text-xs text-theme-tertiary'>
+              질문 문장과 별도로, 왜 이걸 남기는지·어떤 생각에서 나왔는지 적어 두면 나중에 읽을 때 도움이 됩니다.
+            </p>
           </div>
 
           <div>
@@ -240,6 +322,9 @@ export default function QuestionAddModal({
               options={questionTypeOptions}
               variant="form-modal"
             />
+            <p className='mt-1.5 text-xs leading-relaxed text-theme-secondary'>
+              {QUESTION_TYPE_HELP[questionType]}
+            </p>
           </div>
 
           <div>
@@ -266,6 +351,9 @@ export default function QuestionAddModal({
                 </button>
               ))}
             </div>
+            <p className='mt-1.5 text-xs leading-relaxed text-theme-secondary'>
+              {QUESTION_DIFFICULTY_HELP[difficulty]}
+            </p>
           </div>
 
           {/* 공개 설정 */}

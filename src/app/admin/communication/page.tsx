@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -16,6 +16,7 @@ import {
 import { adminService } from "@/services/adminService"
 import { useAuth } from "@/contexts/AuthContext"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import Select, { type SelectOption } from "@/components/Select"
 
 interface CommunicationMoment {
   moment: string
@@ -156,7 +157,13 @@ export default function CommunicationPage() {
       .map(([child, count]) => ({ child, count }))
   }
 
-  const allKeywords = getAllKeywords()
+  const allKeywords = useMemo(() => getAllKeywords(), [communications])
+  const keywordSelectOptions = useMemo((): SelectOption<string>[] => {
+    return [
+      { value: "", label: "모든 키워드" },
+      ...allKeywords.map((k) => ({ value: k, label: k })),
+    ]
+  }, [allKeywords])
   const keywordStats = getKeywordStats()
   const childStats = getChildStats()
 
@@ -246,18 +253,14 @@ export default function CommunicationPage() {
               <label className='block text-sm font-medium text-theme-primary mb-2'>
                 🏷️ 키워드 필터
               </label>
-              <select
+              <Select
                 value={selectedKeyword}
-                onChange={(e) => setSelectedKeyword(e.target.value)}
-                className='w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-theme-primary focus:border-transparent'
-              >
-                <option value=''>모든 키워드</option>
-                {allKeywords.map((keyword) => (
-                  <option key={keyword} value={keyword}>
-                    {keyword}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedKeyword}
+                options={keywordSelectOptions}
+                variant='toolbar'
+                triggerClassName='py-3 min-h-[3rem]'
+                aria-label='키워드 필터'
+              />
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { AppDate } from "./firebase"
+import type { BookTocEntry } from "./bookToc"
 
 /** 책의 대상 연령/학년 (레벨) */
 export type BookLevel =
@@ -77,4 +78,12 @@ export interface Book {
   updated_at?: Date
   /** 마지막 독서 세션 종료 시각(UTC). 서재 «최근 읽은 순» Firestore 정렬용 */
   last_read_at?: Date
+  /** 읽기 준비 — 제목·목차를 보며 떠올린 기대·질문 */
+  preReadExpectation?: string
+  /** 읽기 준비 — 이 책에서 얻고 싶은 것 */
+  preReadWhatToGain?: string
+  /** 읽기 준비 — 관심사와의 연결 */
+  preReadInterestConnection?: string
+  /** 목차(최대 4 depth, path는 `1.1.1.1` 형식). 발췌 JSON 등과 동일 스키마로 연동 */
+  tocOutline?: BookTocEntry[]
 }

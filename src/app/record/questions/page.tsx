@@ -16,6 +16,7 @@ import { Book } from "@/types/book"
 import RecordContentCard from "@/components/RecordContentCard"
 import RecordListLoading from "@/components/RecordListLoading"
 import Pagination from "@/components/Pagination"
+import Select, { type SelectOption } from "@/components/Select"
 import { queryKeys } from "@/lib/queryKeys"
 
 export default function QuestionsPage() {
@@ -127,6 +128,18 @@ export default function QuestionsPage() {
   })
 
   const availableBooks: Book[] = booksQuery.data ?? []
+  const bookFilterOptions = useMemo((): SelectOption<string>[] => {
+    const opts: SelectOption<string>[] = [
+      { value: "", label: "전체 책 (내 서재)" },
+    ]
+    for (const book of availableBooks) {
+      opts.push({
+        value: book.id,
+        label: `${book.title}${book.author ? ` - ${book.author}` : ""}`,
+      })
+    }
+    return opts
+  }, [availableBooks])
   const records: RecordContent[] = recordsQuery.data?.records ?? []
   const isLoading = listReady && recordsQuery.isPending && !recordsQuery.data
   const error = recordsQuery.isError
@@ -211,19 +224,15 @@ export default function QuestionsPage() {
                 책 선택
               </label>
               <div className='relative'>
-                <Filter className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
-                <select
+                <Filter className='pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 transform text-gray-400' />
+                <Select
                   value={selectedBookId}
-                  onChange={(e) => handleBookFilterChange(e.target.value)}
-                  className='w-full pl-10 pr-10 py-2 border border-theme-tertiary rounded-lg bg-theme-primary text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-                >
-                  <option value=''>전체 책 (내 서재)</option>
-                  {availableBooks.map((book) => (
-                    <option key={book.id} value={book.id}>
-                      {book.title} {book.author ? `- ${book.author}` : ""}
-                    </option>
-                  ))}
-                </select>
+                  onChange={handleBookFilterChange}
+                  options={bookFilterOptions}
+                  variant='toolbar'
+                  triggerClassName='pl-10'
+                  aria-label='책 선택'
+                />
               </div>
             </div>
 

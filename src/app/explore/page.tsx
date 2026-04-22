@@ -36,6 +36,7 @@ import { queryKeys } from "@/lib/queryKeys"
 import { UserService } from "@/services/userService"
 import type { ExploreTitleGroup } from "@/types/explore"
 import Pagination from "@/components/Pagination"
+import Select, { type SelectOption } from "@/components/Select"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import { useAuth } from "@/contexts/AuthContext"
@@ -258,6 +259,68 @@ function ExplorePageContent() {
     return Array.from(set)
   }, [grouped])
 
+  const exploreStatusOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...(Object.entries(STATUS_LABELS) as [Book["status"], string][]).map(
+        ([value, label]) => ({ value, label }),
+      ),
+    ],
+    [],
+  )
+
+  const exploreAuthorOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...uniqueAuthors.map((a) => ({ value: a, label: a })),
+    ],
+    [uniqueAuthors],
+  )
+
+  const exploreMinRatingOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...[1, 2, 3, 4, 5].map((n) => ({
+        value: String(n),
+        label: `${n}점 이상`,
+      })),
+    ],
+    [],
+  )
+
+  const exploreLevelOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...BOOK_LEVELS.map((l) => ({ value: l, label: l })),
+    ],
+    [],
+  )
+
+  const exploreCategoryOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...BOOK_FIELDS.map((f) => ({ value: f, label: f })),
+    ],
+    [],
+  )
+
+  const exploreUserOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...uniqueUserIds.map((uid) => ({
+        value: uid,
+        label: userNames[uid] || uid,
+      })),
+    ],
+    [uniqueUserIds, userNames],
+  )
+
+  const exploreSortOptions = useMemo(
+    (): SelectOption<(typeof SORT_OPTIONS)[number]["value"]>[] =>
+      SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    [],
+  )
+
   /** 검색·필터·정렬·내 책 제외는 서버에서 반영된 뒤 이 페이지 책만 묶습니다. */
   const paginated = grouped
 
@@ -377,7 +440,7 @@ function ExplorePageContent() {
           </div>
         </div>
 
-        <div className='bg-theme-secondary rounded-lg mb-4 shadow-sm overflow-hidden'>
+        <div className='bg-theme-secondary rounded-lg mb-4 shadow-sm overflow-visible'>
           <button
             type='button'
             onClick={() => setFilterOpen((o) => !o)}
@@ -405,137 +468,89 @@ function ExplorePageContent() {
                   <label className='block text-xs text-theme-tertiary mb-1'>
                     상태
                   </label>
-                  <select
+                  <Select
                     value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(
-                        (e.target.value || "") as Book["status"] | "",
-                      )
+                    onChange={(v) =>
+                      setStatusFilter((v || "") as Book["status"] | "")
                     }
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {(
-                      Object.entries(STATUS_LABELS) as [
-                        Book["status"],
-                        string,
-                      ][]
-                    ).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                    options={exploreStatusOptions}
+                    variant='toolbar'
+                    aria-label='상태 필터'
+                  />
                 </div>
                 <div>
                   <label className='block text-xs text-theme-tertiary mb-1'>
                     저자
                   </label>
-                  <select
+                  <Select
                     value={authorFilter}
-                    onChange={(e) => setAuthorFilter(e.target.value)}
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {uniqueAuthors.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setAuthorFilter}
+                    options={exploreAuthorOptions}
+                    variant='toolbar'
+                    aria-label='저자 필터'
+                  />
                 </div>
                 <div>
                   <label className='block text-xs text-theme-tertiary mb-1'>
                     최소 평점
                   </label>
-                  <select
+                  <Select
                     value={minRatingFilter}
-                    onChange={(e) => setMinRatingFilter(e.target.value)}
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={String(n)}>
-                        {n}점 이상
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setMinRatingFilter}
+                    options={exploreMinRatingOptions}
+                    variant='toolbar'
+                    aria-label='최소 평점'
+                  />
                 </div>
                 <div>
                   <label className='block text-xs text-theme-tertiary mb-1'>
                     레벨
                   </label>
-                  <select
+                  <Select
                     value={levelFilter}
-                    onChange={(e) =>
-                      setLevelFilter(e.target.value as BookLevel | "")
-                    }
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {BOOK_LEVELS.map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setLevelFilter(v as BookLevel | "")}
+                    options={exploreLevelOptions}
+                    variant='toolbar'
+                    aria-label='레벨 필터'
+                  />
                 </div>
                 <div>
                   <label className='block text-xs text-theme-tertiary mb-1'>
                     분야
                   </label>
-                  <select
+                  <Select
                     value={categoryFilter}
-                    onChange={(e) =>
-                      setCategoryFilter(e.target.value as BookField | "")
-                    }
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {BOOK_FIELDS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setCategoryFilter(v as BookField | "")}
+                    options={exploreCategoryOptions}
+                    variant='toolbar'
+                    aria-label='분야 필터'
+                  />
                 </div>
                 <div className='sm:col-span-2'>
                   <label className='block text-xs text-theme-tertiary mb-1'>
                     유저별 보기 (이 유저가 등록한 책만)
                   </label>
-                  <select
+                  <Select
                     value={userIdFilter}
-                    onChange={(e) => setUserIdFilter(e.target.value)}
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {uniqueUserIds.map((uid) => (
-                      <option key={uid} value={uid}>
-                        {userNames[uid] || uid}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setUserIdFilter}
+                    options={exploreUserOptions}
+                    variant='toolbar'
+                    aria-label='등록 유저 필터'
+                  />
                 </div>
                 <div className='sm:col-span-2'>
                   <label className='block text-xs text-theme-tertiary mb-1'>
                     정렬
                   </label>
-                  <select
+                  <Select
                     value={sortBy}
-                    onChange={(e) =>
-                      setSortBy(
-                        e.target
-                          .value as (typeof SORT_OPTIONS)[number]["value"],
-                      )
+                    onChange={(v) =>
+                      setSortBy(v as (typeof SORT_OPTIONS)[number]["value"])
                     }
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    {SORT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={exploreSortOptions}
+                    variant='toolbar'
+                    aria-label='정렬'
+                  />
                 </div>
                 {userUid && (
                   <div className='sm:col-span-2 flex items-center gap-2'>

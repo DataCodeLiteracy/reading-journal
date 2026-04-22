@@ -1,4 +1,5 @@
 import { AppDate } from "./firebase"
+import type { QuoteHighlightKind } from "@/constants/readingMeta"
 
 /**
  * 구절 기록 (인용 기록)
@@ -9,6 +10,10 @@ export interface Quote {
   bookId: string
   user_id: string
   quoteText: string // 타이핑한 구절 텍스트
+  /** 하이라이트 분류(고정 목록, `none` 또는 생략 = 미분류) */
+  highlightKind?: QuoteHighlightKind
+  /** 이 구절을 남긴 이유(한두 문장) */
+  passageRecordReason?: string
   thoughts?: string // 해당 구절에 대한 느낌/생각
   generalThoughts?: string // 구절과 무관하게 책을 읽다가 느낀 점
   page?: number // 구절이 있는 페이지 (숫자)

@@ -4,6 +4,11 @@ import { useState, useRef, useEffect } from "react"
 import { X, BookOpen, Lock, Globe } from "lucide-react"
 import { Quote } from "@/types/content"
 import { PURPOSE_LABELS } from "@/utils/quoteDisplay"
+import {
+  QUOTE_HIGHLIGHT_OPTIONS,
+  QUOTE_PURPOSE_META,
+  type QuoteHighlightKind,
+} from "@/constants/readingMeta"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 interface QuoteModalProps {
@@ -13,6 +18,8 @@ interface QuoteModalProps {
   bookId: string
   bookTitle?: string
   existingQuote?: Quote | null
+  /** 완독 직후: 가장 기억에 남는 문장·이유 작성 유도 */
+  showMemorableLineGuide?: boolean
 }
 
 function parseGeneralThoughts(raw: string | undefined): { reason: string; purposes: string[] } {
@@ -30,7 +37,6 @@ function parseGeneralThoughts(raw: string | undefined): { reason: string; purpos
   return { reason, purposes }
 }
 
-const PURPOSE_OPTIONS = Object.entries(PURPOSE_LABELS).map(([value, label]) => ({ value, label }))
 
 export default function QuoteModal({
   isOpen,
@@ -39,8 +45,11 @@ export default function QuoteModal({
   bookId,
   bookTitle,
   existingQuote,
+  showMemorableLineGuide = false,
 }: QuoteModalProps) {
   const [quoteText, setQuoteText] = useState("")
+  const [highlightKind, setHighlightKind] = useState<QuoteHighlightKind>("none")
+  const [passageRecordReason, setPassageRecordReason] = useState("")
   const [thoughts, setThoughts] = useState("")
   const [generalThoughtsReason, setGeneralThoughtsReason] = useState("")
   const [generalThoughtsPurposes, setGeneralThoughtsPurposes] = useState<string[]>([])
@@ -52,6 +61,8 @@ export default function QuoteModal({
     if (isOpen) {
       if (existingQuote) {
         setQuoteText(existingQuote.quoteText || "")
+        setHighlightKind(existingQuote.highlightKind ?? "none")
+        setPassageRecordReason(existingQuote.passageRecordReason ?? "")
         setThoughts(existingQuote.thoughts || "")
         const { reason, purposes } = parseGeneralThoughts(existingQuote.generalThoughts)
         setGeneralThoughtsReason(reason)
@@ -60,6 +71,8 @@ export default function QuoteModal({
         setIsPublic(existingQuote.isPublic || false)
       } else {
         setQuoteText("")
+        setHighlightKind("none")
+        setPassageRecordReason("")
         setThoughts("")
         setGeneralThoughtsReason("")
         setGeneralThoughtsPurposes([])
@@ -91,6 +104,8 @@ export default function QuoteModal({
       bookId,
       user_id: "", // 부모 컴포넌트에서 설정
       quoteText: quoteText.trim(),
+      highlightKind: highlightKind === "none" ? undefined : highlightKind,
+      passageRecordReason: passageRecordReason.trim() || undefined,
       thoughts: thoughts.trim() || undefined,
       generalThoughts: generalThoughtsValue,
       page: page === "" || Number.isNaN(Number(page)) ? undefined : Number(page),
@@ -103,6 +118,8 @@ export default function QuoteModal({
 
   const handleClose = () => {
     setQuoteText("")
+    setHighlightKind("none")
+    setPassageRecordReason("")
     setThoughts("")
     setGeneralThoughtsReason("")
     setGeneralThoughtsPurposes([])
@@ -139,6 +156,15 @@ export default function QuoteModal({
         {/* 내용 - 스크롤 가능 */}
         <form onSubmit={handleSubmit} className='flex-1 overflow-y-auto p-4 sm:p-6 min-h-0'>
           <div className='space-y-4'>
+            {showMemorableLineGuide && !existingQuote ? (
+              <div className='rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-100'>
+                <p className='font-medium'>완독 직후 · 구절 기록</p>
+                <p className='mt-1.5 leading-relaxed'>
+                  가장 기억에 남는 문장을 적고, 아래「이 구절을 기록한 이유」「구절에 대한 느낌/생각」에 왜 남기고 싶은지 덧붙여 보세요. 지금 적지 않아도
+                  나중에 이 화면에서 언제든 추가할 수 있어요.
+                </p>
+              </div>
+            ) : null}
             {/* 구절 텍스트 */}
             <div>
               <label className='block text-sm font-medium text-gray-900 dark:text-white mb-2'>
@@ -179,6 +205,57 @@ export default function QuoteModal({
               </p>
             </div>
 
+            {/* 하이라이트 종류 */}
+            <div>
+              <label className='mb-2 block text-sm font-medium text-gray-900 dark:text-white'>
+                하이라이트 종류
+              </label>
+              <p className='mb-2 text-xs text-gray-500 dark:text-gray-400'>
+                이 구절을 왜 특히 남기고 싶은지, 한 가지를 골라 주세요. 나중에 목록에서
+                찾기 쉽게 쓰입니다.
+              </p>
+              <div className='max-h-52 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700/50'>
+                {QUOTE_HIGHLIGHT_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className='flex cursor-pointer gap-2 rounded-md p-2 hover:bg-white/80 dark:hover:bg-gray-600/50'
+                  >
+                    <input
+                      type='radio'
+                      name='highlightKind'
+                      checked={highlightKind === opt.value}
+                      onChange={() => setHighlightKind(opt.value)}
+                      className='mt-1 border-gray-300 text-accent-theme focus:ring-accent-theme'
+                    />
+                    <span className='min-w-0'>
+                      <span className='block text-sm font-medium text-gray-900 dark:text-white'>
+                        {opt.label}
+                      </span>
+                      <span className='mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400'>
+                        {opt.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className='mb-2 block text-sm font-medium text-gray-900 dark:text-white'>
+                이 구절을 기록한 이유 (선택)
+              </label>
+              <textarea
+                value={passageRecordReason}
+                onChange={(e) => setPassageRecordReason(e.target.value)}
+                placeholder='예: 다음 장으로 이어지는 복선이라 저장해 두고 싶다, 문장 리듬이 좋다…'
+                className='w-full resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-accent-theme dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400'
+                rows={2}
+              />
+              <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+                「구절에 대한 느낌」과 달리, <strong>남기려는 동기</strong>를 적는 칸이에요.
+              </p>
+            </div>
+
             {/* 구절에 대한 느낌/생각 */}
             <div>
               <label className='block text-sm font-medium text-gray-900 dark:text-white mb-2'>
@@ -208,32 +285,43 @@ export default function QuoteModal({
               <p className='text-xs text-gray-500 dark:text-gray-400 mt-1 mb-2'>
                 구절과 무관하게 책을 읽다가 느낀 점을 자유롭게 적어주세요.
               </p>
-              <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                목적 (선택)
+              <label className='mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300'>
+                읽는 중 느낀 점 — 목적 태그 (선택)
               </label>
-              <div className='flex flex-wrap gap-x-4 gap-y-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
-                {PURPOSE_OPTIONS.map(({ value, label }) => (
+              <p className='mb-2 text-xs text-gray-500 dark:text-gray-400'>
+                위 문단과 함께, 어떤 관점에서 적었는지 태그로 골라 주세요. 여러 개 선택
+                가능합니다.
+              </p>
+              <div className='max-h-48 space-y-2 overflow-y-auto rounded-lg bg-gray-50 p-2 dark:bg-gray-700/50'>
+                {QUOTE_PURPOSE_META.map(({ slug, label, description }) => (
                   <label
-                    key={value}
-                    className='flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200'
+                    key={slug}
+                    className='flex cursor-pointer gap-2 rounded-md p-2 hover:bg-white/80 dark:hover:bg-gray-600/50'
                   >
                     <input
                       type='checkbox'
-                      checked={generalThoughtsPurposes.includes(value)}
+                      checked={generalThoughtsPurposes.includes(slug)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setGeneralThoughtsPurposes((prev) => [...prev, value])
+                          setGeneralThoughtsPurposes((prev) => [...prev, slug])
                         } else {
-                          setGeneralThoughtsPurposes((prev) => prev.filter((p) => p !== value))
+                          setGeneralThoughtsPurposes((prev) => prev.filter((p) => p !== slug))
                         }
                       }}
-                      className='rounded border-gray-300 dark:border-gray-600 text-accent-theme focus:ring-accent-theme'
+                      className='mt-1 rounded border-gray-300 text-accent-theme focus:ring-accent-theme dark:border-gray-600'
                     />
-                    {label}
+                    <span className='min-w-0'>
+                      <span className='block text-sm font-medium text-gray-800 dark:text-gray-200'>
+                        {label}
+                      </span>
+                      <span className='mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400'>
+                        {description}
+                      </span>
+                    </span>
                   </label>
                 ))}
               </div>
-              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+              <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
                 해당하는 목적을 선택하세요 (여러 개 선택 가능).
               </p>
             </div>

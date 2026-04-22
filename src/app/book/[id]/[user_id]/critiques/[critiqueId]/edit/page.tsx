@@ -1,14 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  ArrowLeft,
-  BookOpen,
-  Save,
-  Lock,
-  Globe,
-  AlertCircle,
-} from "lucide-react"
+import { BookOpen, Save, Lock, Globe, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { Critique } from "@/types/content"
@@ -17,6 +10,8 @@ import { BookService } from "@/services/bookService"
 import { CritiqueService } from "@/services/critiqueService"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import { navigateBackSmart } from "@/utils/navigateBack"
 
 export default function EditCritiquePage({
   params,
@@ -120,6 +115,8 @@ export default function EditCritiquePage({
     )
   }
 
+  const detailPath = `/book/${resolvedParams!.id}/${resolvedParams!.user_id}/critiques/${resolvedParams!.critiqueId}`
+
   return (
     <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-4'>
@@ -130,18 +127,11 @@ export default function EditCritiquePage({
           </div>
         )}
 
-        <div className='flex items-center gap-4 mb-6'>
-          <button
-            onClick={() => router.push(`/book/${resolvedParams!.id}/${resolvedParams!.user_id}/critiques/${resolvedParams!.critiqueId}`)}
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='flex-1 min-w-0'>
-            <h1 className='text-xl font-bold text-theme-primary'>서평 수정</h1>
-            <p className='text-sm text-theme-secondary truncate'>{book.title}</p>
-          </div>
-        </div>
+        <BookSubpageHeader
+          pageTitle='서평 수정'
+          contextTitle={book.title}
+          fallbackPath={detailPath}
+        />
 
         <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6'>
           <h2 className='text-lg font-semibold text-theme-primary mb-1'>{book.title}</h2>
@@ -201,7 +191,8 @@ export default function EditCritiquePage({
 
         <div className='flex gap-3'>
           <button
-            onClick={() => router.push(`/book/${resolvedParams!.id}/${resolvedParams!.user_id}/critiques/${resolvedParams!.critiqueId}`)}
+            type='button'
+            onClick={() => navigateBackSmart(router, detailPath)}
             className='flex-1 px-4 py-3 border border-theme-tertiary text-theme-primary rounded-lg hover:bg-theme-tertiary transition-colors'
           >
             취소

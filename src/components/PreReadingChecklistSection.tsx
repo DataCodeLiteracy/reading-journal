@@ -12,7 +12,7 @@ interface PreReadingChecklistSectionProps {
 }
 
 /**
- * 독서 전 체크리스트 섹션 컴포넌트
+ * 읽기 준비 체크리스트 섹션 컴포넌트
  * 
  * 현재 서비스에서는 사용하지 않지만, 나중에 사용할 수 있도록 코드는 유지합니다.
  * 이 컴포넌트를 사용하려면 부모 컴포넌트에서 렌더링하면 됩니다.
@@ -124,8 +124,8 @@ export default function PreReadingChecklistSection({
         onClose={() => setIsChecklistModalOpen(false)}
         onComplete={handleChecklistComplete}
         checklist={preReadingChecklist}
-        title='독서 전 체크리스트'
-        description='독서를 시작하기 전에 다음 항목들을 확인해주세요.'
+        title='읽기 준비 체크리스트'
+        description='책을 펼치기 전에 다음 항목들을 확인해 주세요.'
       />
 
       {/* 체크리스트 리마인더 모달 */}
@@ -138,8 +138,8 @@ export default function PreReadingChecklistSection({
             setIsChecklistModalOpen(true)
           }}
           checklist={preReadingChecklist}
-          title='독서 전 체크리스트'
-          description='독서를 시작하기 전에 체크리스트를 확인해주세요.'
+          title='읽기 준비 체크리스트'
+          description='책을 펼치기 전에 체크리스트를 확인해 주세요.'
         />
       )}
     </>

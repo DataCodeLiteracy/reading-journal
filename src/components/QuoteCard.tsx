@@ -9,6 +9,7 @@ import { LikeService } from "@/services/likeService"
 import { QuoteService } from "@/services/quoteService"
 import CommentSection from "@/components/CommentSection"
 import { formatGeneralThoughtsForDisplay } from "@/utils/quoteDisplay"
+import { quoteHighlightLabel } from "@/constants/readingMeta"
 
 interface QuoteCardProps {
   quote: Quote
@@ -98,6 +99,11 @@ export default function QuoteCard({
             {quote.page != null && (
               <span className='text-xs text-theme-tertiary'>• p. {quote.page}</span>
             )}
+            {quote.highlightKind && quote.highlightKind !== "none" && (
+              <span className='rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200'>
+                {quoteHighlightLabel(quote.highlightKind)}
+              </span>
+            )}
           </div>
         </div>
         <div className='flex items-center gap-2 flex-shrink-0'>
@@ -158,6 +164,17 @@ export default function QuoteCard({
                 </p>
                 <p className='text-sm text-theme-primary whitespace-pre-wrap leading-relaxed line-clamp-2'>
                   {quote.thoughts}
+                </p>
+              </div>
+            )}
+
+            {quote.passageRecordReason?.trim() && (
+              <div className='mb-3'>
+                <p className='text-xs font-medium text-theme-secondary mb-1'>
+                  기록한 이유
+                </p>
+                <p className='text-sm text-theme-primary whitespace-pre-wrap leading-relaxed line-clamp-2'>
+                  {quote.passageRecordReason}
                 </p>
               </div>
             )}
@@ -241,6 +258,17 @@ export default function QuoteCard({
               </p>
               <p className='text-sm text-theme-primary whitespace-pre-wrap leading-relaxed'>
                 {quote.thoughts}
+              </p>
+            </div>
+          )}
+
+          {quote.passageRecordReason?.trim() && (
+            <div className='mb-3'>
+              <p className='text-xs font-medium text-theme-secondary mb-1'>
+                기록한 이유
+              </p>
+              <p className='text-sm text-theme-primary whitespace-pre-wrap leading-relaxed'>
+                {quote.passageRecordReason}
               </p>
             </div>
           )}

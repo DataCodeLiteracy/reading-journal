@@ -18,6 +18,7 @@ import { UserService } from "@/services/userService"
 import { GoldenBellRequest } from "@/types/goldenBell"
 import { SkeletonBookRow } from "@/components/skeletons"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
+import Select, { type SelectOption } from "@/components/Select"
 
 type UserOption = { uid: string; displayName: string | null; email: string | null }
 
@@ -102,6 +103,17 @@ export default function GoldenBellRequestsPage() {
     }
   }
 
+
+  const goldenBellUserSelectOptions = useMemo((): SelectOption<string>[] => {
+    const opts: SelectOption<string>[] = [{ value: "", label: "전체 유저" }]
+    for (const u of allUsers) {
+      opts.push({
+        value: u.uid,
+        label: u.displayName || u.email || u.uid,
+      })
+    }
+    return opts
+  }, [allUsers])
 
   const filtered = useMemo(() => {
     let list = requests
@@ -191,18 +203,13 @@ export default function GoldenBellRequestsPage() {
             </div>
             <div>
               <label className='block text-xs text-theme-tertiary mb-1'>유저</label>
-              <select
+              <Select
                 value={userIdFilter}
-                onChange={(e) => setUserIdFilter(e.target.value)}
-                className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-              >
-                <option value=''>전체 유저</option>
-                {allUsers.map((u) => (
-                  <option key={u.uid} value={u.uid}>
-                    {u.displayName || u.email || u.uid}
-                  </option>
-                ))}
-              </select>
+                onChange={setUserIdFilter}
+                options={goldenBellUserSelectOptions}
+                variant='toolbar'
+                aria-label='유저 필터'
+              />
             </div>
             <div className='relative'>
               <label className='block text-xs text-theme-tertiary mb-1'>기간 (요청일)</label>

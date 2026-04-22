@@ -1,12 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import {
-  ArrowLeft,
-  PenSquare,
-  Plus,
-  Search,
-} from "lucide-react"
+import { PenSquare, Plus, Search, Trash2, Upload, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { Quote } from "@/types/content"
@@ -18,11 +13,24 @@ import QuoteModal from "@/components/QuoteModal"
 import QuoteJsonUploadModal from "@/components/QuoteJsonUploadModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
+import Select, { type SelectOption } from "@/components/Select"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
-import { Trash2 } from "lucide-react"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import { withReturnQuery } from "@/utils/navigateBack"
+import {
+  clearPostCompleteReadingFlow,
+  getPostCompleteReadingStage,
+  setPostCompleteReadingStage,
+} from "@/utils/postCompleteReadingFlow"
 
 const ITEMS_PER_PAGE = 10
+
+const QUOTE_SORT_OPTIONS: SelectOption<"recent" | "oldest" | "page">[] = [
+  { value: "recent", label: "최신순" },
+  { value: "oldest", label: "오래된순" },
+  { value: "page", label: "페이지순" },
+]
 
 export default function BookQuotesPage({
   params,
@@ -51,12 +59,22 @@ export default function BookQuotesPage({
   const [isQuoteJsonModalOpen, setIsQuoteJsonModalOpen] = useState(false)
   const [isDeleteQuoteModalOpen, setIsDeleteQuoteModalOpen] = useState(false)
   const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null)
+  const [showPostCompleteQuoteGuide, setShowPostCompleteQuoteGuide] =
+    useState(false)
 
   useEffect(() => {
     params.then((resolved) => {
       setResolvedParams(resolved)
     })
   }, [params])
+
+  useEffect(() => {
+    if (!resolvedParams || typeof window === "undefined") return
+    const u = new URL(window.location.href)
+    if (u.searchParams.get("postCompleteFlow") !== "1") return
+    if (getPostCompleteReadingStage(resolvedParams.id) !== "quotes") return
+    setShowPostCompleteQuoteGuide(true)
+  }, [resolvedParams])
 
   useEffect(() => {
     if (!resolvedParams) return
@@ -204,8 +222,27 @@ export default function BookQuotesPage({
     )
   }
 
-  if (!book) {
+  if (!book || !resolvedParams) {
     return null
+  }
+
+  const bookBase = `/book/${resolvedParams.id}/${resolvedParams.user_id}`
+
+  const dismissPostCompleteQuoteGuide = (clearFlow: boolean) => {
+    if (clearFlow) clearPostCompleteReadingFlow(resolvedParams.id)
+    else setPostCompleteReadingStage(resolvedParams.id, "questions")
+    setShowPostCompleteQuoteGuide(false)
+    if (typeof window !== "undefined") {
+      const u = new URL(window.location.href)
+      u.searchParams.delete("postCompleteFlow")
+      const qs = u.searchParams.toString()
+      window.history.replaceState({}, "", u.pathname + (qs ? `?${qs}` : ""))
+    }
+    if (!clearFlow) {
+      router.push(
+        withReturnQuery(`${bookBase}/questions?postCompleteFlow=1`, bookBase),
+      )
+    }
   }
 
   return (
@@ -217,49 +254,90 @@ export default function BookQuotesPage({
           </div>
         )}
 
-        <div className='flex items-center gap-4 mb-6'>
-          <button
-            onClick={() =>
-              router.push(
-                `/book/${resolvedParams?.id}/${resolvedParams?.user_id}`
-              )
-            }
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='flex-1'>
-            <h1 className='text-xl font-semibold text-theme-primary'>
-              {book.title}
-            </h1>
-            <p className='text-sm text-theme-secondary'>구절 기록</p>
+        {showPostCompleteQuoteGuide && book.status === "completed" ? (
+          <div className='mb-4 rounded-lg border border-amber-200 bg-amber-50/90 p-4 dark:border-amber-800/50 dark:bg-amber-950/30'>
+            <div className='flex gap-2'>
+              <Sparkles
+                className='mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400'
+                aria-hidden
+              />
+              <div className='min-w-0 flex-1 text-sm text-theme-primary'>
+                <p className='font-semibold'>완독 이후 · 구절 기록</p>
+                <p className='mt-2 leading-relaxed text-theme-secondary'>
+                  핵심 메시지를 남겼다면, 이제 가장 기억에 남는 문장과 그 이유를 구절로
+                  남겨 보세요. 아래「구절 추가」에서 문장·이유·느낌을 함께 적을 수 있습니다.
+                  <span className='text-theme-tertiary'>
+                    {" "}
+                    지금 건너뛰어도 나중에 이 목록에서 언제든 추가할 수 있어요.
+                  </span>
+                </p>
+                <div className='mt-3 flex flex-wrap gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setEditingQuote(null)
+                      setIsQuoteModalOpen(true)
+                    }}
+                    className='rounded-lg bg-accent-theme px-3 py-2 text-sm font-medium text-white hover:bg-accent-theme-secondary'
+                  >
+                    구절 남기기
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => dismissPostCompleteQuoteGuide(false)}
+                    className='rounded-lg border border-theme-tertiary bg-theme-secondary px-3 py-2 text-sm font-medium text-theme-primary hover:bg-theme-tertiary/60'
+                  >
+                    구절은 건너뛰고 독서 질문으로
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => dismissPostCompleteQuoteGuide(true)}
+                    className='rounded-lg px-3 py-2 text-sm text-theme-tertiary hover:text-theme-secondary'
+                  >
+                    안내 닫기 (나중에)
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className='flex gap-2'>
-            {userData?.isAdmin && (
+        ) : null}
+
+        <BookSubpageHeader
+          pageTitle='구절 기록'
+          contextTitle={book.title}
+          fallbackPath={bookBase}
+          trailing={
+            <div className='flex gap-2'>
+              {userData?.isAdmin && (
+                <button
+                  type='button'
+                  onClick={() => setIsQuoteJsonModalOpen(true)}
+                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+                  title='구절 기록 JSON 업로드'
+                  aria-label='구절 기록 JSON 업로드'
+                >
+                  <Upload className='h-5 w-5 text-theme-secondary' aria-hidden />
+                </button>
+              )}
               <button
-                onClick={() => setIsQuoteJsonModalOpen(true)}
+                type='button'
+                onClick={() => {
+                  setEditingQuote(null)
+                  setIsQuoteModalOpen(true)
+                }}
                 className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-                title='구절 기록 JSON 업로드'
+                title='구절 추가'
+                aria-label='구절 추가'
               >
-                <Plus className='h-5 w-5 text-theme-secondary' />
+                <Plus className='h-5 w-5 text-theme-secondary' aria-hidden />
               </button>
-            )}
-            <button
-              onClick={() => {
-                setEditingQuote(null)
-                setIsQuoteModalOpen(true)
-              }}
-              className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-              title='구절 추가'
-            >
-              <Plus className='h-5 w-5 text-theme-secondary' />
-            </button>
-          </div>
-        </div>
+            </div>
+          }
+        />
 
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
-          <div className='flex flex-col sm:flex-row gap-3'>
-            <div className='flex-1 relative'>
+          <div className='flex flex-col gap-3'>
+            <div className='relative min-w-0 w-full'>
               <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-theme-tertiary' />
               <input
                 type='text'
@@ -272,42 +350,50 @@ export default function BookQuotesPage({
                 className='w-full pl-9 pr-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
               />
             </div>
-            <div className='flex gap-2 items-center flex-wrap'>
-              <input
-                type='number'
-                min={0}
-                placeholder='페이지 최소'
-                value={pageMin}
-                onChange={(e) => {
-                  setPageMin(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className='w-24 px-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-              />
-              <span className='text-theme-tertiary'>~</span>
-              <input
-                type='number'
-                min={0}
-                placeholder='페이지 최대'
-                value={pageMax}
-                onChange={(e) => {
-                  setPageMax(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className='w-24 px-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-              />
-              <select
-                value={sortOrder}
-                onChange={(e) => {
-                  setSortOrder(e.target.value as "recent" | "oldest" | "page")
-                  setCurrentPage(1)
-                }}
-                className='px-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-              >
-                <option value='recent'>최신순</option>
-                <option value='oldest'>오래된순</option>
-                <option value='page'>페이지순</option>
-              </select>
+            <div className='flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch'>
+              <div className='flex min-w-0 flex-1 items-center gap-2'>
+                <input
+                  type='number'
+                  min={0}
+                  inputMode='numeric'
+                  placeholder='페이지 최소'
+                  value={pageMin}
+                  onChange={(e) => {
+                    setPageMin(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className='min-w-0 flex-1 basis-0 rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
+                  aria-label='페이지 최소'
+                />
+                <span className='shrink-0 text-theme-tertiary' aria-hidden>
+                  ~
+                </span>
+                <input
+                  type='number'
+                  min={0}
+                  inputMode='numeric'
+                  placeholder='페이지 최대'
+                  value={pageMax}
+                  onChange={(e) => {
+                    setPageMax(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className='min-w-0 flex-1 basis-0 rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
+                  aria-label='페이지 최대'
+                />
+              </div>
+              <div className='w-full shrink-0 sm:w-44 sm:min-w-[11rem]'>
+                <Select
+                  value={sortOrder}
+                  onChange={(v) => {
+                    setSortOrder(v)
+                    setCurrentPage(1)
+                  }}
+                  options={QUOTE_SORT_OPTIONS}
+                  variant='toolbar'
+                  aria-label='정렬'
+                />
+              </div>
             </div>
           </div>
           <p className='text-xs text-theme-tertiary mt-2'>
@@ -356,7 +442,10 @@ export default function BookQuotesPage({
                   <QuoteCard
                     quote={quote}
                     bookTitle={book.title}
-                    detailHref={resolvedParams ? `/book/${resolvedParams.id}/${resolvedParams.user_id}/quotes/${quote.id}` : undefined}
+                    detailHref={withReturnQuery(
+                      `${bookBase}/quotes/${quote.id}`,
+                      `${bookBase}/quotes`,
+                    )}
                     onEdit={(q) => {
                       setEditingQuote(q)
                       setIsQuoteModalOpen(true)
@@ -385,6 +474,9 @@ export default function BookQuotesPage({
             setIsQuoteModalOpen(false)
             setEditingQuote(null)
           }}
+          showMemorableLineGuide={
+            showPostCompleteQuoteGuide && !editingQuote && book.status === "completed"
+          }
           onSave={async (quoteData) => {
             if (!userUid || !resolvedParams) return
             try {

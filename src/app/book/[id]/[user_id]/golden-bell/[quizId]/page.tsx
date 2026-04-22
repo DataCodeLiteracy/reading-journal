@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft,
   CheckCircle,
   XCircle,
   Trophy,
@@ -25,6 +24,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import { gradeShortAnswer } from "@/utils/textSimilarity"
 import { gradeGoldenBellOpen } from "@/lib/readingAiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import { navigateBackSmart } from "@/utils/navigateBack"
 
 type QuizState = "playing" | "reviewing" | "completed"
 
@@ -406,13 +407,18 @@ export default function GoldenBellQuizPage({
   }
 
   if (error || !quiz) {
+    const fallback =
+      resolvedParams != null
+        ? `/book/${resolvedParams.id}/${resolvedParams.user_id}/activities`
+        : "/mypage/golden-bell"
     return (
       <div className='min-h-screen bg-theme-gradient flex items-center justify-center'>
         <div className='text-center'>
           <div className='text-4xl mb-4'>😢</div>
           <p className='text-theme-secondary mb-4'>{error || "퀴즈를 찾을 수 없습니다."}</p>
           <button
-            onClick={() => router.back()}
+            type='button'
+            onClick={() => navigateBackSmart(router, fallback)}
             className='px-4 py-2 bg-accent-theme text-white rounded-lg'
           >
             돌아가기
@@ -421,6 +427,8 @@ export default function GoldenBellQuizPage({
       </div>
     )
   }
+
+  const activitiesPath = `/book/${resolvedParams!.id}/${resolvedParams!.user_id}/activities`
 
   // 완료 화면
   if (quizState === "completed") {
@@ -506,7 +514,8 @@ export default function GoldenBellQuizPage({
                 전체 기록 보기
               </button>
               <button
-                onClick={() => router.back()}
+                type='button'
+                onClick={() => navigateBackSmart(router, activitiesPath)}
                 className='px-4 py-2 border border-theme-tertiary text-theme-primary rounded-lg hover:bg-theme-tertiary transition-colors'
               >
                 돌아가기
@@ -521,23 +530,11 @@ export default function GoldenBellQuizPage({
   return (
     <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-4'>
-        {/* 헤더 */}
-        <div className='flex items-center gap-4 mb-6'>
-          <button
-            onClick={() => router.back()}
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='flex-1'>
-            <h1 className='text-lg font-semibold text-theme-primary'>
-              🔔 독서 골든벨
-            </h1>
-            <p className='text-sm text-theme-secondary'>
-              {quiz.bookTitle} · {quiz.version}
-            </p>
-          </div>
-        </div>
+        <BookSubpageHeader
+          pageTitle='독서 골든벨'
+          contextTitle={`${quiz.bookTitle} · ${quiz.version}`}
+          fallbackPath={activitiesPath}
+        />
 
         {/* 리뷰 모드 안내 */}
         {quizState === "reviewing" && (

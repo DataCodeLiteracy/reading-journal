@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react"
 import {
-  ArrowLeft,
   Plus,
   List,
   TreePine,
@@ -26,6 +25,17 @@ import ConfirmModal from "@/components/ConfirmModal"
 import Pagination from "@/components/Pagination"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import Select, { type SelectOption } from "@/components/Select"
+import {
+  clearPostCompleteReadingFlow,
+  getPostCompleteReadingStage,
+} from "@/utils/postCompleteReadingFlow"
+
+const QUESTION_SORT_OPTIONS: SelectOption<"recent" | "oldest">[] = [
+  { value: "recent", label: "최신순" },
+  { value: "oldest", label: "오래된순" },
+]
 
 export default function QuestionsPage({
   params,
@@ -45,6 +55,12 @@ export default function QuestionsPage({
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"tree" | "list">("tree")
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [questionAddBanner, setQuestionAddBanner] = useState<string | null>(
+    null,
+  )
+  const [addModalReadingPhase, setAddModalReadingPhase] = useState<
+    BookQuestion["readingPhase"] | undefined
+  >(undefined)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [questionToDelete, setQuestionToDelete] = useState<string | null>(null)
@@ -162,6 +178,60 @@ export default function QuestionsPage({
     }
   }, [currentPage, totalPages])
 
+  useEffect(() => {
+    if (!resolvedParams || typeof window === "undefined") return
+    const u = new URL(window.location.href)
+    if (u.searchParams.get("postCompleteFlow") !== "1") return
+    u.searchParams.delete("postCompleteFlow")
+    const qs = u.searchParams.toString()
+    window.history.replaceState({}, "", u.pathname + (qs ? `?${qs}` : ""))
+  }, [resolvedParams])
+
+  useEffect(() => {
+    if (!resolvedParams || typeof window === "undefined") return
+    const u = new URL(window.location.href)
+    if (u.searchParams.get("from") !== "pre-reading") return
+    setQuestionAddBanner(
+      "읽으면서 생각해보고 싶은 질문을 하나 적어보세요. (읽기 준비에 적어 둔 내용과 연결해 보셔도 좋아요.)",
+    )
+    setAddModalReadingPhase("pre")
+    setIsAddModalOpen(true)
+    u.searchParams.delete("from")
+    const qs = u.searchParams.toString()
+    window.history.replaceState({}, "", u.pathname + (qs ? `?${qs}` : ""))
+  }, [resolvedParams])
+
+  const openAddQuestionModal = () => {
+    setQuestionAddBanner(null)
+    setAddModalReadingPhase(undefined)
+    setIsAddModalOpen(true)
+  }
+
+  const openPostCompleteQuestionModal = () => {
+    setQuestionAddBanner(
+      "완독 이후 · 독서 질문: 책이 던지는 핵심 질문을 하나 적어 보세요. 아래「질문과 함께 나의 생각」에 왜 이 질문을 남기는지 덧붙일 수 있습니다. 지금 넘어가도 이 목록에서 나중에 추가할 수 있어요.",
+    )
+    setAddModalReadingPhase("post")
+    setIsAddModalOpen(true)
+  }
+
+  const dismissPostCompleteQuestionGuide = () => {
+    if (!resolvedParams) return
+    clearPostCompleteReadingFlow(resolvedParams.id)
+    if (typeof window !== "undefined") {
+      const u = new URL(window.location.href)
+      u.searchParams.delete("postCompleteFlow")
+      const qs = u.searchParams.toString()
+      window.history.replaceState({}, "", u.pathname + (qs ? `?${qs}` : ""))
+    }
+  }
+
+  const closeAddQuestionModal = () => {
+    setIsAddModalOpen(false)
+    setQuestionAddBanner(null)
+    setAddModalReadingPhase(undefined)
+  }
+
   const handleQuestionClick = (question: BookQuestion): void => {
     if (resolvedParams) {
       router.push(
@@ -202,6 +272,9 @@ export default function QuestionsPage({
       setQuestions(updatedQuestions)
       const groups = QuestionService.groupQuestionsByChapter(updatedQuestions)
       setQuestionGroups(groups)
+      if (getPostCompleteReadingStage(resolvedParams.id) === "questions") {
+        clearPostCompleteReadingFlow(resolvedParams.id)
+      }
     } catch (error) {
       console.error("Error adding question:", error)
       throw error
@@ -299,6 +372,10 @@ export default function QuestionsPage({
     return null
   }
 
+  const base = resolvedParams
+    ? `/book/${resolvedParams.id}/${resolvedParams.user_id}`
+    : ""
+
   return (
     <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-4'>
@@ -312,48 +389,67 @@ export default function QuestionsPage({
           </div>
         )}
 
-        {/* 헤더 */}
-        <div className='flex items-center gap-4 mb-6'>
-          <button
-            onClick={() =>
-              router.push(
-                `/book/${resolvedParams?.id}/${resolvedParams?.user_id}`
-              )
-            }
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='flex-1'>
-            <h1 className='text-xl font-semibold text-theme-primary'>
-              {book.title}
-            </h1>
-            <p className='text-sm text-theme-secondary'>독서 질문</p>
-          </div>
-          <div className='flex gap-2'>
+        <BookSubpageHeader
+          pageTitle='독서 질문'
+          contextTitle={book.title}
+          fallbackPath={base}
+          trailing={
             <button
-              onClick={() => setIsAddModalOpen(true)}
-              className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+              type='button'
+              onClick={openAddQuestionModal}
+              className='rounded-full bg-theme-secondary p-2 shadow-sm transition-shadow hover:shadow-md'
               title='질문 추가'
             >
               <Plus className='h-5 w-5 text-theme-secondary' />
             </button>
+          }
+        />
+
+        {resolvedParams &&
+        book.status === "completed" &&
+        getPostCompleteReadingStage(resolvedParams.id) === "questions" ? (
+          <div className='mb-4 rounded-lg border border-violet-200 bg-violet-50/90 p-4 dark:border-violet-800/50 dark:bg-violet-950/30'>
+            <p className='text-sm font-semibold text-theme-primary'>
+              완독 이후 · 독서 질문
+            </p>
+            <p className='mt-2 text-sm leading-relaxed text-theme-secondary'>
+              이 책이 던지는 핵심 질문을 하나 떠올려 적어 보세요. 질문만 적지 말고, 같은
+              화면의「질문과 함께 나의 생각」에 왜 이 질문을 남기는지 덧붙이면 나중에
+              읽을 때 훨씬 도움이 됩니다. 지금 건너뛰어도 언제든 이 목록에서 추가할 수
+              있어요.
+            </p>
+            <div className='mt-3 flex flex-wrap gap-2'>
+              <button
+                type='button'
+                onClick={openPostCompleteQuestionModal}
+                className='rounded-lg bg-accent-theme px-3 py-2 text-sm font-medium text-white hover:bg-accent-theme-secondary'
+              >
+                질문 쓰기
+              </button>
+              <button
+                type='button'
+                onClick={dismissPostCompleteQuestionGuide}
+                className='rounded-lg border border-theme-tertiary bg-theme-secondary px-3 py-2 text-sm font-medium text-theme-primary hover:bg-theme-tertiary/60'
+              >
+                나중에 할게요
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {/* 뷰 모드 전환 */}
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-4'>
-          <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-lg font-semibold text-theme-primary'>
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-3 sm:p-4 mb-4'>
+          <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+            <h2 className='min-w-0 break-words text-base font-semibold leading-snug text-theme-primary sm:text-lg'>
               질문 목록 ({questions.length}개)
               {searchText && (
-                <span className='text-theme-tertiary font-normal'>
+                <span className='block font-normal text-theme-tertiary sm:inline'>
                   {" "}
                   · 검색 결과 {totalFiltered}개
                 </span>
               )}
             </h2>
-            <div className='flex gap-2'>
+            <div className='flex shrink-0 gap-2 self-start sm:self-center'>
               <button
                 onClick={() => setViewMode("tree")}
                 className={`p-2 rounded-lg transition-colors ${
@@ -378,8 +474,8 @@ export default function QuestionsPage({
               </button>
             </div>
           </div>
-            <div className='flex flex-col sm:flex-row gap-3 mb-4'>
-              <div className='flex-1 relative'>
+            <div className='mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch'>
+              <div className='relative min-w-0 flex-1'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-theme-tertiary' />
                 <input
                   type='text'
@@ -392,19 +488,20 @@ export default function QuestionsPage({
                   className='w-full pl-9 pr-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-accent-theme'
                 />
               </div>
-              <div className='flex gap-2 items-center shrink-0'>
-                <span className='text-sm text-theme-tertiary'>정렬</span>
-                <select
+              <div className='flex w-full shrink-0 items-center gap-2 sm:w-44 sm:min-w-[11rem]'>
+                <span className='hidden text-sm text-theme-tertiary sm:inline'>
+                  정렬
+                </span>
+                <Select
                   value={sortOrder}
-                  onChange={(e) => {
-                    setSortOrder(e.target.value as "recent" | "oldest")
+                  onChange={(v) => {
+                    setSortOrder(v)
                     setCurrentPage(1)
                   }}
-                  className='px-3 py-2 rounded-lg border border-theme-tertiary bg-theme-primary text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-                >
-                  <option value='recent'>최신순</option>
-                  <option value='oldest'>오래된순</option>
-                </select>
+                  options={QUESTION_SORT_OPTIONS}
+                  variant='toolbar'
+                  aria-label='정렬'
+                />
               </div>
             </div>
 
@@ -417,7 +514,7 @@ export default function QuestionsPage({
               </p>
               <div className='flex flex-wrap justify-center gap-2'>
                 <button
-                  onClick={() => setIsAddModalOpen(true)}
+                  onClick={openAddQuestionModal}
                   className='px-4 py-2 bg-accent-theme text-white rounded-lg hover:bg-accent-theme-secondary transition-colors'
                 >
                   질문 추가하기
@@ -449,7 +546,7 @@ export default function QuestionsPage({
                   defaultExpanded={true}
                 />
               ) : (
-                <div className='space-y-3'>
+                <div className='space-y-4 sm:space-y-3'>
                   {paginatedQuestions.map((question: BookQuestion) => (
                     <QuestionCard
                       key={question.id}
@@ -478,10 +575,12 @@ export default function QuestionsPage({
         {resolvedParams && (
           <QuestionAddModal
             isOpen={isAddModalOpen}
-            onClose={() => setIsAddModalOpen(false)}
+            onClose={closeAddQuestionModal}
             onSave={handleQuestionAdd}
             bookId={resolvedParams.id}
             existingQuestions={questions}
+            bannerMessage={questionAddBanner}
+            defaultReadingPhase={addModalReadingPhase}
           />
         )}
 

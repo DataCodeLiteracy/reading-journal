@@ -296,7 +296,7 @@ export default function ChecklistsPage() {
               className='flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors'
             >
               <Plus className='h-4 w-4' />
-              사전 독서 템플릿
+              읽기 준비 템플릿
             </button>
             <button
               onClick={() => getChecklistTemplate("long-term")}
@@ -365,7 +365,7 @@ export default function ChecklistsPage() {
                     <div>
                       <h3 className='font-semibold text-theme-primary'>
                         {checklist.type === "pre-reading"
-                          ? "사전 독서 체크리스트"
+                          ? "읽기 준비 체크리스트"
                           : "장기 체크리스트"}
                       </h3>
                       <p className='text-sm text-theme-secondary'>

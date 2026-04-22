@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import {
-  ArrowLeft,
   Star,
   BookOpen,
   Save,
@@ -29,6 +28,8 @@ import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
 import { ReadingContentPackService } from "@/services/readingContentPackService"
 import { gradeReadingReview } from "@/lib/readingAiClient"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import { navigateBackSmart } from "@/utils/navigateBack"
 
 export default function ReviewPage({
   params,
@@ -191,9 +192,9 @@ export default function ReviewPage({
       if (book.review) {
         setIsEditMode(false)
       } else {
+        const shelfBase = `/book/${resolvedParams?.id || book.id}/${resolvedParams?.user_id || book.user_id}`
         setTimeout(() => {
-          setIsSaving(false)
-          router.back()
+          navigateBackSmart(router, shelfBase)
         }, 1000)
       }
       setIsSaving(false)
@@ -302,6 +303,9 @@ export default function ReviewPage({
   }
 
   const isOwner = userUid === book.user_id
+  const bookBase = resolvedParams
+    ? `/book/${resolvedParams.id}/${resolvedParams.user_id}`
+    : `/book/${book.id}/${book.user_id}`
   const canViewReview = !!book.review && (isOwner || !!book.reviewIsPublic)
   const showViewMode = canViewReview && !isEditMode
   const showEditMode = isOwner && (!book.review || isEditMode)
@@ -310,15 +314,11 @@ export default function ReviewPage({
     return (
       <div className='min-h-screen bg-theme-gradient pb-20'>
         <div className='container mx-auto px-4 py-4'>
-          <div className='flex items-center gap-4 mb-6'>
-            <button onClick={() => router.back()} className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'>
-              <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-            </button>
-            <div className='flex-1'>
-              <h1 className='text-xl font-bold text-theme-primary'>독서 리뷰</h1>
-              <p className='text-sm text-theme-secondary'>{book.title}</p>
-            </div>
-          </div>
+          <BookSubpageHeader
+            pageTitle='독서 리뷰'
+            contextTitle={book.title}
+            fallbackPath={bookBase}
+          />
           <div className='bg-theme-secondary rounded-lg shadow-sm p-8 text-center'>
             <Star className='h-12 w-12 text-gray-400 mx-auto mb-4' />
             <p className='text-theme-secondary'>{!book.review ? "아직 리뷰가 없습니다." : "이 리뷰는 비공개입니다."}</p>
@@ -345,37 +345,33 @@ export default function ReviewPage({
             </div>
           )}
 
-          {/* 헤더 */}
-          <div className='flex items-center gap-3 mb-6'>
-            <button
-              onClick={() => router.back()}
-              className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-            >
-              <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-            </button>
-            <div className='flex-1 min-w-0'>
-              <h1 className='text-lg font-bold text-theme-primary truncate'>{book.title}</h1>
-              <p className='text-xs text-theme-secondary'>독서 리뷰</p>
-            </div>
-            {isOwner && (
-              <div className='flex items-center gap-2'>
-                <button
-                  onClick={() => setIsEditMode(true)}
-                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow shrink-0'
-                  title='수정'
-                >
-                  <PenSquare className='h-5 w-5 text-theme-secondary' />
-                </button>
-                <button
-                  onClick={() => setIsDeleteReviewModalOpen(true)}
-                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow text-red-500 hover:text-red-600 shrink-0'
-                  title='리뷰 삭제'
-                >
-                  <Trash2 className='h-5 w-5' />
-                </button>
-              </div>
-            )}
-          </div>
+          <BookSubpageHeader
+            pageTitle='독서 리뷰'
+            contextTitle={book.title}
+            fallbackPath={bookBase}
+            trailing={
+              isOwner ? (
+                <div className='flex items-center gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => setIsEditMode(true)}
+                    className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow shrink-0'
+                    title='수정'
+                  >
+                    <PenSquare className='h-5 w-5 text-theme-secondary' />
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setIsDeleteReviewModalOpen(true)}
+                    className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow text-red-500 hover:text-red-600 shrink-0'
+                    title='리뷰 삭제'
+                  >
+                    <Trash2 className='h-5 w-5' />
+                  </button>
+                </div>
+              ) : null
+            }
+          />
 
           {/* 리뷰 카드 */}
           <div className='bg-theme-secondary rounded-xl shadow-sm border-card overflow-hidden'>
@@ -518,20 +514,11 @@ export default function ReviewPage({
           </div>
         )}
 
-        <div className='flex items-center gap-4 mb-6'>
-          <button
-            onClick={() => router.back()}
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='flex-1'>
-            <h1 className='text-xl font-bold text-theme-primary'>
-              독서 리뷰 작성
-            </h1>
-            <p className='text-sm text-theme-secondary'>{book.title}</p>
-          </div>
-        </div>
+        <BookSubpageHeader
+          pageTitle='독서 리뷰 작성'
+          contextTitle={book.title}
+          fallbackPath={bookBase}
+        />
 
         <div className='bg-theme-secondary rounded-lg shadow-sm p-6 mb-6'>
           <div className='flex items-start gap-4'>
@@ -679,7 +666,10 @@ export default function ReviewPage({
 
         <div className='flex gap-3'>
           <button
-            onClick={() => (book.review ? setIsEditMode(false) : router.back())}
+            type='button'
+            onClick={() =>
+              book.review ? setIsEditMode(false) : navigateBackSmart(router, bookBase)
+            }
             className='flex-1 px-4 py-3 border border-theme-tertiary text-theme-primary rounded-lg hover:bg-theme-tertiary transition-colors'
           >
             취소

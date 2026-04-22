@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, PenSquare, Trash2 } from "lucide-react"
+import { PenSquare, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { Quote } from "@/types/content"
@@ -14,6 +14,7 @@ import CommentSection from "@/components/CommentSection"
 import ConfirmModal from "@/components/ConfirmModal"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
 
 export default function QuoteDetailPage({
   params,
@@ -109,45 +110,36 @@ export default function QuoteDetailPage({
     )
   }
 
+  const bookBase = `/book/${resolvedParams!.id}/${resolvedParams!.user_id}`
+
   return (
     <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-4'>
-        <div className='flex items-center gap-4 mb-6'>
-          <button
-            onClick={() =>
-              router.push(
-                `/book/${resolvedParams!.id}/${resolvedParams!.user_id}`
-              )
-            }
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='flex-1 min-w-0'>
-            <h1 className='text-xl font-semibold text-theme-primary truncate'>
-              {book.title}
-            </h1>
-            <p className='text-sm text-theme-secondary'>구절 기록</p>
-          </div>
-          {isOwner && (
-            <div className='flex items-center gap-2'>
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-                title='수정'
-              >
-                <PenSquare className='h-5 w-5 text-theme-secondary' />
-              </button>
-              <button
-                onClick={() => setIsDeleteModalOpen(true)}
-                className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow text-red-500 hover:text-red-600'
-                title='삭제'
-              >
-                <Trash2 className='h-5 w-5' />
-              </button>
-            </div>
-          )}
-        </div>
+        <BookSubpageHeader
+          pageTitle='구절 기록'
+          contextTitle={book.title}
+          fallbackPath={`${bookBase}/quotes`}
+          trailing={
+            isOwner ? (
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+                  title='수정'
+                >
+                  <PenSquare className='h-5 w-5 text-theme-secondary' />
+                </button>
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow text-red-500 hover:text-red-600'
+                  title='삭제'
+                >
+                  <Trash2 className='h-5 w-5' />
+                </button>
+              </div>
+            ) : null
+          }
+        />
 
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
           <QuoteCard
@@ -186,7 +178,7 @@ export default function QuoteDetailPage({
         onConfirm={async () => {
           if (!quote || !resolvedParams) return
           await QuoteService.deleteQuote(quote.id)
-          router.push(`/book/${resolvedParams.id}/${resolvedParams.user_id}`)
+          router.push(`${bookBase}/quotes`)
         }}
         title='구절 기록 삭제'
         message='이 구절 기록을 삭제하시겠습니까? 삭제하면 달린 생각(댓글)도 모두 삭제됩니다.'

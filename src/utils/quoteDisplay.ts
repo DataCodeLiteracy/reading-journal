@@ -3,14 +3,11 @@
  * generalThoughts에 저장된 목적(purpose) 영문 값을 한글로 매핑해 화면에만 사용
  */
 
-export const PURPOSE_LABELS: Record<string, string> = {
-  core_message: "핵심 메시지",
-  perspective_shift: "시각 전환",
-  deep_reflection: "깊은 성찰",
-  real_life_connection: "실생활 연결",
-  author_problem_awareness: "작가 의도 인식",
-  memorable_expression: "인상적 표현",
-}
+import { QUOTE_PURPOSE_META } from "@/constants/readingMeta"
+
+export const PURPOSE_LABELS: Record<string, string> = Object.fromEntries(
+  QUOTE_PURPOSE_META.map((m) => [m.slug, m.label]),
+)
 
 /**
  * generalThoughts 원문에서 목적 태그를 한글로 치환해 표시용 문자열 반환.

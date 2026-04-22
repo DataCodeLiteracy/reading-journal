@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { Suspense, useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
 import { BookService } from "@/services/bookService"
 import { ReadingContentPackService } from "@/services/readingContentPackService"
@@ -12,15 +11,50 @@ import type { ReadingContentPack, ReadingExcerptChapterResult } from "@/types/re
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import { gradeReadingExcerpt } from "@/lib/readingAiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
 
 const MAX_AI_GRADES_PER_CHAPTER = 3
 
-export default function ReadingExcerptChapterPage({
+function ChapterKeywordReveal({ keywords }: { keywords: string[] }) {
+  const [open, setOpen] = useState(false)
+  if (keywords.length === 0) return null
+  if (open) {
+    return (
+      <div className="mb-4 flex flex-wrap gap-1.5 rounded-lg border border-theme-tertiary bg-theme-secondary p-3">
+        {keywords.map((k) => (
+          <span
+            key={k}
+            className="rounded-full bg-theme-tertiary/80 px-2.5 py-1 text-xs font-medium text-theme-primary"
+          >
+            {k}
+          </span>
+        ))}
+      </div>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className="mb-4 w-full rounded-lg border border-dashed border-theme-tertiary bg-gradient-to-b from-theme-tertiary/60 to-theme-tertiary/30 px-4 py-5 text-center text-sm text-theme-secondary shadow-inner transition hover:border-accent-theme/40 hover:from-theme-tertiary/80"
+    >
+      <span className="block select-none blur-[6px]" aria-hidden>
+        키워드 힌트
+      </span>
+      <span className="mt-2 block text-xs font-medium text-accent-theme">
+        탭하면 이 챕터 키워드 힌트가 나옵니다
+      </span>
+    </button>
+  )
+}
+
+function ReadingExcerptChapterContent({
   params,
 }: {
   params: Promise<{ id: string; user_id: string; chapterIndex: string }>
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { userUid } = useAuth()
   const [resolved, setResolved] = useState<{
     id: string
@@ -34,6 +68,11 @@ export default function ReadingExcerptChapterPage({
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const querySuffix = useMemo(() => {
+    const s = searchParams.toString()
+    return s ? `?${s}` : ""
+  }, [searchParams])
 
   useEffect(() => {
     params.then((p) => {
@@ -79,20 +118,23 @@ export default function ReadingExcerptChapterPage({
 
   if (!resolved || loading) return <GenericRouteSkeleton rows={4} />
 
+  const bookBase = `/book/${resolved.id}/${resolved.user_id}`
+  const hubListPath = `${bookBase}/reading-excerpt${querySuffix}`
+
   const ch = pack?.excerptChapterSummaries?.[resolved.chapterIndex]
   if (!book || !ch) {
     return (
-      <div className="p-6 text-theme-secondary">
-        챕터를 찾을 수 없습니다.{" "}
-        <button
-          type="button"
-          className="text-accent-theme"
-          onClick={() =>
-            router.push(`/book/${resolved.id}/${resolved.user_id}/reading-excerpt`)
-          }
-        >
-          목록
-        </button>
+      <div className="min-h-screen bg-theme-gradient p-6">
+        <p className="text-theme-secondary">
+          챕터를 찾을 수 없습니다.{" "}
+          <button
+            type="button"
+            className="text-accent-theme underline"
+            onClick={() => router.push(hubListPath)}
+          >
+            목록
+          </button>
+        </p>
       </div>
     )
   }
@@ -159,23 +201,17 @@ export default function ReadingExcerptChapterPage({
   return (
     <div className="min-h-screen bg-theme-gradient pb-24">
       <div className="container mx-auto px-4 py-4 max-w-2xl">
-        <button
-          type="button"
-          onClick={() =>
-            router.push(`/book/${resolved.id}/${resolved.user_id}/reading-excerpt`)
-          }
-          className="mb-4 inline-flex items-center gap-2 text-sm text-theme-secondary"
-        >
-          <ArrowLeft className="h-4 w-4" /> 챕터 목록
-        </button>
+        <BookSubpageHeader
+          pageTitle={ch.chapter_title}
+          contextTitle={book.title}
+          fallbackPath={hubListPath}
+        />
 
-        <h1 className="text-lg font-semibold text-theme-primary mb-2">{ch.chapter_title}</h1>
         <p className="text-xs font-medium text-accent-theme mb-2">
           이 챕터 AI 채점: {remainingGrades}회 남음 (최대 {MAX_AI_GRADES_PER_CHAPTER}회)
         </p>
-        <p className="text-xs text-theme-tertiary mb-4">
-          참고 키워드: {(ch.key_keywords ?? []).join(", ")}
-        </p>
+
+        <ChapterKeywordReveal keywords={ch.key_keywords ?? []} />
 
         <div className="rounded-lg border border-theme-tertiary bg-theme-tertiary/30 p-3 mb-4 text-sm text-theme-secondary max-h-40 overflow-y-auto">
           <p className="text-xs font-medium text-theme-tertiary mb-1">참고 요약 (채점 기준)</p>
@@ -197,7 +233,7 @@ export default function ReadingExcerptChapterPage({
                 type="button"
                 onClick={() =>
                   router.push(
-                    `/book/${resolved.id}/${resolved.user_id}/reading-excerpt/${resolved.chapterIndex + 1}`
+                    `${bookBase}/reading-excerpt/${resolved.chapterIndex + 1}${querySuffix}`,
                   )
                 }
                 className="mt-4 w-full py-3 rounded-lg border border-accent-theme/40 bg-accent-theme/10 text-accent-theme font-medium hover:bg-accent-theme/20"
@@ -244,5 +280,15 @@ export default function ReadingExcerptChapterPage({
         </button>
       </div>
     </div>
+  )
+}
+
+export default function ReadingExcerptChapterPage(props: {
+  params: Promise<{ id: string; user_id: string; chapterIndex: string }>
+}) {
+  return (
+    <Suspense fallback={<GenericRouteSkeleton rows={4} />}>
+      <ReadingExcerptChapterContent {...props} />
+    </Suspense>
   )
 }

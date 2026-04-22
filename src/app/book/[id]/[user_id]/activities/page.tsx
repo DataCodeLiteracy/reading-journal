@@ -1,12 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import {
-  ArrowLeft,
-  Plus,
-  ClipboardCheck,
-  BookMarked,
-} from "lucide-react"
+import { Plus, ClipboardCheck, BookMarked } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { BookService } from "@/services/bookService"
@@ -27,6 +22,8 @@ import { ReadingExcerptProgressService } from "@/services/readingExcerptProgress
 import { gradedExamCount, totalExamQuestionCount } from "@/utils/readingExamNav"
 import { useAuth } from "@/contexts/AuthContext"
 import { BookDetailRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import { withReturnQuery } from "@/utils/navigateBack"
 
 export default function BookActivitiesHubPage({
   params,
@@ -170,6 +167,14 @@ export default function BookActivitiesHubPage({
 
   const base = `/book/${resolved.id}/${resolved.user_id}`
 
+  const pushWithCurrentReturn = (targetPath: string) => {
+    const here =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : targetPath
+    router.push(withReturnQuery(targetPath, here))
+  }
+
   return (
     <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-4 max-w-2xl'>
@@ -179,24 +184,11 @@ export default function BookActivitiesHubPage({
           </div>
         )}
 
-        <div className='flex items-center gap-3 mb-6'>
-          <button
-            type='button'
-            onClick={() => router.push(base)}
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-            aria-label='책으로 돌아가기'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='min-w-0 flex-1'>
-            <p className='text-xs text-theme-tertiary uppercase tracking-wide'>
-              활동
-            </p>
-            <h1 className='text-lg font-semibold text-theme-primary truncate'>
-              {book.title}
-            </h1>
-          </div>
-        </div>
+        <BookSubpageHeader
+          pageTitle='활동'
+          contextTitle={book.title}
+          fallbackPath={base}
+        />
 
         <p className='text-sm text-theme-secondary mb-6'>
           골든벨, 이해도 점검, 발췌 요약처럼 문제·채점이 있는 활동입니다.
@@ -317,7 +309,7 @@ export default function BookActivitiesHubPage({
                     <button
                       type='button'
                       onClick={() =>
-                        router.push(`${base}/golden-bell/${quiz.id}`)
+                        pushWithCurrentReturn(`${base}/golden-bell/${quiz.id}`)
                       }
                       className='flex-1 py-2 px-4 bg-accent-theme hover:bg-accent-theme-secondary text-white text-sm font-medium rounded-lg transition-colors'
                     >
@@ -490,7 +482,7 @@ export default function BookActivitiesHubPage({
                 </ul>
                 <button
                   type='button'
-                  onClick={() => router.push(`${base}/reading-exam`)}
+                  onClick={() => pushWithCurrentReturn(`${base}/reading-exam`)}
                   className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
                 >
                   이해도 점검 하기
@@ -559,7 +551,7 @@ export default function BookActivitiesHubPage({
               </p>
               <button
                 type='button'
-                onClick={() => router.push(`${base}/reading-excerpt`)}
+                onClick={() => pushWithCurrentReturn(`${base}/reading-excerpt`)}
                 className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
               >
                 발췌 요약 쓰기

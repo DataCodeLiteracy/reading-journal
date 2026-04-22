@@ -10,12 +10,15 @@ export type SelectOption<T extends string = string> = {
   optionClassName?: string
 }
 
-export type SelectVariant = "form-modal"
+export type SelectVariant = "form-modal" | "toolbar"
 
 const variantClass: Record<SelectVariant, string> = {
   /** 모달·폼 전체 너비 — 터치 친화 높이 (focus-level form-modal 정렬) */
   "form-modal":
     "h-10 min-h-10 max-md:h-auto max-md:min-h-[2.75rem] max-md:py-2 max-md:leading-normal rounded-md border border-theme-secondary bg-theme-primary px-3 py-0 text-base font-medium text-theme-primary shadow-none hover:border-theme-primary",
+  /** 목록·필터 바 — 입력 필드와 동일한 느낌의 rounded-lg */
+  toolbar:
+    "h-10 min-h-10 max-md:min-h-[2.75rem] rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-0 text-sm font-medium text-theme-primary shadow-none hover:border-theme-primary",
 }
 
 type SelectProps<T extends string> = {

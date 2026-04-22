@@ -97,6 +97,10 @@ export interface ReadingExcerptProgress {
   titleKey: string
   currentChapterIndex: number
   chapters: Record<number, ReadingExcerptChapterResult>
+  /** 책 전체에 대한 나만의 요약(JSON의 overall_summary와 별도) */
+  overallSummaryUserText?: string
+  /** 완독 후 남기는 핵심 메시지(한 줄·두 줄 등, 여러 개 추가 가능) */
+  coreMessages?: string[]
   updated_at?: AppDate
 }
 

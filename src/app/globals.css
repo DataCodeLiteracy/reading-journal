@@ -218,9 +218,29 @@ body {
 }
 
 [data-theme="dark"] .bg-theme-backdrop {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.3);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
+}
+
+/**
+ * 하단 시트: 페이지·카드와 같은 톤 계열에서 한 끗만 올려 자연스럽게 구분
+ * (과한 대비·회색 띠 제거, 다크에서도 글자 대비 유지 가능한 면)
+ */
+.bg-bottom-sheet-surface {
+  background-color: color-mix(
+    in srgb,
+    var(--background-primary) 88%,
+    var(--background-secondary) 12%
+  );
+}
+
+[data-theme="dark"] .bg-bottom-sheet-surface {
+  background-color: color-mix(
+    in srgb,
+    var(--background-secondary) 82%,
+    var(--background-tertiary) 18%
+  );
 }
 
 /* 카드/박스 공통 테두리 - 자연스럽고 깔끔한 구분 */

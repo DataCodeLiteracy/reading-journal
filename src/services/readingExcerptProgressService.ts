@@ -31,27 +31,37 @@ export class ReadingExcerptProgressService {
     partial: Partial<
       Pick<
         ReadingExcerptProgress,
-        "currentChapterIndex" | "chapters"
+        | "currentChapterIndex"
+        | "chapters"
+        | "overallSummaryUserText"
+        | "coreMessages"
       >
     >
   ): Promise<void> {
     const id = docId(userId, bookId)
     const existing = await this.get(userId, bookId)
+    const payload: Record<string, unknown> = {
+      userId,
+      bookId,
+      titleKey,
+      currentChapterIndex:
+        partial.currentChapterIndex ?? existing?.currentChapterIndex ?? 0,
+      chapters: {
+        ...(existing?.chapters ?? {}),
+        ...(partial.chapters ?? {}),
+      } as Record<number, ReadingExcerptChapterResult>,
+      updated_at: ApiClient.getServerTimestamp(),
+    }
+    if (partial.overallSummaryUserText !== undefined) {
+      payload.overallSummaryUserText = partial.overallSummaryUserText
+    }
+    if (partial.coreMessages !== undefined) {
+      payload.coreMessages = partial.coreMessages
+    }
     await ApiClient.createDocument(
       COLLECTION,
       id,
-      {
-        userId,
-        bookId,
-        titleKey,
-        currentChapterIndex:
-          partial.currentChapterIndex ?? existing?.currentChapterIndex ?? 0,
-        chapters: {
-          ...(existing?.chapters ?? {}),
-          ...(partial.chapters ?? {}),
-        } as Record<number, ReadingExcerptChapterResult>,
-        updated_at: ApiClient.getServerTimestamp(),
-      } as Record<string, unknown>,
+      payload as Record<string, unknown>,
       { merge: true }
     )
   }

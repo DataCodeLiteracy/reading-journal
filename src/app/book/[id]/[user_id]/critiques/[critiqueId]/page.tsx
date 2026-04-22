@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, BookOpen, PenSquare, Heart, Trash2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { BookOpen, PenSquare, Heart, Trash2 } from "lucide-react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Book } from "@/types/book"
 import { Critique } from "@/types/content"
 import { useAuth } from "@/contexts/AuthContext"
@@ -13,6 +13,8 @@ import CommentSection from "@/components/CommentSection"
 import ConfirmModal from "@/components/ConfirmModal"
 import { ApiError } from "@/lib/apiClient"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import { BookSubpageHeader } from "@/components/BookSubpageHeader"
+import { withReturnQuery } from "@/utils/navigateBack"
 
 export default function CritiqueDetailPage({
   params,
@@ -20,6 +22,8 @@ export default function CritiqueDetailPage({
   params: Promise<{ id: string; user_id: string; critiqueId: string }>
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { userUid } = useAuth()
   const [resolvedParams, setResolvedParams] = useState<{
     id: string
@@ -134,48 +138,47 @@ export default function CritiqueDetailPage({
   }
 
   const isOwner = userUid === critique.user_id
+  const bookBase = `/book/${resolvedParams!.id}/${resolvedParams!.user_id}`
+  const returnFromHere =
+    pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "")
 
   return (
     <div className='min-h-screen bg-theme-gradient pb-20'>
       <div className='container mx-auto px-4 py-4'>
-        <div className='flex items-center gap-4 mb-6'>
-          <button
-            onClick={() =>
-              router.push(`/book/${resolvedParams!.id}/${resolvedParams!.user_id}`)
-            }
-            className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-          >
-            <ArrowLeft className='h-5 w-5 text-theme-secondary' />
-          </button>
-          <div className='flex-1 min-w-0'>
-            <h1 className='text-xl font-semibold text-theme-primary truncate'>
-              {book.title}
-            </h1>
-            <p className='text-sm text-theme-secondary'>서평</p>
-          </div>
-          {isOwner && (
-            <div className='flex items-center gap-2'>
-              <button
-                onClick={() =>
-                  router.push(
-                    `/book/${resolvedParams!.id}/${resolvedParams!.user_id}/critiques/${resolvedParams!.critiqueId}/edit`
-                  )
-                }
-                className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
-                title='수정'
-              >
-                <PenSquare className='h-5 w-5 text-theme-secondary' />
-              </button>
-              <button
-                onClick={() => setIsDeleteModalOpen(true)}
-                className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow text-red-500 hover:text-red-600'
-                title='삭제'
-              >
-                <Trash2 className='h-5 w-5' />
-              </button>
-            </div>
-          )}
-        </div>
+        <BookSubpageHeader
+          pageTitle='서평'
+          contextTitle={book.title}
+          fallbackPath={bookBase}
+          trailing={
+            isOwner ? (
+              <div className='flex items-center gap-2'>
+                <button
+                  type='button'
+                  onClick={() =>
+                    router.push(
+                      withReturnQuery(
+                        `${bookBase}/critiques/${resolvedParams!.critiqueId}/edit`,
+                        returnFromHere,
+                      ),
+                    )
+                  }
+                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+                  title='수정'
+                >
+                  <PenSquare className='h-5 w-5 text-theme-secondary' />
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow text-red-500 hover:text-red-600'
+                  title='삭제'
+                >
+                  <Trash2 className='h-5 w-5' />
+                </button>
+              </div>
+            ) : null
+          }
+        />
 
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
           <p className='text-xs text-theme-tertiary mb-2'>{book.title}</p>

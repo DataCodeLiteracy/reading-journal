@@ -130,7 +130,7 @@ export default function ChecklistModal({
               </button>
             </div>
           ) : (
-            /* 사전 독서 체크리스트: 체크 확인 필요 */
+            /* 읽기 준비 체크리스트: 체크 확인 필요 */
             <div className='space-y-3 sm:space-y-4'>
               {/* 항목 확인 상태와 나중에 버튼 */}
               <div className='flex items-center justify-between'>

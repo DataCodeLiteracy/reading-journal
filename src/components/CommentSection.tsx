@@ -20,6 +20,9 @@ import ConfirmModal from "@/components/ConfirmModal"
 import { CommentThreadSkeleton } from "@/components/skeletons"
 import { queryKeys } from "@/lib/queryKeys"
 
+/** `data ?? []`가 매 렌더마다 새 배열이 되어 useEffect 무한 루프를 막기 위한 고정 참조 */
+const EMPTY_COMMENTS: Comment[] = []
+
 interface CommentSectionProps {
   contentType: ContentType
   contentId: string
@@ -46,7 +49,7 @@ export default function CommentSection({
     staleTime: 30_000,
   })
 
-  const comments = commentsQuery.data ?? []
+  const comments = commentsQuery.data ?? EMPTY_COMMENTS
 
   const authorIds = useMemo(
     () => [...new Set(comments.map((c) => c.user_id))],
@@ -80,8 +83,12 @@ export default function CommentSection({
   const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isPublic || comments.length === 0) {
-      setCommentLikeState({})
+    if (!isPublic) return
+
+    if (comments.length === 0) {
+      setCommentLikeState((prev) =>
+        Object.keys(prev).length === 0 ? prev : {},
+      )
       return
     }
 

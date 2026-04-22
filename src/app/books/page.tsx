@@ -27,6 +27,7 @@ import { ApiError } from "@/lib/apiClient"
 import { queryKeys } from "@/lib/queryKeys"
 import { GenericRouteSkeleton, SkLine } from "@/components/skeletons"
 import Pagination from "@/components/Pagination"
+import Select, { type SelectOption } from "@/components/Select"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
@@ -179,6 +180,41 @@ function BooksPageContent() {
   })
 
   const visibleBooks = booksPageQuery.data?.items ?? []
+
+  const librarySortOptions = useMemo((): SelectOption<
+    "recently_added" | "recently_updated" | "recently_read"
+  >[] => {
+    const opts: SelectOption<
+      "recently_added" | "recently_updated" | "recently_read"
+    >[] = [
+      { value: "recently_added", label: "최근 등록한 순" },
+      { value: "recently_updated", label: "최근 수정한 순" },
+    ]
+    if (
+      activeTab === "reading" ||
+      activeTab === "completed" ||
+      activeTab === "on-hold"
+    ) {
+      opts.push({ value: "recently_read", label: "최근 읽은 순" })
+    }
+    return opts
+  }, [activeTab])
+
+  const levelSelectOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...BOOK_LEVELS.map((l) => ({ value: l, label: l })),
+    ],
+    [],
+  )
+
+  const categorySelectOptions = useMemo(
+    (): SelectOption<string>[] => [
+      { value: "", label: "전체" },
+      ...BOOK_FIELDS.map((f) => ({ value: f, label: f })),
+    ],
+    [],
+  )
 
   useEffect(() => {
     setCurrentPage(1)
@@ -446,28 +482,17 @@ function BooksPageContent() {
         {/* 정렬 */}
         <div className='mb-4'>
           <label className='block text-xs text-theme-tertiary mb-1'>정렬</label>
-          <select
+          <Select
             value={sortOrder}
-            onChange={(e) =>
-              setSortOrder(
-                e.target.value as
-                  | "recently_added"
-                  | "recently_updated"
-                  | "recently_read"
-              )
-            }
-            className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-          >
-            <option value='recently_added'>최근 등록한 순</option>
-            <option value='recently_updated'>최근 수정한 순</option>
-            {(activeTab === "reading" || activeTab === "completed" || activeTab === "on-hold") && (
-              <option value='recently_read'>최근 읽은 순</option>
-            )}
-          </select>
+            onChange={setSortOrder}
+            options={librarySortOptions}
+            variant='toolbar'
+            aria-label='정렬'
+          />
         </div>
 
         {/* 필터 토글 */}
-        <div className='bg-theme-secondary rounded-lg mb-4 shadow-sm border-card overflow-hidden'>
+        <div className='bg-theme-secondary rounded-lg mb-4 shadow-sm border-card overflow-visible'>
           <button
             type='button'
             onClick={() => setFilterOpen((o) => !o)}
@@ -493,33 +518,23 @@ function BooksPageContent() {
               <div className='grid grid-cols-2 gap-3 pt-3'>
                 <div>
                   <label className='block text-xs text-theme-tertiary mb-1'>레벨</label>
-                  <select
+                  <Select
                     value={levelFilter}
-                    onChange={(e) => setLevelFilter(e.target.value as BookLevel | "")}
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {BOOK_LEVELS.map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setLevelFilter(v as BookLevel | "")}
+                    options={levelSelectOptions}
+                    variant='toolbar'
+                    aria-label='레벨 필터'
+                  />
                 </div>
                 <div>
                   <label className='block text-xs text-theme-tertiary mb-1'>분야</label>
-                  <select
+                  <Select
                     value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value as BookField | "")}
-                    className='w-full rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-2 text-sm text-theme-primary'
-                  >
-                    <option value=''>전체</option>
-                    {BOOK_FIELDS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setCategoryFilter(v as BookField | "")}
+                    options={categorySelectOptions}
+                    variant='toolbar'
+                    aria-label='분야 필터'
+                  />
                 </div>
               </div>
               {(levelFilter || categoryFilter) && (

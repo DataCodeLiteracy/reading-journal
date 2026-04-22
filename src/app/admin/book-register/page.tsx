@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Upload, User, FileText } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
@@ -8,6 +8,7 @@ import { BookService } from "@/services/bookService"
 import { UserService } from "@/services/userService"
 import { Book } from "@/types/book"
 import { GenericRouteSkeleton } from "@/components/skeletons"
+import Select, { type SelectOption } from "@/components/Select"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 function parseCSVLine(line: string): string[] {
@@ -81,6 +82,19 @@ export default function AdminBookRegisterPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useBodyScrollLock(completePopup !== null)
+
+  const userSelectOptions = useMemo((): SelectOption<string>[] => {
+    const opts: SelectOption<string>[] = [
+      { value: "", label: "유저를 선택하세요" },
+    ]
+    for (const u of users) {
+      opts.push({
+        value: u.uid,
+        label: u.displayName || u.email || u.uid,
+      })
+    }
+    return opts
+  }, [users])
 
   useEffect(() => {
     if (!userData?.isAdmin) return
@@ -235,18 +249,15 @@ export default function AdminBookRegisterPage() {
             <User className='h-5 w-5 text-theme-tertiary' />
             <label className='font-medium text-theme-primary'>유저 선택</label>
           </div>
-          <select
-            value={selectedUid}
-            onChange={(e) => setSelectedUid(e.target.value)}
-            className='w-full max-w-md rounded-lg border border-theme-tertiary bg-theme-primary px-4 py-2 text-theme-primary focus:outline-none focus:ring-2 focus:ring-accent-theme'
-          >
-            <option value=''>유저를 선택하세요</option>
-            {users.map((u) => (
-              <option key={u.uid} value={u.uid}>
-                {u.displayName || u.email || u.uid}
-              </option>
-            ))}
-          </select>
+          <div className='max-w-md'>
+            <Select
+              value={selectedUid}
+              onChange={setSelectedUid}
+              options={userSelectOptions}
+              variant='toolbar'
+              aria-label='유저 선택'
+            />
+          </div>
         </div>
 
         <div className='bg-theme-secondary rounded-lg p-6 shadow-sm mb-4'>
