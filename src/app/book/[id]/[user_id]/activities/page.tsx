@@ -264,7 +264,7 @@ export default function BookActivitiesHubPage({
               <p className='text-theme-secondary mb-4'>
                 아직 골든벨 문제가 없습니다.
                 <br />
-                <span className='text-sm'>JSON 파일로 문제를 등록해보세요!</span>
+                <span className='text-sm'>자료가 등록되면 이곳에서 시작할 수 있습니다.</span>
               </p>
               {userData?.isAdmin && (
                 <button
@@ -438,8 +438,8 @@ export default function BookActivitiesHubPage({
                 type='button'
                 onClick={() => setReadingExamUploadOpen(true)}
                 className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
-                title='이해도 점검 JSON 등록·갱신'
-                aria-label='이해도 점검 JSON 등록·갱신'
+                title='이해도 점검 자료 등록·갱신'
+                aria-label='이해도 점검 자료 등록·갱신'
               >
                 <Plus className='h-4 w-4' />
               </button>
@@ -453,7 +453,7 @@ export default function BookActivitiesHubPage({
                 <br />
                 <span className='text-xs text-theme-tertiary'>
                   {userData?.isAdmin
-                    ? "우측 상단 + 버튼으로 JSON을 등록할 수 있습니다."
+                    ? "우측 상단 + 버튼으로 자료를 등록할 수 있습니다."
                     : "문제가 준비되면 이곳에서 시작할 수 있습니다."}
                 </span>
               </p>
@@ -526,8 +526,8 @@ export default function BookActivitiesHubPage({
                 type='button'
                 onClick={() => setReadingExcerptUploadOpen(true)}
                 className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
-                title='발췌 요약 JSON 등록·갱신'
-                aria-label='발췌 요약 JSON 등록·갱신'
+                title='발췺 요약 자료 등록·갱신'
+                aria-label='발췺 요약 자료 등록·갱신'
               >
                 <Plus className='h-4 w-4' />
               </button>
@@ -541,7 +541,7 @@ export default function BookActivitiesHubPage({
                 <br />
                 <span className='text-xs text-theme-tertiary'>
                   {userData?.isAdmin
-                    ? "우측 상단 + 버튼으로 JSON을 등록할 수 있습니다."
+                    ? "우측 상단 + 버튼으로 자료를 등록할 수 있습니다."
                     : "목차를 등록하거나 자료가 준비되면 이곳에서 시작할 수 있습니다."}
                 </span>
               </p>
@@ -551,7 +551,7 @@ export default function BookActivitiesHubPage({
               <p className='text-sm text-theme-secondary mb-4'>
                 {excerptProgressSummary.hasJson
                   ? "챕터별 참고 요약을 보고 나만의 요약을 쓰면 AI가 이해도를 점수로 피드백합니다."
-                  : "목차 기반으로 챕터별 사전 답안을 미리 작성할 수 있습니다. JSON 등록 후 AI 채점이 가능합니다."}
+                  : "목차 기반으로 챕터별 사전 답안을 미리 작성할 수 있습니다. 참고 자료 등록 후 AI 채점이 가능합니다."}
                 {userUid && excerptProgressSummary.done > 0 && (
                   <span className='mt-2 block text-sm font-medium text-theme-primary'>
                     내 진행: 제출 완료 {excerptProgressSummary.done} / {excerptProgressSummary.total}챕터

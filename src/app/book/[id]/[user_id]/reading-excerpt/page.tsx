@@ -325,13 +325,13 @@ function ReadingExcerptHubContent({
             ) : (
               <ul className="text-sm text-theme-secondary space-y-2 list-disc pl-5 mb-5">
                 <li>목차가 등록되어 있습니다. 각 챕터에 나만의 요약을 미리 작성해 두세요.</li>
-                <li>발췺 요약 JSON이 등록되면 참고 요약과 AI 채점을 이용할 수 있습니다.</li>
+                <li>참고 자료가 등록되면 참고 요약과 AI 채점을 이용할 수 있습니다.</li>
                 <li>시작 후에는 책 전체 요약·핵심 메시지도 적을 수 있습니다.</li>
               </ul>
             )}
             {pack?.excerptBookMetadata?.overall_summary && (
               <p className="text-xs text-theme-tertiary mb-4">
-                JSON에 등록된 참고용 전체 요약은 처음에는 가려 두었다가, 탭하면 볼 수 있습니다.
+                참고 자료에 포함된 전체 요약은 처음에는 가려 두었다가, 탭하면 볼 수 있습니다.
               </p>
             )}
             <button
@@ -467,7 +467,7 @@ function ReadingExcerptHubContent({
                 <p className="text-theme-primary font-medium">
                   작성 완료 {doneCount + draftCount} / {effectiveCount}챕터
                 </p>
-                <p className="text-theme-secondary mt-1">JSON이 등록되면 AI 채점을 받을 수 있습니다.</p>
+                <p className="text-theme-secondary mt-1">참고 자료가 등록되면 AI 채점을 받을 수 있습니다.</p>
               </div>
             )}
 

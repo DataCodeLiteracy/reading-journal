@@ -227,8 +227,21 @@ function ReadingExcerptChapterContent({
           />
 
           <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-3 text-xs text-blue-700 dark:text-blue-300">
-            발췌 요약 JSON이 아직 등록되지 않았습니다. 지금 작성한 내용은 저장되며, JSON 등록 후
+            아직 참고 자료가 등록되지 않았습니다. 지금 작성한 내용은 저장되며, 참고 자료 등록 후
             AI 채점을 진행할 수 있습니다.
+          </div>
+
+          <div className="mb-4 rounded-lg border border-theme-tertiary bg-theme-secondary p-4 shadow-sm">
+            <p className="text-xs font-medium text-theme-tertiary mb-1">챕터</p>
+            <p className="text-base font-semibold text-theme-primary leading-snug">
+              {tocCh?.path && <span className="text-accent-theme/70 text-xs font-normal mr-1.5">{tocCh.path}</span>}
+              {tocCh?.title}
+            </p>
+            {tocCh?.startPage != null && (
+              <p className="mt-1.5 inline-flex items-center gap-1 text-xs text-theme-tertiary bg-theme-tertiary/40 px-2 py-0.5 rounded-full">
+                {tocCh.startPage}p 시작
+              </p>
+            )}
           </div>
 
           {result?.userText && result.score == null ? (
@@ -358,6 +371,16 @@ function ReadingExcerptChapterContent({
           contextTitle={book.title}
           fallbackPath={hubListPath}
         />
+
+        <div className="mb-3 mt-1">
+          <p className="text-base font-semibold text-theme-primary leading-snug">
+            {ch.path && <span className="text-theme-tertiary text-sm mr-1.5">{ch.path}</span>}
+            {ch.title}
+          </p>
+          {ch.page_estimate && (
+            <p className="text-xs text-theme-tertiary mt-0.5">{ch.page_estimate}</p>
+          )}
+        </div>
 
         <p className="text-xs font-medium text-accent-theme mb-2">
           이 챕터 AI 채점: {remainingGrades}회 남음 (최대 {MAX_AI_GRADES_PER_CHAPTER}회)
