@@ -150,15 +150,18 @@ export class UserStatisticsService {
       }
 
       // users 컬렉션도 함께 업데이트 (레벨, 경험치, 총 독서시간이 있는 경우)
-      if (updatedStats.level !== undefined && updatedStats.experience !== undefined && updatedStats.totalReadingTime !== undefined) {
+      const safeLevel = safeStats.level as number | undefined
+      const safeExperience = safeStats.experience as number | undefined
+      const safeTotalReadingTime = safeStats.totalReadingTime as number | undefined
+      if (safeLevel !== undefined && safeExperience !== undefined && safeTotalReadingTime !== undefined) {
         try {
           await ApiClient.updateDocument<Partial<User>>(
             "users",
             user_id,
             {
-              level: updatedStats.level,
-              experience: updatedStats.experience,
-              totalReadingTime: updatedStats.totalReadingTime,
+              level: safeLevel,
+              experience: safeExperience,
+              totalReadingTime: safeTotalReadingTime,
             }
           )
         } catch (error) {
