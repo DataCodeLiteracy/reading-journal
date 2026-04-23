@@ -17,7 +17,7 @@ export interface ReadingExamAssessmentJson {
   assessment_data: ReadingExamRangeBlock[]
 }
 
-/** 발췺 요약 JSON */
+/** 발췌 요약 JSON */
 export interface ReadingExcerptChapterJson {
   title: string
   /** 목차 경로 (예: "9", "9.1", "9.1.1", "9.1.1.1"). 계층 표시에 사용됩니다. */

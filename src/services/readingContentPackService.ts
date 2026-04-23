@@ -100,6 +100,23 @@ export class ReadingContentPackService {
     )
   }
 
+  static async clearExamData(bookTitle: string): Promise<void> {
+    const id = titleKeyToPackDocId(normalizeBookTitleKey(bookTitle))
+    await ApiClient.updateDocument<Record<string, unknown>>(COLLECTION, id, {
+      examAssessmentData: undefined,
+      updated_at: ApiClient.getServerTimestamp(),
+    })
+  }
+
+  static async clearExcerptData(bookTitle: string): Promise<void> {
+    const id = titleKeyToPackDocId(normalizeBookTitleKey(bookTitle))
+    await ApiClient.updateDocument<Record<string, unknown>>(COLLECTION, id, {
+      excerptBookMetadata: undefined,
+      excerptChapterSummaries: undefined,
+      updated_at: ApiClient.getServerTimestamp(),
+    })
+  }
+
   /** 탐색 등 제목만 있을 때 */
   static packIdFromTitle(bookTitle: string): string {
     return packDocIdFromBookTitle(bookTitle)

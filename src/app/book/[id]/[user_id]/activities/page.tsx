@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Plus, ClipboardCheck, BookMarked } from "lucide-react"
+import { Plus, ClipboardCheck, BookMarked, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { BookService } from "@/services/bookService"
@@ -11,6 +11,7 @@ import { GoldenBellQuizSummary, GoldenBellResult } from "@/types/goldenBell"
 import GoldenBellUploadModal from "@/components/GoldenBellUploadModal"
 import ReadingExamUploadModal from "@/components/ReadingExamUploadModal"
 import ReadingExcerptUploadModal from "@/components/ReadingExcerptUploadModal"
+import ConfirmModal from "@/components/ConfirmModal"
 import { ReadingContentPackService } from "@/services/readingContentPackService"
 import type {
   ReadingContentPack,
@@ -54,7 +55,7 @@ export default function BookActivitiesHubPage({
     useState<GoldenBellQuizSummary | null>(null)
 
   const [readingPack, setReadingPack] = useState<ReadingContentPack | null>(
-    null
+    null,
   )
   const [readingExamProgress, setReadingExamProgress] =
     useState<ReadingExamProgress | null>(null)
@@ -63,15 +64,19 @@ export default function BookActivitiesHubPage({
   const [readingExamUploadOpen, setReadingExamUploadOpen] = useState(false)
   const [readingExcerptUploadOpen, setReadingExcerptUploadOpen] =
     useState(false)
+  const [deletingExam, setDeletingExam] = useState(false)
+  const [deletingExcerpt, setDeletingExcerpt] = useState(false)
+  const [confirmDeleteExam, setConfirmDeleteExam] = useState(false)
+  const [confirmDeleteExcerpt, setConfirmDeleteExcerpt] = useState(false)
 
   const examBlocksMemo = readingPack?.examAssessmentData
   const examQuestionTotal = useMemo(
     () => totalExamQuestionCount(examBlocksMemo),
-    [examBlocksMemo]
+    [examBlocksMemo],
   )
   const examGradedTotal = useMemo(
     () => gradedExamCount(readingExamProgress?.grades, examBlocksMemo),
-    [readingExamProgress?.grades, examBlocksMemo]
+    [readingExamProgress?.grades, examBlocksMemo],
   )
   const excerptProgressSummary = useMemo(() => {
     const jsonChapters = readingPack?.excerptChapterSummaries ?? []
@@ -92,7 +97,11 @@ export default function BookActivitiesHubPage({
       }
     }
     return { done, total, hasJson, draftCount }
-  }, [readingPack?.excerptChapterSummaries, readingExcerptProgress?.chapters, book])
+  }, [
+    readingPack?.excerptChapterSummaries,
+    readingExcerptProgress?.chapters,
+    book,
+  ])
 
   useEffect(() => {
     params.then(setResolved)
@@ -118,7 +127,7 @@ export default function BookActivitiesHubPage({
           if (userUid) {
             const results = await GoldenBellService.getUserResultsByBook(
               userUid,
-              bookData.title
+              bookData.title,
             )
             setGoldenBellResults(results)
           } else {
@@ -130,7 +139,7 @@ export default function BookActivitiesHubPage({
 
         try {
           const rp = await ReadingContentPackService.getByBookTitle(
-            bookData.title
+            bookData.title,
           )
           setReadingPack(rp)
           if (userUid) {
@@ -176,6 +185,44 @@ export default function BookActivitiesHubPage({
 
   const base = `/book/${resolved.id}/${resolved.user_id}`
 
+  const handleDeleteExam = async () => {
+    if (!book) return
+    setDeletingExam(true)
+    try {
+      await ReadingContentPackService.clearExamData(book.title)
+      setReadingPack((prev) =>
+        prev ? { ...prev, examAssessmentData: undefined } : prev,
+      )
+      setConfirmDeleteExam(false)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setDeletingExam(false)
+    }
+  }
+
+  const handleDeleteExcerpt = async () => {
+    if (!book) return
+    setDeletingExcerpt(true)
+    try {
+      await ReadingContentPackService.clearExcerptData(book.title)
+      setReadingPack((prev) =>
+        prev
+          ? {
+              ...prev,
+              excerptBookMetadata: undefined,
+              excerptChapterSummaries: undefined,
+            }
+          : prev,
+      )
+      setConfirmDeleteExcerpt(false)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setDeletingExcerpt(false)
+    }
+  }
+
   const pushWithCurrentReturn = (targetPath: string) => {
     const here =
       typeof window !== "undefined"
@@ -203,47 +250,49 @@ export default function BookActivitiesHubPage({
           골든벨, 이해도 점검, 발췌 요약처럼 문제·채점이 있는 활동입니다.
         </p>
 
-        {userUid && userUid === book.user_id && goldenBellQuizzes.length === 0 && (
-          <div className='rounded-xl border border-theme-tertiary bg-theme-secondary p-4 mb-6 shadow-sm'>
-            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-              <p className='text-sm text-theme-secondary'>
-                이 책으로 독서 골든벨 문제 출제를 요청할 수 있습니다.
-              </p>
-              {goldenBellRequestSent ? (
-                <span className='text-sm text-green-600 dark:text-green-400 shrink-0 font-medium'>
-                  요청됨
-                </span>
-              ) : (
-                <button
-                  type='button'
-                  disabled={goldenBellRequesting}
-                  onClick={async () => {
-                    if (!userUid || !book) return
-                    setGoldenBellRequesting(true)
-                    setError(null)
-                    try {
-                      await GoldenBellRequestService.create({
-                        user_id: userUid,
-                        user_display_name: user?.displayName ?? undefined,
-                        book_id: resolved.id,
-                        book_title: book.title,
-                      })
-                      setGoldenBellRequestSent(true)
-                    } catch (err) {
-                      console.error(err)
-                      setError("요청을 저장하는 중 오류가 발생했습니다.")
-                    } finally {
-                      setGoldenBellRequesting(false)
-                    }
-                  }}
-                  className='shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-accent-theme text-white hover:bg-accent-theme-secondary disabled:opacity-50'
-                >
-                  {goldenBellRequesting ? "요청 중..." : "골든벨 출제 요청"}
-                </button>
-              )}
+        {userUid &&
+          userUid === book.user_id &&
+          goldenBellQuizzes.length === 0 && (
+            <div className='rounded-xl border border-theme-tertiary bg-theme-secondary p-4 mb-6 shadow-sm'>
+              <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                <p className='text-sm text-theme-secondary'>
+                  이 책으로 독서 골든벨 문제 출제를 요청할 수 있습니다.
+                </p>
+                {goldenBellRequestSent ? (
+                  <span className='text-sm text-green-600 dark:text-green-400 shrink-0 font-medium'>
+                    요청됨
+                  </span>
+                ) : (
+                  <button
+                    type='button'
+                    disabled={goldenBellRequesting}
+                    onClick={async () => {
+                      if (!userUid || !book) return
+                      setGoldenBellRequesting(true)
+                      setError(null)
+                      try {
+                        await GoldenBellRequestService.create({
+                          user_id: userUid,
+                          user_display_name: user?.displayName ?? undefined,
+                          book_id: resolved.id,
+                          book_title: book.title,
+                        })
+                        setGoldenBellRequestSent(true)
+                      } catch (err) {
+                        console.error(err)
+                        setError("요청을 저장하는 중 오류가 발생했습니다.")
+                      } finally {
+                        setGoldenBellRequesting(false)
+                      }
+                    }}
+                    className='shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-accent-theme text-white hover:bg-accent-theme-secondary disabled:opacity-50'
+                  >
+                    {goldenBellRequesting ? "요청 중..." : "골든벨 출제 요청"}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* 독서 골든벨 */}
         <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-6'>
@@ -264,7 +313,9 @@ export default function BookActivitiesHubPage({
               <p className='text-theme-secondary mb-4'>
                 아직 골든벨 문제가 없습니다.
                 <br />
-                <span className='text-sm'>자료가 등록되면 이곳에서 시작할 수 있습니다.</span>
+                <span className='text-sm'>
+                  자료가 등록되면 이곳에서 시작할 수 있습니다.
+                </span>
               </p>
               {userData?.isAdmin && (
                 <button
@@ -434,15 +485,28 @@ export default function BookActivitiesHubPage({
               )}
             </div>
             {userData?.isAdmin && (
-              <button
-                type='button'
-                onClick={() => setReadingExamUploadOpen(true)}
-                className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
-                title='이해도 점검 자료 등록·갱신'
-                aria-label='이해도 점검 자료 등록·갱신'
-              >
-                <Plus className='h-4 w-4' />
-              </button>
+              <div className='flex items-center gap-1'>
+                {examBlocksMemo && examBlocksMemo.length > 0 && (
+                  <button
+                    type='button'
+                    onClick={() => setConfirmDeleteExam(true)}
+                    className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30'
+                    title='이해도 점검 자료 삭제'
+                    aria-label='이해도 점검 자료 삭제'
+                  >
+                    <Trash2 className='h-4 w-4' />
+                  </button>
+                )}
+                <button
+                  type='button'
+                  onClick={() => setReadingExamUploadOpen(true)}
+                  className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
+                  title='이해도 점검 자료 등록·갱신'
+                  aria-label='이해도 점검 자료 등록·갱신'
+                >
+                  <Plus className='h-4 w-4' />
+                </button>
+              </div>
             )}
           </div>
 
@@ -460,42 +524,43 @@ export default function BookActivitiesHubPage({
             </div>
           ) : (
             <div className='rounded-lg border border-theme-tertiary bg-theme-tertiary/25 p-4'>
-                <p className='text-sm text-theme-secondary mb-3'>
-                  구간별로 한 문항씩 답하고 AI 채점으로 이해도를 점검합니다.
-                  {userUid && examGradedTotal > 0 && (
-                    <span className='mt-2 block text-sm font-medium text-theme-primary'>
-                      내 진행: 채점 완료 {examGradedTotal} / {examQuestionTotal}문항
-                    </span>
-                  )}
-                </p>
-                <ul className='mb-4 overflow-hidden rounded-lg border border-theme-tertiary/80 bg-theme-secondary'>
-                  {examBlocksMemo.map((b, idx) => {
-                    const n = b.quizzes?.length ?? 0
-                    return (
-                      <li
-                        key={`${idx}-${b.range}`}
-                        className='flex items-center justify-between gap-3 border-b border-theme-tertiary/60 px-3 py-2.5 last:border-b-0'
+              <p className='text-sm text-theme-secondary mb-3'>
+                구간별로 한 문항씩 답하고 AI 채점으로 이해도를 점검합니다.
+                {userUid && examGradedTotal > 0 && (
+                  <span className='mt-2 block text-sm font-medium text-theme-primary'>
+                    내 진행: 채점 완료 {examGradedTotal} / {examQuestionTotal}
+                    문항
+                  </span>
+                )}
+              </p>
+              <ul className='mb-4 overflow-hidden rounded-lg border border-theme-tertiary/80 bg-theme-secondary'>
+                {examBlocksMemo.map((b, idx) => {
+                  const n = b.quizzes?.length ?? 0
+                  return (
+                    <li
+                      key={`${idx}-${b.range}`}
+                      className='flex items-center justify-between gap-3 border-b border-theme-tertiary/60 px-3 py-2.5 last:border-b-0'
+                    >
+                      <span
+                        className='min-w-0 flex-1 text-sm text-theme-primary leading-snug'
+                        title={b.range}
                       >
-                        <span
-                          className='min-w-0 flex-1 text-sm text-theme-primary leading-snug'
-                          title={b.range}
-                        >
-                          {b.range}
-                        </span>
-                        <span className='shrink-0 rounded-md bg-accent-theme/12 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-theme'>
-                          {n}문항
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-                <button
-                  type='button'
-                  onClick={() => pushWithCurrentReturn(`${base}/reading-exam`)}
-                  className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
-                >
-                  이해도 점검 하기
-                </button>
+                        {b.range}
+                      </span>
+                      <span className='shrink-0 rounded-md bg-accent-theme/12 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-theme'>
+                        {n}문항
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+              <button
+                type='button'
+                onClick={() => pushWithCurrentReturn(`${base}/reading-exam`)}
+                className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
+              >
+                이해도 점검 하기
+              </button>
             </div>
           )}
         </div>
@@ -515,29 +580,43 @@ export default function BookActivitiesHubPage({
                   </span>
                   {userUid && (
                     <span className='inline-flex items-center rounded-md bg-theme-tertiary/90 px-2.5 py-1 text-xs font-semibold text-theme-primary'>
-                      제출 {excerptProgressSummary.done} / {excerptProgressSummary.total}
+                      제출 {excerptProgressSummary.done} /{" "}
+                      {excerptProgressSummary.total}
                     </span>
                   )}
                 </div>
               )}
             </div>
             {userData?.isAdmin && (
-              <button
-                type='button'
-                onClick={() => setReadingExcerptUploadOpen(true)}
-                className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
-                title='발췺 요약 자료 등록·갱신'
-                aria-label='발췺 요약 자료 등록·갱신'
-              >
-                <Plus className='h-4 w-4' />
-              </button>
+              <div className='flex items-center gap-1'>
+                {excerptProgressSummary.hasJson && (
+                  <button
+                    type='button'
+                    onClick={() => setConfirmDeleteExcerpt(true)}
+                    className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30'
+                    title='발췌 요약 자료 삭제'
+                    aria-label='발췌 요약 자료 삭제'
+                  >
+                    <Trash2 className='h-4 w-4' />
+                  </button>
+                )}
+                <button
+                  type='button'
+                  onClick={() => setReadingExcerptUploadOpen(true)}
+                  className='shrink-0 rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary/50 hover:text-accent-theme'
+                  title='발췌 요약 자료 등록·갱신'
+                  aria-label='발췌 요약 자료 등록·갱신'
+                >
+                  <Plus className='h-4 w-4' />
+                </button>
+              </div>
             )}
           </div>
 
           {excerptProgressSummary.total === 0 ? (
             <div className='rounded-lg border border-dashed border-theme-tertiary bg-theme-tertiary/20 px-4 py-8 text-center'>
               <p className='text-sm text-theme-secondary'>
-                아직 발췺 요약 자료가 없습니다.
+                아직 발췌 요약 자료가 없습니다.
                 <br />
                 <span className='text-xs text-theme-tertiary'>
                   {userData?.isAdmin
@@ -554,21 +633,27 @@ export default function BookActivitiesHubPage({
                   : "목차 기반으로 챕터별 사전 답안을 미리 작성할 수 있습니다. 참고 자료 등록 후 AI 채점이 가능합니다."}
                 {userUid && excerptProgressSummary.done > 0 && (
                   <span className='mt-2 block text-sm font-medium text-theme-primary'>
-                    내 진행: 제출 완료 {excerptProgressSummary.done} / {excerptProgressSummary.total}챕터
+                    내 진행: 제출 완료 {excerptProgressSummary.done} /{" "}
+                    {excerptProgressSummary.total}챕터
                   </span>
                 )}
-                {userUid && !excerptProgressSummary.hasJson && excerptProgressSummary.draftCount > 0 && (
-                  <span className='mt-2 block text-sm font-medium text-theme-primary'>
-                    사전 답안 저장됨: {excerptProgressSummary.draftCount} / {excerptProgressSummary.total}챕터
-                  </span>
-                )}
+                {userUid &&
+                  !excerptProgressSummary.hasJson &&
+                  excerptProgressSummary.draftCount > 0 && (
+                    <span className='mt-2 block text-sm font-medium text-theme-primary'>
+                      사전 답안 저장됨: {excerptProgressSummary.draftCount} /{" "}
+                      {excerptProgressSummary.total}챕터
+                    </span>
+                  )}
               </p>
               <button
                 type='button'
                 onClick={() => pushWithCurrentReturn(`${base}/reading-excerpt`)}
                 className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
               >
-                {excerptProgressSummary.hasJson ? "발췺 요약 쓰기" : "사전 답안 작성하기"}
+                {excerptProgressSummary.hasJson
+                  ? "발췌 요약 쓰기"
+                  : "사전 답안 작성하기"}
               </button>
             </div>
           )}
@@ -604,7 +689,7 @@ export default function BookActivitiesHubPage({
           onSuccess={async () => {
             try {
               const rp = await ReadingContentPackService.getByBookTitle(
-                book.title
+                book.title,
               )
               setReadingPack(rp)
               if (userUid) {
@@ -628,7 +713,7 @@ export default function BookActivitiesHubPage({
           onSuccess={async () => {
             try {
               const rp = await ReadingContentPackService.getByBookTitle(
-                book.title
+                book.title,
               )
               setReadingPack(rp)
               if (userUid) {
@@ -645,6 +730,26 @@ export default function BookActivitiesHubPage({
           }}
         />
       </div>
+
+      <ConfirmModal
+        isOpen={confirmDeleteExam}
+        onClose={() => setConfirmDeleteExam(false)}
+        onConfirm={() => void handleDeleteExam()}
+        title='이해도 점검 자료 삭제'
+        message={`등록된 이해도 점검 자료를 삭제합니다.\n삭제 후 다시 등록할 수 있습니다.`}
+        confirmText={deletingExam ? "삭제 중…" : "삭제"}
+        icon={Trash2}
+      />
+
+      <ConfirmModal
+        isOpen={confirmDeleteExcerpt}
+        onClose={() => setConfirmDeleteExcerpt(false)}
+        onConfirm={() => void handleDeleteExcerpt()}
+        title='발췌 요약 자료 삭제'
+        message={`등록된 발췌 요약 자료를 삭제합니다.\n삭제 후 다시 등록할 수 있습니다.`}
+        confirmText={deletingExcerpt ? "삭제 중…" : "삭제"}
+        icon={Trash2}
+      />
     </div>
   )
 }
