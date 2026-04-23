@@ -4,7 +4,8 @@
       "Bash(git -C /Users/dataliteracy/programming/projects/personal/next/reading-journal log --oneline -10)",
       "Bash(git -C /Users/dataliteracy/programming/projects/personal/next/reading-journal log --format=\"%B\" -3)",
       "Bash(npx tsc *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('next:', p.dependencies.next, 'react:', p.dependencies.react\\)\")"
     ]
   }
 }

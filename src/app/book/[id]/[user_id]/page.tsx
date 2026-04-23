@@ -323,7 +323,11 @@ export default function BookDetailPage({
     bookBundleQuery.data,
   ])
 
-  const isLoading = !resolvedParams || bookBundleQuery.isPending
+  // Third condition: guards the one-frame gap between isPending→false and the effect writing book/error state
+  const isLoading =
+    !resolvedParams ||
+    bookBundleQuery.isPending ||
+    (bookBundleQuery.isSuccess && book === null && error === null)
 
   // 타이머 업데이트
   useEffect(() => {
