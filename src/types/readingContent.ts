@@ -17,11 +17,15 @@ export interface ReadingExamAssessmentJson {
   assessment_data: ReadingExamRangeBlock[]
 }
 
-/** 발췌 요약 JSON */
+/** 발췺 요약 JSON */
 export interface ReadingExcerptChapterJson {
-  chapter_title: string
-  /** 목차 단계 등(선택). JSON에 없어도 됩니다. */
-  depth?: number
+  title: string
+  /** 목차 경로 (예: "9", "9.1", "9.1.1", "9.1.1.1"). 계층 표시에 사용됩니다. */
+  path?: string
+  /** 목차 단계 (1–4). path로 계산하는 것과 동일하지만 명시적으로 제공됩니다. */
+  level?: number
+  /** 챕터 고유 식별자 (선택). */
+  chapter_id?: string
   /**
    * 추출 파이프라인에서 붙는 대략적 페이지 정보로, 정확하지 않을 수 있습니다.
    * 앱 UI와 AI 채점에는 사용하지 않습니다.
@@ -81,9 +85,10 @@ export interface ReadingExamProgress {
 /** readingExcerptProgress/{userId}__{bookId} */
 export interface ReadingExcerptChapterResult {
   userText: string
-  score: number
-  feedback: string
-  gradedAt: string
+  /** undefined = 아직 AI 채점 전 (사전 답안 저장 상태) */
+  score?: number
+  feedback?: string
+  gradedAt?: string
   /** 이 챕터에서 수행한 AI 채점 횟수 (최대 3) */
   attemptsUsed?: number
   /** 마지막 채점에 사용한 요약(내용이 바뀌면 재채점 가능) */

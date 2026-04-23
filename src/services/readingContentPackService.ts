@@ -42,7 +42,7 @@ export class ReadingContentPackService {
     for (const ch of o.chapter_summaries) {
       if (!ch || typeof ch !== "object") return false
       const c = ch as Record<string, unknown>
-      if (typeof c.chapter_title !== "string" || typeof c.summary !== "string")
+      if (typeof c.title !== "string" || typeof c.summary !== "string")
         return false
       if (!Array.isArray(c.key_keywords)) return false
     }

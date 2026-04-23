@@ -65,4 +65,16 @@ export class ReadingExcerptProgressService {
       { merge: true }
     )
   }
+
+  static async deleteChapterDraft(
+    userId: string,
+    bookId: string,
+    chapterIndex: number
+  ): Promise<void> {
+    const id = docId(userId, bookId)
+    // Firestore dot-notation으로 중첩 필드 삭제
+    await ApiClient.updateDocument<Record<string, unknown>>(COLLECTION, id, {
+      [`chapters.${chapterIndex}`]: undefined,
+    })
+  }
 }

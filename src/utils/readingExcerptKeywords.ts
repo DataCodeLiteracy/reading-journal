@@ -36,7 +36,7 @@ export function collectExcerptKeywordsByChapter(
       }
       keywords.sort((a, b) => a.localeCompare(b, "ko"))
       const chapterTitle =
-        (ch.chapter_title ?? "").trim() || `챕터 ${chapterIndex + 1}`
+        (ch.title ?? "").trim() || `챕터 ${chapterIndex + 1}`
       return { chapterIndex, chapterTitle, keywords }
     })
     .filter((b) => b.keywords.length > 0)

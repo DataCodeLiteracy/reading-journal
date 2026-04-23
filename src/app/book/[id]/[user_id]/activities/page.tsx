@@ -74,16 +74,25 @@ export default function BookActivitiesHubPage({
     [readingExamProgress?.grades, examBlocksMemo]
   )
   const excerptProgressSummary = useMemo(() => {
-    const chapters = readingPack?.excerptChapterSummaries ?? []
+    const jsonChapters = readingPack?.excerptChapterSummaries ?? []
+    const tocChapters = book?.tocOutline ?? []
+    const hasJson = jsonChapters.length > 0
+    const total = hasJson ? jsonChapters.length : tocChapters.length
     const ch = readingExcerptProgress?.chapters as
-      | Record<string, { score?: number }>
+      | Record<string, { score?: number; userText?: string }>
       | undefined
     let done = 0
-    for (let i = 0; i < chapters.length; i++) {
+    for (let i = 0; i < jsonChapters.length; i++) {
       if (ch?.[String(i)]?.score != null) done++
     }
-    return { done, total: chapters.length }
-  }, [readingPack?.excerptChapterSummaries, readingExcerptProgress?.chapters])
+    let draftCount = 0
+    if (!hasJson) {
+      for (let i = 0; i < tocChapters.length; i++) {
+        if (ch?.[String(i)]?.userText) draftCount++
+      }
+    }
+    return { done, total, hasJson, draftCount }
+  }, [readingPack?.excerptChapterSummaries, readingExcerptProgress?.chapters, book])
 
   useEffect(() => {
     params.then(setResolved)
@@ -528,24 +537,29 @@ export default function BookActivitiesHubPage({
           {excerptProgressSummary.total === 0 ? (
             <div className='rounded-lg border border-dashed border-theme-tertiary bg-theme-tertiary/20 px-4 py-8 text-center'>
               <p className='text-sm text-theme-secondary'>
-                아직 발췌 요약 자료가 없습니다.
+                아직 발췺 요약 자료가 없습니다.
                 <br />
                 <span className='text-xs text-theme-tertiary'>
                   {userData?.isAdmin
                     ? "우측 상단 + 버튼으로 JSON을 등록할 수 있습니다."
-                    : "자료가 준비되면 이곳에서 시작할 수 있습니다."}
+                    : "목차를 등록하거나 자료가 준비되면 이곳에서 시작할 수 있습니다."}
                 </span>
               </p>
             </div>
           ) : (
             <div className='rounded-lg border border-theme-tertiary bg-theme-tertiary/25 p-4'>
               <p className='text-sm text-theme-secondary mb-4'>
-                챕터별 참고 요약을 보고 나만의 요약을 쓰면 AI가 이해도를 점수로
-                피드백합니다.
+                {excerptProgressSummary.hasJson
+                  ? "챕터별 참고 요약을 보고 나만의 요약을 쓰면 AI가 이해도를 점수로 피드백합니다."
+                  : "목차 기반으로 챕터별 사전 답안을 미리 작성할 수 있습니다. JSON 등록 후 AI 채점이 가능합니다."}
                 {userUid && excerptProgressSummary.done > 0 && (
                   <span className='mt-2 block text-sm font-medium text-theme-primary'>
-                    내 진행: 제출 완료 {excerptProgressSummary.done} /{" "}
-                    {excerptProgressSummary.total}챕터
+                    내 진행: 제출 완료 {excerptProgressSummary.done} / {excerptProgressSummary.total}챕터
+                  </span>
+                )}
+                {userUid && !excerptProgressSummary.hasJson && excerptProgressSummary.draftCount > 0 && (
+                  <span className='mt-2 block text-sm font-medium text-theme-primary'>
+                    사전 답안 저장됨: {excerptProgressSummary.draftCount} / {excerptProgressSummary.total}챕터
                   </span>
                 )}
               </p>
@@ -554,7 +568,7 @@ export default function BookActivitiesHubPage({
                 onClick={() => pushWithCurrentReturn(`${base}/reading-excerpt`)}
                 className='w-full rounded-lg bg-accent-theme py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary'
               >
-                발췌 요약 쓰기
+                {excerptProgressSummary.hasJson ? "발췺 요약 쓰기" : "사전 답안 작성하기"}
               </button>
             </div>
           )}
