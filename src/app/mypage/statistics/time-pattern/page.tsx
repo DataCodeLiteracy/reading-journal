@@ -19,8 +19,8 @@ import {
   TimePatternAnalysis,
 } from "@/services/timePatternService"
 import {
-  GenericRouteSkeleton,
   StatisticsBodySkeleton,
+  StatisticsSubPageSkeleton,
 } from "@/components/skeletons"
 
 export default function TimePatternPage() {
@@ -70,7 +70,7 @@ export default function TimePatternPage() {
   }
 
   if (loading) {
-    return <GenericRouteSkeleton rows={4} />
+    return <StatisticsSubPageSkeleton />
   }
 
   if (!isLoggedIn) {

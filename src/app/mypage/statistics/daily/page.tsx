@@ -8,8 +8,8 @@ import { useData } from "@/contexts/DataContext"
 import { ReadingSession } from "@/types/user"
 import Pagination from "@/components/Pagination"
 import {
-  GenericRouteSkeleton,
   StatisticsBodySkeleton,
+  StatisticsSubPageSkeleton,
 } from "@/components/skeletons"
 
 interface DailyReadingData {
@@ -111,7 +111,7 @@ export default function DailyStatisticsPage() {
   }
 
   if (loading) {
-    return <GenericRouteSkeleton rows={4} />
+    return <StatisticsSubPageSkeleton />
   }
 
   if (!isLoggedIn) {

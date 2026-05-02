@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { MypageSubPageSkeleton } from "@/components/skeletons"
 import { ArrowLeft, Trophy, BookOpen, Calendar, TrendingUp } from "lucide-react"
 import { GoldenBellService } from "@/services/goldenBellService"
 import { GoldenBellResultSummary } from "@/types/goldenBell"
@@ -58,7 +58,7 @@ export default function GoldenBellResultsPage() {
     return (
       <>
         <span className="sr-only">불러오는 중</span>
-        <GenericRouteSkeleton rows={5} />
+        <MypageSubPageSkeleton cards={3} />
       </>
     )
   }

@@ -18,8 +18,8 @@ import { UserStatisticsService } from "@/services/userStatisticsService"
 import { UserStatistics } from "@/types/user"
 import { ReadingPatternCharts } from "@/components/ReadingPatternCharts"
 import {
-  GenericRouteSkeleton,
   StatisticsBodySkeleton,
+  StatisticsHubPageSkeleton,
 } from "@/components/skeletons"
 
 export default function StatisticsPage() {
@@ -59,7 +59,7 @@ export default function StatisticsPage() {
   }
 
   if (loading) {
-    return <GenericRouteSkeleton rows={4} />
+    return <StatisticsHubPageSkeleton />
   }
 
   if (!isLoggedIn) {

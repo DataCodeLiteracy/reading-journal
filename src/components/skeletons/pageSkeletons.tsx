@@ -91,7 +91,252 @@ export function SkeletonCommentRow() {
   )
 }
 
-/** 범용: 헤더 + 책형 목록 */
+/** 마이페이지 홈: 상단 헤더 + 주간 카드 자리 + 메뉴형 카드 */
+export function MyPageHomeSkeleton() {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-40" />
+        <SkLine className="mb-2 h-10 w-48 max-w-full" />
+        <SkLine className="h-4 w-full max-w-sm" />
+        <SkLine className="mt-2 h-4 w-56 max-w-full" />
+      </header>
+      <SkCard className="mb-4 space-y-3">
+        <SkLine className="h-5 w-36" />
+        <SkLine className="h-24 w-full rounded-lg" />
+        <SkLine className="h-3 w-2/3 max-w-[220px]" />
+      </SkCard>
+      <div className="space-y-3">
+        {[0, 1, 2, 3].map((i) => (
+          <SkCard key={i} className="flex items-center gap-3 py-4">
+            <SkCircle className="h-10 w-10 shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <SkLine className="h-4 w-[45%] max-w-[200px]" />
+              <SkLine className="h-3 w-3/4 max-w-xs" />
+            </div>
+            <SkLine className="h-8 w-8 shrink-0 rounded-md" />
+          </SkCard>
+        ))}
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/** 독서 통계 허브: 뒤로가기 · 제목 행 · 통계 본문과 동일한 블록 */
+export function StatisticsHubPageSkeleton() {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-40" />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 space-y-2">
+            <SkLine className="h-9 w-52 max-w-full" />
+            <SkLine className="h-4 w-full max-w-md" />
+          </div>
+          <SkLine className="h-10 w-28 shrink-0 rounded-lg" />
+        </div>
+      </header>
+      <StatisticsBodySkeleton />
+    </ShellSkeleton>
+  )
+}
+
+/** 일일·시간대 통계 등: 뒤로가기 줄 + 제목 + StatisticsBodySkeleton (데이터 로딩과 동일 뼈대) */
+export function StatisticsSubPageSkeleton() {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-32" />
+        <SkLine className="mb-2 h-9 w-56 max-w-full" />
+        <SkLine className="h-4 w-full max-w-md" />
+      </header>
+      <StatisticsBodySkeleton />
+    </ShellSkeleton>
+  )
+}
+
+/** 레벨 순위: 상단 헤더 + 카드 안 리스트 (데이터 로딩과 같은 테두리 카드) */
+export function LeaderboardPageSkeleton({
+  leaderboardRows = 10,
+}: {
+  leaderboardRows?: number
+} = {}) {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-44" />
+        <SkLine className="mb-2 h-9 w-52 max-w-full" />
+        <SkLine className="h-4 w-full max-w-sm" />
+      </header>
+      <div className="rounded-lg border-card bg-theme-secondary p-4 shadow-sm">
+        <LeaderboardBlockSkeleton rows={leaderboardRows} />
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/** 전체 책 탐색: 헤더·검색·필터 줄 + 탐색 카드 목록 */
+export function ExplorePageSkeleton({ listCount = 6 }: { listCount?: number }) {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-2 h-8 w-48 max-w-full" />
+        <SkLine className="mb-6 h-3.5 w-full max-w-xl" />
+        <SkLine className="mb-4 h-11 w-full rounded-lg" />
+        <SkLine className="h-14 w-full rounded-lg" />
+      </header>
+      <ExploreListSkeleton count={listCount} />
+    </ShellSkeleton>
+  )
+}
+
+/** 내 책 목록: 탭바·검색 툴바 느낌 + 책 목록 행 */
+export function BooksLibraryPageSkeleton({ rows = 6 }: { rows?: number } = {}) {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <SkLine className="h-10 w-40" />
+          <SkLine className="h-12 w-28 shrink-0 rounded-lg" />
+        </div>
+        <SkLine className="mb-4 h-4 w-full max-w-md" />
+        <SkLine className="mb-4 h-12 w-full rounded-lg" />
+        <SkLine className="h-12 w-full rounded-lg" />
+      </header>
+      <div className="space-y-3">
+        {Array.from({ length: rows }).map((_, i) => (
+          <SkeletonBookRow key={i} />
+        ))}
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/** 설정: 뒤로가기 · 제목 + 폼 카드 스택 */
+export function SettingsPageSkeleton() {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-32" />
+        <SkLine className="mb-2 h-10 w-40 max-w-full" />
+        <SkLine className="h-4 w-full max-w-sm" />
+      </header>
+      <div className="max-w-2xl space-y-6">
+        {[0, 1, 2].map((i) => (
+          <SkCard key={i} className="space-y-4 py-6">
+            <SkLine className="h-6 w-36" />
+            <SkLine className="h-10 w-full rounded-lg" />
+            <SkLine className="h-10 w-full max-w-xs rounded-lg" />
+            <SkLine className="h-4 w-3/4" />
+          </SkCard>
+        ))}
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/** 다른 유저 공개 프로필: 헤더 + 프로필 카드 + 완독 목록 줄 */
+export function PublicProfilePageSkeleton({ bookRows = 5 }: { bookRows?: number } = {}) {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-32" />
+        <SkLine className="mb-2 h-4 w-24" />
+      </header>
+      <SkCard className="mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <SkCircle className="mx-auto h-20 w-20 sm:mx-0" />
+          <div className="min-w-0 flex-1 space-y-3">
+            <SkLine className="h-8 w-48 max-w-full" />
+            <SkLine className="h-4 w-full max-w-xs" />
+            <div className="flex flex-wrap gap-2">
+              <SkLine className="h-8 w-20 rounded-lg" />
+              <SkLine className="h-8 w-24 rounded-lg" />
+            </div>
+          </div>
+        </div>
+      </SkCard>
+      <SkLine className="mb-4 h-6 w-40" />
+      <div className="space-y-3">
+        {Array.from({ length: bookRows }).map((_, i) => (
+          <SkeletonBookRow key={i} />
+        ))}
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/** 관리자 대시 허브: 제목 + 메뉴 그리드 */
+export function AdminHubPageSkeleton() {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-full max-w-sm" />
+        <SkLine className="mb-2 h-9 w-64 max-w-full" />
+        <SkLine className="h-4 w-full max-w-lg" />
+      </header>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {[0, 1, 2].map((i) => (
+          <SkCard key={i} className="flex min-h-[88px] flex-col justify-center space-y-2">
+            <SkLine className="h-6 w-[70%]" />
+            <SkLine className="h-3 w-1/2" />
+          </SkCard>
+        ))}
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/** 체크리스트 등 마이 하위 페이지: 마이페이지로 돌아가기 줄 + 제목 + 본문 카드 */
+export function MypageSubPageSkeleton({
+  cards = 2,
+}: {
+  cards?: number
+} = {}) {
+  return (
+    <ShellSkeleton>
+      <header className="mb-6">
+        <SkLine className="mb-4 h-10 w-48" />
+        <SkLine className="mb-2 h-9 w-52 max-w-full" />
+        <SkLine className="h-4 w-full max-w-md" />
+      </header>
+      <div className="space-y-6">
+        {Array.from({ length: cards }).map((_, i) => (
+          <SkCard key={i} className="space-y-4 py-6">
+            <SkLine className="h-6 w-44" />
+            <SkLine className="h-24 w-full rounded-lg" />
+            <SkLine className="h-10 w-32 rounded-lg" />
+          </SkCard>
+        ))}
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/** 골든벨 퀴즈 풀이 등 긴 폼 페이지: 상단 줄 + 여러 블록 */
+export function QuizStylePageSkeleton({ blocks = 4 }: { blocks?: number } = {}) {
+  return (
+    <ShellSkeleton>
+      <SkLine className="mb-4 h-10 w-full max-w-[280px]" />
+      <SkLine className="mb-8 h-4 w-full max-w-md" />
+      <div className="space-y-4">
+        {Array.from({ length: blocks }).map((_, i) => (
+          <SkCard key={i} className="space-y-3">
+            <SkLine className="h-6 w-[85%]" />
+            <SkLine className="h-11 w-full rounded-lg" />
+            <SkLine className="h-11 w-full rounded-lg" />
+            <SkLine className="h-11 w-full rounded-lg" />
+          </SkCard>
+        ))}
+      </div>
+    </ShellSkeleton>
+  )
+}
+
+/**
+ * 라이브러리·목록형 라우트: 헤더 + 책 한 줄 패턴 여러 개
+ * (관리자 책표·내 서재 목록 로딩 구간 등)
+ */
 export function GenericRouteSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <ShellSkeleton>

@@ -20,7 +20,7 @@ import { UserStatisticsService } from "@/services/userStatisticsService"
 import { BookService } from "@/services/bookService"
 import { User as UserType, UserStatistics } from "@/types/user"
 import { Book } from "@/types/book"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { PublicProfilePageSkeleton } from "@/components/skeletons"
 import { queryKeys } from "@/lib/queryKeys"
 
 export default function UserProfilePage({
@@ -94,7 +94,7 @@ export default function UserProfilePage({
   }
 
   if (isLoading) {
-    return <GenericRouteSkeleton rows={5} />
+    return <PublicProfilePageSkeleton bookRows={5} />
   }
 
   if (error || !profileUser) {

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Moon, Sun, Type, Palette, Save, Check, Target } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { SettingsPageSkeleton } from "@/components/skeletons"
 import { useData } from "@/contexts/DataContext"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 
@@ -59,7 +59,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return <GenericRouteSkeleton rows={5} />
+    return <SettingsPageSkeleton />
   }
 
   if (!isLoggedIn) {

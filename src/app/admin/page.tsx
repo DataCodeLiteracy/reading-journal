@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { BookOpen, Home, ArrowLeft, Cpu } from "lucide-react"
 import { adminService } from "@/services/adminService"
 import { useAuth } from "@/contexts/AuthContext"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { AdminHubPageSkeleton } from "@/components/skeletons"
 
 export default function AdminPage() {
   const router = useRouter()
@@ -59,7 +59,7 @@ export default function AdminPage() {
 
   // 로딩 중이거나 권한이 없는 경우
   if (loading) {
-    return <GenericRouteSkeleton rows={4} />
+    return <AdminHubPageSkeleton />
   }
 
   // 로그인하지 않았거나 관리자가 아닌 경우

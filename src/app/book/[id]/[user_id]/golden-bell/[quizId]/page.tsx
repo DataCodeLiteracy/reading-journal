@@ -23,7 +23,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext"
 import { gradeShortAnswer } from "@/utils/textSimilarity"
 import { gradeGoldenBellOpen } from "@/lib/readingAiClient"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { QuizStylePageSkeleton } from "@/components/skeletons"
 import { BookSubpageHeader } from "@/components/BookSubpageHeader"
 import { navigateBackSmart } from "@/utils/navigateBack"
 
@@ -401,7 +401,7 @@ export default function GoldenBellQuizPage({
     return (
       <>
         <span className="sr-only">퀴즈를 불러오는 중</span>
-        <GenericRouteSkeleton rows={4} />
+        <QuizStylePageSkeleton blocks={5} />
       </>
     )
   }

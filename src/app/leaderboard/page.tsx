@@ -19,8 +19,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import Pagination from "@/components/Pagination"
 import { formatDisplayExperienceString } from "@/utils/experienceUtils"
 import {
-  GenericRouteSkeleton,
   LeaderboardBlockSkeleton,
+  LeaderboardPageSkeleton,
 } from "@/components/skeletons"
 
 const formatTime = (seconds: number): string => {
@@ -115,7 +115,7 @@ export default function LeaderboardPage() {
   }
 
   if (loading) {
-    return <GenericRouteSkeleton rows={4} />
+    return <LeaderboardPageSkeleton />
   }
 
   if (!isLoggedIn) {

@@ -25,7 +25,7 @@ import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
 import { queryKeys } from "@/lib/queryKeys"
-import { GenericRouteSkeleton, SkLine } from "@/components/skeletons"
+import { BooksLibraryPageSkeleton, SkLine } from "@/components/skeletons"
 import Pagination from "@/components/Pagination"
 import Select, { type SelectOption } from "@/components/Select"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
@@ -34,7 +34,7 @@ import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 export default function BooksPage() {
   return (
     <Suspense
-      fallback={<GenericRouteSkeleton rows={6} />}
+      fallback={<BooksLibraryPageSkeleton rows={6} />}
     >
       <BooksPageContent />
     </Suspense>
@@ -373,7 +373,7 @@ function BooksPageContent() {
   }
 
   if (loading) {
-    return <GenericRouteSkeleton rows={6} />
+    return <BooksLibraryPageSkeleton rows={6} />
   }
 
   if (!isLoggedIn) {
@@ -570,7 +570,7 @@ function BooksPageContent() {
         )}
 
         {booksPageQuery.isPending && !booksPageQuery.data ? (
-          <GenericRouteSkeleton rows={4} />
+          <BooksLibraryPageSkeleton rows={4} />
         ) : visibleBooks.length === 0 ? (
           <div className='text-center py-12'>
             <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />

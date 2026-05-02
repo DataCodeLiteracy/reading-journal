@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { UserChecklist } from "@/types/user"
 import ChecklistModal from "@/components/ChecklistModal"
 import { ChecklistService } from "@/services/checklistService"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { MypageSubPageSkeleton } from "@/components/skeletons"
 
 export default function ChecklistsPage() {
   const router = useRouter()
@@ -90,7 +90,7 @@ export default function ChecklistsPage() {
   }
 
   if (loading) {
-    return <GenericRouteSkeleton rows={5} />
+    return <MypageSubPageSkeleton cards={2} />
   }
 
   if (!isLoggedIn) {
