@@ -18,6 +18,18 @@ export function ShellSkeleton({ children, className = "" }: ShellProps) {
   )
 }
 
+/**
+ * `useSearchParams` 등 짧게 suspend 될 때 (라우터 바깥 Suspense fallback).
+ * 전체 페이지 스켈레톤과 이어져 같은 목록·본문 스켈레톤이 두 번 깜박이는 것을 피함.
+ */
+export function MinimalShellFallback() {
+  return (
+    <ShellSkeleton>
+      <div className="min-h-[50vh]" />
+    </ShellSkeleton>
+  )
+}
+
 export function SkeletonPageHeader() {
   return (
     <header className="mb-6">
@@ -101,11 +113,8 @@ export function MyPageHomeSkeleton() {
         <SkLine className="h-4 w-full max-w-sm" />
         <SkLine className="mt-2 h-4 w-56 max-w-full" />
       </header>
-      <SkCard className="mb-4 space-y-3">
-        <SkLine className="h-5 w-36" />
-        <SkLine className="h-24 w-full rounded-lg" />
-        <SkLine className="h-3 w-2/3 max-w-[220px]" />
-      </SkCard>
+      {/* 높이만 확보 — 주간 카드 애니메이션 스켈레톤은 WeeklyReadingTimeCard 한 곳에서만 */}
+      <div className="mb-4 min-h-[8.5rem]" aria-hidden />
       <div className="space-y-3">
         {[0, 1, 2, 3].map((i) => (
           <SkCard key={i} className="flex items-center gap-3 py-4">
@@ -122,7 +131,7 @@ export function MyPageHomeSkeleton() {
   )
 }
 
-/** 독서 통계 허브: 뒤로가기 · 제목 행 · 통계 본문과 동일한 블록 */
+/** 독서 통계 허브: 세션 확인 시 — 헤더만. 본문은 `StatisticsBodySkeleton`를 데이터 로딩 때 한 번만 씀 */
 export function StatisticsHubPageSkeleton() {
   return (
     <ShellSkeleton>
@@ -136,12 +145,15 @@ export function StatisticsHubPageSkeleton() {
           <SkLine className="h-10 w-28 shrink-0 rounded-lg" />
         </div>
       </header>
-      <StatisticsBodySkeleton />
+      <div className="space-y-4" aria-hidden>
+        <SkLine className="h-40 w-full rounded-xl opacity-70" />
+        <SkLine className="h-6 w-full max-w-lg" />
+      </div>
     </ShellSkeleton>
   )
 }
 
-/** 일일·시간대 통계 등: 뒤로가기 줄 + 제목 + StatisticsBodySkeleton (데이터 로딩과 동일 뼈대) */
+/** 일일·시간대 통계: 세션 확인 시 헤더 + 가벼운 자리표시만 (데이터 로딩은 StatisticsBodySkeleton 한 번) */
 export function StatisticsSubPageSkeleton() {
   return (
     <ShellSkeleton>
@@ -150,17 +162,16 @@ export function StatisticsSubPageSkeleton() {
         <SkLine className="mb-2 h-9 w-56 max-w-full" />
         <SkLine className="h-4 w-full max-w-md" />
       </header>
-      <StatisticsBodySkeleton />
+      <div className="space-y-4" aria-hidden>
+        <SkLine className="h-36 w-full rounded-xl opacity-70" />
+        <SkLine className="h-24 w-full rounded-lg opacity-60" />
+      </div>
     </ShellSkeleton>
   )
 }
 
-/** 레벨 순위: 상단 헤더 + 카드 안 리스트 (데이터 로딩과 같은 테두리 카드) */
-export function LeaderboardPageSkeleton({
-  leaderboardRows = 10,
-}: {
-  leaderboardRows?: number
-} = {}) {
+/** 레벨 순위: 세션 확인 시만. 순위 목록 블록은 데이터 로딩 때 LeaderboardBlockSkeleton 한 번 */
+export function LeaderboardPageSkeleton() {
   return (
     <ShellSkeleton>
       <header className="mb-6">
@@ -168,8 +179,13 @@ export function LeaderboardPageSkeleton({
         <SkLine className="mb-2 h-9 w-52 max-w-full" />
         <SkLine className="h-4 w-full max-w-sm" />
       </header>
-      <div className="rounded-lg border-card bg-theme-secondary p-4 shadow-sm">
-        <LeaderboardBlockSkeleton rows={leaderboardRows} />
+      <SkLine className="mb-3 h-10 w-full rounded-lg sm:max-w-md" />
+      <div className="rounded-lg border border-theme-tertiary/40 bg-theme-secondary/30 p-4" aria-hidden>
+        <div className="space-y-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <SkLine key={i} className="h-12 w-full rounded-md opacity-75" />
+          ))}
+        </div>
       </div>
     </ShellSkeleton>
   )

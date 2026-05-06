@@ -2,6 +2,7 @@ export { SkCard, SkCircle, SkLine } from "./primitives"
 export {
   AdminHubPageSkeleton,
   AnswerThreadSkeleton,
+  MinimalShellFallback,
   BookDetailRouteSkeleton,
   BooksLibraryPageSkeleton,
   CommentThreadSkeleton,

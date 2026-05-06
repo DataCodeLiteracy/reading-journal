@@ -41,7 +41,7 @@ import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
-import { ExploreListSkeleton, ExplorePageSkeleton } from "@/components/skeletons"
+import { ExploreListSkeleton, MinimalShellFallback } from "@/components/skeletons"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import ReadingExamUploadModal from "@/components/ReadingExamUploadModal"
 import ReadingExcerptUploadModal from "@/components/ReadingExcerptUploadModal"
@@ -65,9 +65,7 @@ const SORT_OPTIONS = [
 
 export default function ExplorePage() {
   return (
-    <Suspense
-      fallback={<ExplorePageSkeleton listCount={5} />}
-    >
+    <Suspense fallback={<MinimalShellFallback />}>
       <ExplorePageContent />
     </Suspense>
   )

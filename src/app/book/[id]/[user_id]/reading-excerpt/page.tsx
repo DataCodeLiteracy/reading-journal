@@ -28,7 +28,7 @@ import type {
   ReadingExcerptProgress,
 } from "@/types/readingContent"
 import { labelForAverageScore } from "@/utils/readingScoreBands"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { GenericRouteSkeleton, MinimalShellFallback } from "@/components/skeletons"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import { BookSubpageHeader } from "@/components/BookSubpageHeader"
 import { withReturnQuery } from "@/utils/navigateBack"
@@ -716,7 +716,7 @@ export default function ReadingExcerptHubPage(props: {
   params: Promise<{ id: string; user_id: string }>
 }) {
   return (
-    <Suspense fallback={<GenericRouteSkeleton rows={4} />}>
+    <Suspense fallback={<MinimalShellFallback />}>
       <ReadingExcerptHubContent {...props} />
     </Suspense>
   )

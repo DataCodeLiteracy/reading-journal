@@ -25,7 +25,7 @@ import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
 import { queryKeys } from "@/lib/queryKeys"
-import { BooksLibraryPageSkeleton, SkLine } from "@/components/skeletons"
+import { BooksLibraryPageSkeleton, MinimalShellFallback, SkLine } from "@/components/skeletons"
 import Pagination from "@/components/Pagination"
 import Select, { type SelectOption } from "@/components/Select"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
@@ -33,9 +33,7 @@ import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 export default function BooksPage() {
   return (
-    <Suspense
-      fallback={<BooksLibraryPageSkeleton rows={6} />}
-    >
+    <Suspense fallback={<MinimalShellFallback />}>
       <BooksPageContent />
     </Suspense>
   )

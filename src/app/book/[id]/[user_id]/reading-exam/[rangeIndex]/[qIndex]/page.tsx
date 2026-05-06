@@ -12,7 +12,7 @@ import type { ReadingContentPack, ReadingExamProgress } from "@/types/readingCon
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import { nextExamCoords, prevExamCoords } from "@/utils/readingExamNav"
 import { gradeReadingExam } from "@/lib/readingAiClient"
-import { GenericRouteSkeleton } from "@/components/skeletons"
+import { GenericRouteSkeleton, MinimalShellFallback } from "@/components/skeletons"
 import { BookSubpageHeader } from "@/components/BookSubpageHeader"
 
 const MAX_AI_GRADES_PER_QUESTION = 3
@@ -325,7 +325,7 @@ export default function ReadingExamQuestionPage(props: {
   params: Promise<{ id: string; user_id: string; rangeIndex: string; qIndex: string }>
 }) {
   return (
-    <Suspense fallback={<GenericRouteSkeleton rows={4} />}>
+    <Suspense fallback={<MinimalShellFallback />}>
       <ReadingExamQuestionContent {...props} />
     </Suspense>
   )
