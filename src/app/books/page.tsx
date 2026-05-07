@@ -114,6 +114,11 @@ function BooksPageContent() {
     const t = searchQuery.trim()
     return t.length > 0 ? t : undefined
   }, [searchQuery])
+  const normalizedSearchKey = useMemo(
+    () => normalizeBookTitleKey(searchQuery),
+    [searchQuery],
+  )
+  const isLocalSearchMode = normalizedSearchKey.length > 0
 
   const tabCountQuery = useQuery({
     queryKey: queryKeys.user.libraryTabCount(
@@ -129,14 +134,9 @@ function BooksPageContent() {
         category: categoryFilter || undefined,
         titlePrefix,
       }),
-    enabled: Boolean(userUid),
+    enabled: Boolean(userUid) && !isLocalSearchMode,
     staleTime: 15_000,
   })
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil((tabCountQuery.data ?? 0) / PAGE_SIZE),
-  )
 
   const booksPageQuery = useQuery({
     queryKey: queryKeys.user.libraryPage(
@@ -181,7 +181,43 @@ function BooksPageContent() {
     staleTime: 15_000,
   })
 
-  const visibleBooks = booksPageQuery.data?.items ?? []
+  const localFiltered = useMemo(() => {
+    if (!isLocalSearchMode) return { items: [] as Book[], total: 0 }
+    const byStatus = allBooks.filter((b) => b.status === activeTab)
+    const byFilters = byStatus.filter((b) => {
+      if (levelFilter && b.level !== levelFilter) return false
+      if (categoryFilter && b.category !== categoryFilter) return false
+      return normalizeBookTitleKey(b.title).includes(normalizedSearchKey)
+    })
+    const sorted = [...byFilters].sort((a, b) => {
+      const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0
+      const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0
+      const aUpdated = a.updated_at ? new Date(a.updated_at).getTime() : 0
+      const bUpdated = b.updated_at ? new Date(b.updated_at).getTime() : 0
+      if (sortOrder === "recently_added") return bCreated - aCreated
+      return bUpdated - aUpdated
+    })
+    const start = (currentPage - 1) * PAGE_SIZE
+    return { items: sorted.slice(start, start + PAGE_SIZE), total: sorted.length }
+  }, [
+    isLocalSearchMode,
+    allBooks,
+    activeTab,
+    levelFilter,
+    categoryFilter,
+    normalizedSearchKey,
+    sortOrder,
+    currentPage,
+    PAGE_SIZE,
+  ])
+
+  const visibleBooks = isLocalSearchMode
+    ? localFiltered.items
+    : (booksPageQuery.data?.items ?? [])
+  const totalFilteredCount = isLocalSearchMode
+    ? localFiltered.total
+    : (tabCountQuery.data ?? 0)
+  const totalPages = Math.max(1, Math.ceil(totalFilteredCount / PAGE_SIZE))
 
   const librarySortOptions = useMemo((): SelectOption<
     "recently_added" | "recently_updated" | "recently_read"
@@ -565,13 +601,13 @@ function BooksPageContent() {
           </button>
         </div>
 
-        {(booksPageQuery.isError || tabCountQuery.isError) && (
+        {!isLocalSearchMode && (booksPageQuery.isError || tabCountQuery.isError) && (
           <div className='mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300'>
             목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
           </div>
         )}
 
-        {booksPageQuery.isPending && !booksPageQuery.data ? (
+        {!isLocalSearchMode && booksPageQuery.isPending && !booksPageQuery.data ? (
           <BooksLibraryPageSkeleton rows={4} />
         ) : visibleBooks.length === 0 ? (
           <div className='text-center py-12'>
@@ -681,12 +717,12 @@ function BooksPageContent() {
           </div>
         )}
 
-        {(tabCountQuery.data ?? 0) > 0 && (
+        {totalFilteredCount > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
-            totalItems={tabCountQuery.data ?? 0}
+            totalItems={totalFilteredCount}
             itemsPerPage={PAGE_SIZE}
           />
         )}
