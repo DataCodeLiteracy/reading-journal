@@ -1,5 +1,6 @@
 export const READING_TIMER_AMBIENT_STORAGE_KEY = "readingJournal.timerAmbientTrackId"
 export const READING_TIMER_BG_STORAGE_KEY = "readingJournal.timerBgId"
+export const READING_TIMER_DEFAULT_AMBIENT_ID = "staring"
 
 export type ReadingTimerAmbientTrack = {
   id: string

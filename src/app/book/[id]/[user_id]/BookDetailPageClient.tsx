@@ -62,6 +62,7 @@ import ReadingImmersiveFullscreen, {
 import { useReadingTimerAmbient } from "@/hooks/useReadingTimerAmbient"
 import { useReadingTimerSheet } from "@/contexts/ReadingTimerSheetContext"
 import {
+  READING_TIMER_DEFAULT_AMBIENT_ID,
   READING_TIMER_AMBIENT_STORAGE_KEY,
   READING_TIMER_BG_STORAGE_KEY,
   READING_TIMER_DEFAULT_BG_ID,
@@ -121,7 +122,9 @@ export default function BookDetailPageClient({
   const [successModalTitle, setSuccessModalTitle] = useState("")
   const [successModalMessage, setSuccessModalMessage] = useState("")
   const [isHoldUpdating, setIsHoldUpdating] = useState(false)
-  const [ambientTrackId, setAmbientTrackId] = useState("off")
+  const [ambientTrackId, setAmbientTrackId] = useState(
+    READING_TIMER_DEFAULT_AMBIENT_ID,
+  )
   const [timerBgId, setTimerBgId] = useState(READING_TIMER_DEFAULT_BG_ID)
   const [isTimerSettingsOpen, setIsTimerSettingsOpen] = useState(false)
   const [preReadTimerPromptOpen, setPreReadTimerPromptOpen] = useState(false)
@@ -185,6 +188,7 @@ export default function BookDetailPageClient({
     try {
       const raw = localStorage.getItem(READING_TIMER_AMBIENT_STORAGE_KEY)
       if (raw && isValidAmbientTrackId(raw)) setAmbientTrackId(raw)
+      else setAmbientTrackId(READING_TIMER_DEFAULT_AMBIENT_ID)
       const rawBg = localStorage.getItem(READING_TIMER_BG_STORAGE_KEY)
       if (rawBg && isValidTimerBgId(rawBg)) setTimerBgId(rawBg)
       else setTimerBgId(READING_TIMER_DEFAULT_BG_ID)
@@ -932,9 +936,17 @@ export default function BookDetailPageClient({
       return new Date(b).getTime() - new Date(a).getTime()
     })
 
+    const sessionStartTs = (session: ReadingSession) => {
+      const ts = new Date(session.startTime).getTime()
+      return Number.isFinite(ts) ? ts : 0
+    }
+
     return sortedDates.map((date) => ({
       date,
-      sessions: grouped[date],
+      // 같은 날짜 안에서는 시간 역순(최신 → 오래된)으로 정렬
+      sessions: [...grouped[date]].sort(
+        (a, b) => sessionStartTs(b) - sessionStartTs(a),
+      ),
       totalDuration: grouped[date].reduce((acc, session) => acc + session.duration, 0),
     }))
   }

@@ -4,8 +4,8 @@ import { READING_TIMER_AMBIENT_TRACKS } from "@/constants/readingTimerMedia"
 const DEFAULT_VOLUME = 0.32
 
 /** 끝부분(페이드아웃 등) 직전에 되감아 반복할 구간(초) */
-const AMBIENT_SOFT_LOOP_TAIL_SEC = 2
-/** 되감은 뒤 재생을 시작할 시점(초) — 끝 2초 전에 도달하면 여기로 점프 */
+const AMBIENT_SOFT_LOOP_TAIL_SEC = 5
+/** 되감은 뒤 재생을 시작할 시점(초) — 끝 5초 전에 도달하면 여기로 점프 */
 const AMBIENT_SOFT_LOOP_RESTART_SEC = 2
 /** 이 길이(초) 이상일 때만 소프트 루프(짧은 파일은 기본 loop 유지) */
 const AMBIENT_SOFT_LOOP_MIN_DURATION_SEC =
@@ -20,7 +20,7 @@ function restartSecondForDuration(d: number): number {
 
 /**
  * 타이머가 켜져 있을 때만 선택된 트랙을 루프 재생합니다.
- * 긴 트랙은 끝 2초 전에 앞쪽(약 2초 지점)으로 점프해 끊김 없이 이어지게 합니다.
+ * 긴 트랙은 끝 5초 전에 앞쪽(약 2초 지점)으로 점프해 끊김 없이 이어지게 합니다.
  */
 export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
