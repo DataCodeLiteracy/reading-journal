@@ -25,7 +25,11 @@ import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
 import { ApiError } from "@/lib/apiClient"
 import { queryKeys } from "@/lib/queryKeys"
-import { BooksLibraryPageSkeleton, MinimalShellFallback, SkLine } from "@/components/skeletons"
+import {
+  BookDetailRouteSkeleton,
+  BooksLibraryPageSkeleton,
+  MinimalShellFallback,
+} from "@/components/skeletons"
 import Pagination from "@/components/Pagination"
 import Select, { type SelectOption } from "@/components/Select"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
@@ -714,19 +718,11 @@ function BooksPageContent() {
       />
 
       {isNavigating && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop"
-          aria-busy="true"
-          aria-label="페이지 이동 중"
-        >
-          <span className="sr-only">페이지 이동 중</span>
-          <div className="modal-dialog-surface w-[min(100%-2rem,20rem)] space-y-3 rounded-xl p-6">
-            <SkLine className="h-4 w-3/4" />
-            <SkLine className="h-4 w-full" />
-            <SkLine className="h-4 w-5/6" />
-          </div>
+        <div className="fixed inset-0 z-50" aria-busy="true" aria-label="페이지 이동 중">
+          <BookDetailRouteSkeleton />
         </div>
       )}
+
     </div>
   )
 }
