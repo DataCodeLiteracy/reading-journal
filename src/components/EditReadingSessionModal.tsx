@@ -4,11 +4,11 @@ import { useState, useEffect } from "react"
 import { Clock } from "lucide-react"
 import { ReadingSession } from "@/types/user"
 import FormModalFrame from "@/components/FormModalFrame"
-import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import {
   koreaYmdAndTimeToUtcDate,
-  utcInstantToKoreaHHmm,
+  utcInstantToKoreaHHmmss,
 } from "@/utils/timeUtils"
+import WallClockHmsFields from "@/components/WallClockHmsFields"
 
 interface EditReadingSessionModalProps {
   isOpen: boolean
@@ -23,16 +23,16 @@ export default function EditReadingSessionModal({
   onSave,
   session,
 }: EditReadingSessionModalProps) {
-  const [startTimeStr, setStartTimeStr] = useState("12:00")
-  const [endTimeStr, setEndTimeStr] = useState("12:00")
+  const [startTimeStr, setStartTimeStr] = useState("12:00:00")
+  const [endTimeStr, setEndTimeStr] = useState("12:00:00")
   const [durationMinutes, setDurationMinutes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (session && isOpen) {
-      setStartTimeStr(utcInstantToKoreaHHmm(session.startTime))
-      setEndTimeStr(utcInstantToKoreaHHmm(session.endTime))
+      setStartTimeStr(utcInstantToKoreaHHmmss(session.startTime))
+      setEndTimeStr(utcInstantToKoreaHHmmss(session.endTime))
       setError(null)
       setDurationMinutes("")
     }
@@ -65,7 +65,7 @@ export default function EditReadingSessionModal({
     if (!session) return
     const start = getStartDate()
     const end = new Date(start.getTime() + minutes * 60 * 1000)
-    setEndTimeStr(utcInstantToKoreaHHmm(end))
+    setEndTimeStr(utcInstantToKoreaHHmmss(end))
   }
 
   const handleSave = async () => {
@@ -149,10 +149,10 @@ export default function EditReadingSessionModal({
           <label className="mb-0.5 block text-sm font-medium text-theme-primary">
             시작 시간
           </label>
-          <FormNativePickerInput
-            picker="time"
+          <WallClockHmsFields
             value={startTimeStr}
-            onChange={(e) => setStartTimeStr(e.target.value)}
+            onChangeAction={setStartTimeStr}
+            idPrefix="edit-reading-start"
           />
         </div>
 
@@ -160,10 +160,10 @@ export default function EditReadingSessionModal({
           <label className="mb-0.5 block text-sm font-medium text-theme-primary">
             종료 시간
           </label>
-          <FormNativePickerInput
-            picker="time"
+          <WallClockHmsFields
             value={endTimeStr}
-            onChange={(e) => setEndTimeStr(e.target.value)}
+            onChangeAction={setEndTimeStr}
+            idPrefix="edit-reading-end"
           />
           {computedDurationFromTimes > 0 && (
             <p className="mt-2 text-sm text-accent-theme">
@@ -214,7 +214,7 @@ export default function EditReadingSessionModal({
       </div>
 
       <p className="mt-3 text-xs text-theme-secondary">
-        시작·종료는 모바일에서 OS 시간 피커(스크롤)로 고를 수 있어요.
+        시작·종료 시간 수정은 시/분/초 단위로 저장됩니다.
       </p>
 
       <div className="mt-4 flex justify-end gap-2 sm:mt-6">

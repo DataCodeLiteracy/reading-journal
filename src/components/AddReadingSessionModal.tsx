@@ -6,10 +6,11 @@ import { ReadingSession } from "@/types/user"
 import {
   getKoreaDate,
   koreaYmdAndTimeToUtcDate,
-  utcInstantToKoreaHHmm,
+  utcInstantToKoreaHHmmss,
 } from "@/utils/timeUtils"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
+import WallClockHmsFields from "@/components/WallClockHmsFields"
 
 interface AddReadingSessionModalProps {
   isOpen: boolean
@@ -29,8 +30,8 @@ export default function AddReadingSessionModal({
   const todayKorea = getKoreaDate(new Date())
 
   const [dateStr, setDateStr] = useState(todayKorea)
-  const [startTimeStr, setStartTimeStr] = useState("12:00")
-  const [endTimeStr, setEndTimeStr] = useState("12:30")
+  const [startTimeStr, setStartTimeStr] = useState("12:00:00")
+  const [endTimeStr, setEndTimeStr] = useState("12:10:00")
   const [durationMinutes, setDurationMinutes] = useState("")
   const [useDurationInput, setUseDurationInput] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -39,10 +40,11 @@ export default function AddReadingSessionModal({
   useEffect(() => {
     if (isOpen) {
       const now = new Date()
-      const end30 = new Date(now.getTime() + 30 * 60 * 1000)
-      setDateStr(getKoreaDate(now))
-      setStartTimeStr(utcInstantToKoreaHHmm(now))
-      setEndTimeStr(utcInstantToKoreaHHmm(end30))
+      const defaultEnd = now
+      const defaultStart = new Date(defaultEnd.getTime() - 10 * 60 * 1000)
+      setDateStr(getKoreaDate(defaultStart))
+      setStartTimeStr(utcInstantToKoreaHHmmss(defaultStart))
+      setEndTimeStr(utcInstantToKoreaHHmmss(defaultEnd))
       setDurationMinutes("")
       setUseDurationInput(false)
       setError(null)
@@ -58,7 +60,13 @@ export default function AddReadingSessionModal({
   let endDate: Date
   let durationSec: number
   let computedDurationMinutes = 0
-  let computedEndHHmm = ""
+  let computedEndHHmmss = ""
+
+  const computeDurationSeconds = (start: Date, end: Date): number => {
+    let endMs = end.getTime()
+    if (endMs <= start.getTime()) endMs += 24 * 60 * 60 * 1000
+    return Math.floor((endMs - start.getTime()) / 1000)
+  }
 
   if (useDurationInput && durationMinutes.trim() !== "") {
     const mins = parseInt(durationMinutes, 10)
@@ -66,15 +74,15 @@ export default function AddReadingSessionModal({
       endDate = new Date(startDate.getTime() + mins * 60 * 1000)
       durationSec = mins * 60
       computedDurationMinutes = mins
-      computedEndHHmm = utcInstantToKoreaHHmm(endDate)
+      computedEndHHmmss = utcInstantToKoreaHHmmss(endDate)
     } else {
       endDate = getEndDateFromTimes()
-      durationSec = Math.floor((endDate.getTime() - startDate.getTime()) / 1000)
+      durationSec = computeDurationSeconds(startDate, endDate)
       computedDurationMinutes = Math.floor(durationSec / 60)
     }
   } else {
     endDate = getEndDateFromTimes()
-    durationSec = Math.floor((endDate.getTime() - startDate.getTime()) / 1000)
+    durationSec = computeDurationSeconds(startDate, endDate)
     computedDurationMinutes = Math.floor(durationSec / 60)
   }
 
@@ -89,25 +97,31 @@ export default function AddReadingSessionModal({
 
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value
-    if (v === "" || /^\d+$/.test(v)) setDurationMinutes(v)
+    if (v === "" || /^\d+$/.test(v)) {
+      setDurationMinutes(v)
+      if (!useDurationInput) return
+      const mins = parseInt(v, 10)
+      if (!Number.isFinite(mins) || mins <= 0) return
+      const end = koreaYmdAndTimeToUtcDate(dateStr, endTimeStr)
+      const nextStart = new Date(end.getTime() - mins * 60 * 1000)
+      setDateStr(getKoreaDate(nextStart))
+      setStartTimeStr(utcInstantToKoreaHHmmss(nextStart))
+    }
   }
 
   const switchToEndTimeMode = () => {
-    if (useDurationInput && durationMinutes.trim()) {
-      const n = parseInt(durationMinutes, 10)
-      if (!isNaN(n) && n > 0) {
-        const s = koreaYmdAndTimeToUtcDate(dateStr, startTimeStr)
-        setEndTimeStr(utcInstantToKoreaHHmm(new Date(s.getTime() + n * 60 * 1000)))
-      }
-    }
     setUseDurationInput(false)
   }
 
   const switchToDurationMode = () => {
-    const s = koreaYmdAndTimeToUtcDate(dateStr, startTimeStr)
-    const e = koreaYmdAndTimeToUtcDate(dateStr, endTimeStr)
-    let mins = Math.floor((e.getTime() - s.getTime()) / 60000)
-    if (mins <= 0) mins = 30
+    const now = new Date()
+    const endNow = utcInstantToKoreaHHmmss(now)
+    let mins = parseInt(durationMinutes, 10)
+    if (!Number.isFinite(mins) || mins <= 0) mins = 10
+    const nextStart = new Date(now.getTime() - mins * 60 * 1000)
+    setDateStr(getKoreaDate(nextStart))
+    setEndTimeStr(endNow)
+    setStartTimeStr(utcInstantToKoreaHHmmss(nextStart))
     setDurationMinutes(String(mins))
     setUseDurationInput(true)
   }
@@ -123,9 +137,10 @@ export default function AddReadingSessionModal({
           )
         : getEndDateFromTimes()
 
-    const duration = Math.floor(
-      (finalEnd.getTime() - startDate.getTime()) / 1000
-    )
+    let finalEndMs = finalEnd.getTime()
+    if (finalEndMs <= startDate.getTime()) finalEndMs += 24 * 60 * 60 * 1000
+    const finalEndDate = new Date(finalEndMs)
+    const duration = Math.floor((finalEndMs - startDate.getTime()) / 1000)
     if (duration <= 0) {
       setError("종료 시간은 시작 시간보다 늦어야 합니다.")
       return
@@ -137,7 +152,7 @@ export default function AddReadingSessionModal({
         user_id: userId,
         bookId,
         startTime: startDate.toISOString(),
-        endTime: finalEnd.toISOString(),
+        endTime: finalEndDate.toISOString(),
         duration,
         date: dateStr,
       })
@@ -186,10 +201,10 @@ export default function AddReadingSessionModal({
           <label className="mb-0.5 block text-sm font-medium text-theme-primary">
             시작 시간
           </label>
-          <FormNativePickerInput
-            picker="time"
+          <WallClockHmsFields
             value={startTimeStr}
-            onChange={(e) => setStartTimeStr(e.target.value)}
+            onChangeAction={setStartTimeStr}
+            idPrefix="add-reading-start"
           />
         </div>
 
@@ -223,10 +238,10 @@ export default function AddReadingSessionModal({
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               종료 시간
             </label>
-            <FormNativePickerInput
-              picker="time"
+            <WallClockHmsFields
               value={endTimeStr}
-              onChange={(e) => setEndTimeStr(e.target.value)}
+              onChangeAction={setEndTimeStr}
+              idPrefix="add-reading-end"
             />
             {durationValid && (
               <p className="mt-2 text-sm text-accent-theme">
@@ -247,17 +262,20 @@ export default function AddReadingSessionModal({
               placeholder="숫자만 입력"
               className="form-control"
             />
-            {computedEndHHmm && durationMinutes.trim() !== "" && (
+            {computedEndHHmmss && durationMinutes.trim() !== "" && (
               <p className="mt-2 text-sm text-theme-secondary">
-                종료 시각(한국): {computedEndHHmm}
+                종료 시각(한국): {computedEndHHmmss}
               </p>
             )}
+            <p className="mt-1 text-xs text-theme-secondary">
+              이 모드에서는 종료 시간이 현재 시각으로 고정되고, 읽은 시간(분)에 맞춰 시작 시간이 자동 조정됩니다.
+            </p>
           </div>
         )}
       </div>
 
       <p className="mt-3 text-xs text-theme-secondary">
-        시작·종료 시간은 모바일에서 OS 시간 피커(스크롤)로 고를 수 있어요.
+        시작·종료 시간은 시/분/초 단위로 등록되고 저장됩니다.
       </p>
 
       <div className="mt-4 flex justify-end gap-2 sm:mt-6">

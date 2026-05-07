@@ -447,27 +447,42 @@ export default function BookDetailPageClient({
     return Math.floor((currentTime.getTime() - timerStartTime.getTime()) / 1000)
   }
 
-  // 시간 표시용 포맷 함수 (ISO 형식이면 한국 시간으로, 기존 형식이면 그대로)
+  // 시간 표시용 포맷 함수: 모든 케이스를 HH:mm:ss 하나로 통일
   const formatTimeForDisplay = (timeString: string) => {
+    const toHms = (h: number, m: number, s: number) =>
+      `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+
     if (timeString.includes("T") && timeString.includes("Z")) {
       // ISO 형식인 경우 한국 시간으로 변환
       const date = new Date(timeString)
       const koreaHour = (date.getUTCHours() + 9) % 24
       const koreaMinute = date.getUTCMinutes()
       const koreaSecond = date.getUTCSeconds()
-
-      // 오전/오후 구분
-      const period = koreaHour < 12 ? "오전" : "오후"
-      const displayHour =
-        koreaHour === 0 ? 12 : koreaHour > 12 ? koreaHour - 12 : koreaHour
-
-      return `${period} ${displayHour.toString().padStart(2, "0")}:${koreaMinute
-        .toString()
-        .padStart(2, "0")}:${koreaSecond.toString().padStart(2, "0")}`
-    } else {
-      // 기존 형식인 경우 그대로 반환
-      return timeString
+      return toHms(koreaHour, koreaMinute, koreaSecond)
     }
+
+    const ampmMatch = timeString.match(
+      /^(오전|오후)\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/
+    )
+    if (ampmMatch) {
+      const period = ampmMatch[1]
+      const hour12 = parseInt(ampmMatch[2], 10)
+      const minute = parseInt(ampmMatch[3], 10)
+      const second = parseInt(ampmMatch[4] ?? "0", 10)
+      let hour24 = hour12 % 12
+      if (period === "오후") hour24 += 12
+      return toHms(hour24, minute, second)
+    }
+
+    const hmsMatch = timeString.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+    if (hmsMatch) {
+      const hour = parseInt(hmsMatch[1], 10)
+      const minute = parseInt(hmsMatch[2], 10)
+      const second = parseInt(hmsMatch[3] ?? "0", 10)
+      return toHms(hour, minute, second)
+    }
+
+    return timeString
   }
 
   const handleEditBook = async (updatedBook: Book) => {
