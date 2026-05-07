@@ -1,6 +1,7 @@
 export const READING_TIMER_AMBIENT_STORAGE_KEY = "readingJournal.timerAmbientTrackId"
 export const READING_TIMER_BG_STORAGE_KEY = "readingJournal.timerBgId"
 export const READING_TIMER_DEFAULT_AMBIENT_ID = "staring"
+const AMBIENT_UI_MAX_INDEX = 9
 
 export type ReadingTimerAmbientTrack = {
   id: string
@@ -8,35 +9,104 @@ export type ReadingTimerAmbientTrack = {
   src: string | null
 }
 
-/** `public/audio` 실제 파일명(영문) — 공백은 URL 인코딩 */
+/** `public/audio` 아래 저장한 파일명 그대로(한글·공백 가능) → URL 경로 */
+function ambientSrc(fileName: string): string {
+  return `/audio/${encodeURIComponent(fileName)}`
+}
+
+/**
+ * 번호 접두 파일명 `N.*.mp3` (N=1~9). 저장 파일명과 동일해야 재생됨.
+ * 6~9는 예시 이름이며 원하는 파일명으로 바꾸면 됩니다.
+ */
 export const READING_TIMER_AMBIENT_TRACKS: ReadingTimerAmbientTrack[] = [
   { id: "off", label: "끔", src: null },
   {
     id: "early-light",
     label: "이른 빛",
-    src: "/audio/Early%20Light.mp3",
+    src: ambientSrc("1.이른 빛.mp3"),
   },
   {
     id: "staring",
     label: "머무는 시선",
-    src: "/audio/Staring.mp3",
+    src: ambientSrc("2.머무는 시선.mp3"),
   },
   {
     id: "blue-wednesday",
     label: "푸른 수요일",
-    src: "/audio/Blue%20Wednesday.mp3",
+    src: ambientSrc("3.푸른 수요일.mp3"),
   },
   {
     id: "snowfall",
     label: "눈 내림",
-    src: "/audio/Snowfall.mp3",
+    src: ambientSrc("4.눈 내림.mp3"),
   },
   {
     id: "purrple-cat",
     label: "보랏빛 고양이",
-    src: "/audio/Purrple%20Cat.mp3",
+    src: ambientSrc("5.보랏빛 고양이.mp3"),
+  },
+  {
+    id: "ambient-6",
+    label: "배경음 6",
+    src: ambientSrc("6.여명.mp3"),
+  },
+  {
+    id: "ambient-7",
+    label: "배경음 7",
+    src: ambientSrc("7.달빛.mp3"),
+  },
+  {
+    id: "ambient-8",
+    label: "배경음 8",
+    src: ambientSrc("8.숲속.mp3"),
+  },
+  {
+    id: "ambient-9",
+    label: "배경음 9",
+    src: ambientSrc("9.바람.mp3"),
   },
 ]
+
+function ambientTrackOrderFromSrc(src: string | null): number | null {
+  if (!src) return null
+  // 예: /audio/1.%20Some%20Track.mp3
+  const match = src.match(/\/audio\/(\d+)\./)
+  if (!match) return null
+  const n = Number(match[1])
+  return Number.isInteger(n) ? n : null
+}
+
+/** UI: `N.` 번호·확장자는 빼고 파일명의 본문만 표시 (예: `1.이른 빛.mp3` → `이른 빛`) */
+export function getAmbientTrackDisplayLabel(t: ReadingTimerAmbientTrack): string {
+  if (t.id === "off" || !t.src) return t.label
+  try {
+    const segment = t.src.split("?")[0]!.split("#")[0]!.split("/").pop()
+    if (!segment) return t.label
+    const decoded = decodeURIComponent(segment)
+    const base = decoded.replace(/\.[^.]+$/i, "").trim()
+    const body = base.replace(/^\d+\.\s*/, "").trim()
+    return body || t.label
+  } catch {
+    return t.label
+  }
+}
+
+/**
+ * 타이머 설정 UI 노출용 배경음 목록.
+ * - `1.` ~ `9.` 번 트랙을 항상 순서대로 노출(정의와 동일 9개)
+ */
+export function getAmbientTracksForUi(): ReadingTimerAmbientTrack[] {
+  const off = READING_TIMER_AMBIENT_TRACKS.find((t) => t.id === "off")
+  const numbered = READING_TIMER_AMBIENT_TRACKS
+    .filter((t) => t.id !== "off")
+    .map((t) => ({ track: t, order: ambientTrackOrderFromSrc(t.src) }))
+    .filter((x) => x.order !== null && x.order >= 1 && x.order <= AMBIENT_UI_MAX_INDEX)
+    .sort((a, b) => (a.order! - b.order!))
+    .map((x) => x.track)
+
+  if (numbered.length === 0) return READING_TIMER_AMBIENT_TRACKS
+  return off ? [off, ...numbered] : numbered
+}
 
 export type ReadingTimerBgPreset = {
   id: string

@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import {
-  READING_TIMER_AMBIENT_TRACKS,
+  getAmbientTrackDisplayLabel,
+  getAmbientTracksForUi,
   READING_TIMER_BG_PRESETS,
 } from "@/constants/readingTimerMedia"
 import { useReadingTimerSheet } from "@/contexts/ReadingTimerSheetContext"
@@ -167,7 +168,7 @@ export default function ReadingTimerSettingsModal({
             <section>
               <h3 className='mb-2 text-xs font-semibold text-theme-secondary'>배경음</h3>
               <ul className='space-y-1'>
-                {READING_TIMER_AMBIENT_TRACKS.map((t) => (
+                {getAmbientTracksForUi().map((t) => (
                   <li key={t.id}>
                     <button
                       type='button'
@@ -178,7 +179,7 @@ export default function ReadingTimerSettingsModal({
                           : "text-theme-secondary hover:bg-theme-tertiary/60"
                       }`}
                     >
-                      {t.label}
+                      {getAmbientTrackDisplayLabel(t)}
                     </button>
                   </li>
                 ))}
