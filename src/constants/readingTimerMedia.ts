@@ -9,6 +9,17 @@ export type ReadingTimerAmbientTrack = {
   src: string | null
 }
 
+const AMBIENT_FILENAME_KO_LABEL: Record<string, string> = {
+  "1.distant-land.mp3": "먼 땅",
+  "2.lingering-gaze.mp3": "머무는 시선",
+  "3.phosphorescence.mp3": "인광",
+  "4.forest.mp3": "숲의",
+  "5.purple-cat.mp3": "보라색 고양이",
+  "6.snowfall.mp3": "눈 내림",
+  "7.early-light.mp3": "이른 빛",
+  "8.blue-wednesday.mp3": "푸른 수요일",
+}
+
 /** `public/audio` 아래 저장한 파일명 그대로(한글·공백 가능) → URL 경로 */
 function ambientSrc(fileName: string): string {
   return `/audio/${encodeURIComponent(fileName)}`
@@ -23,42 +34,42 @@ export const READING_TIMER_AMBIENT_TRACKS: ReadingTimerAmbientTrack[] = [
   {
     id: "early-light",
     label: "먼 땅",
-    src: ambientSrc("1.먼 땅.mp3"),
+    src: ambientSrc("1.distant-land.mp3"),
   },
   {
     id: "staring",
     label: "머무는 시선",
-    src: ambientSrc("2.머무는 시선.mp3"),
+    src: ambientSrc("2.lingering-gaze.mp3"),
   },
   {
     id: "blue-wednesday",
     label: "인광",
-    src: ambientSrc("3.인광.mp3"),
+    src: ambientSrc("3.phosphorescence.mp3"),
   },
   {
     id: "snowfall",
     label: "숲의",
-    src: ambientSrc("4.숲의.mp3"),
+    src: ambientSrc("4.forest.mp3"),
   },
   {
     id: "purrple-cat",
     label: "보라색 고양이",
-    src: ambientSrc("5.보라색 고양이.mp3"),
+    src: ambientSrc("5.purple-cat.mp3"),
   },
   {
     id: "ambient-6",
     label: "눈 내림",
-    src: ambientSrc("6.눈 내림.mp3"),
+    src: ambientSrc("6.snowfall.mp3"),
   },
   {
     id: "ambient-7",
     label: "이른 빛",
-    src: ambientSrc("7.이른 빛.mp3"),
+    src: ambientSrc("7.early-light.mp3"),
   },
   {
     id: "ambient-8",
     label: "푸른 수요일",
-    src: ambientSrc("8.푸른 수요일.mp3"),
+    src: ambientSrc("8.blue-wednesday.mp3"),
   },
   {
     id: "ambient-9",
@@ -82,6 +93,8 @@ export function getAmbientTrackDisplayLabel(t: ReadingTimerAmbientTrack): string
   try {
     const segment = t.src.split("?")[0]!.split("#")[0]!.split("/").pop()
     if (!segment) return t.label
+    const mapped = AMBIENT_FILENAME_KO_LABEL[segment]
+    if (mapped) return mapped
     const decoded = decodeURIComponent(segment)
     const base = decoded.replace(/\.[^.]+$/i, "").trim()
     const body = base.replace(/^\d+\.\s*/, "").trim()
