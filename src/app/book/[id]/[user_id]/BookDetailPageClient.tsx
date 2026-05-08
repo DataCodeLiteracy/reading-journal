@@ -136,7 +136,10 @@ export default function BookDetailPageClient({
 
   const timerBgSrc = getTimerBgSrc(timerBgId)
 
-  useReadingTimerAmbient(isTimerRunning, ambientTrackId)
+  const { primeAmbientPlaybackFromGesture } = useReadingTimerAmbient(
+    isTimerRunning,
+    ambientTrackId,
+  )
 
   useEffect(() => {
     setCosmosOverlay("off")
@@ -336,6 +339,7 @@ export default function BookDetailPageClient({
     if (isTimerProcessing) return
     try {
       setIsTimerProcessing(true)
+      await primeAmbientPlaybackFromGesture()
       const now = new Date()
       setTimerStartTime(now)
       setCurrentTime(now)

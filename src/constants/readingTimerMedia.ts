@@ -22,8 +22,8 @@ export const READING_TIMER_AMBIENT_TRACKS: ReadingTimerAmbientTrack[] = [
   { id: "off", label: "끔", src: null },
   {
     id: "early-light",
-    label: "이른 빛",
-    src: ambientSrc("1.이른 빛.mp3"),
+    label: "먼 땅",
+    src: ambientSrc("1.먼 땅.mp3"),
   },
   {
     id: "staring",
@@ -32,38 +32,38 @@ export const READING_TIMER_AMBIENT_TRACKS: ReadingTimerAmbientTrack[] = [
   },
   {
     id: "blue-wednesday",
-    label: "푸른 수요일",
-    src: ambientSrc("3.푸른 수요일.mp3"),
+    label: "인광",
+    src: ambientSrc("3.인광.mp3"),
   },
   {
     id: "snowfall",
-    label: "눈 내림",
-    src: ambientSrc("4.눈 내림.mp3"),
+    label: "숲의",
+    src: ambientSrc("4.숲의.mp3"),
   },
   {
     id: "purrple-cat",
-    label: "보랏빛 고양이",
-    src: ambientSrc("5.보랏빛 고양이.mp3"),
+    label: "보라색 고양이",
+    src: ambientSrc("5.보라색 고양이.mp3"),
   },
   {
     id: "ambient-6",
-    label: "배경음 6",
-    src: ambientSrc("6.여명.mp3"),
+    label: "눈 내림",
+    src: ambientSrc("6.눈 내림.mp3"),
   },
   {
     id: "ambient-7",
-    label: "배경음 7",
-    src: ambientSrc("7.달빛.mp3"),
+    label: "이른 빛",
+    src: ambientSrc("7.이른 빛.mp3"),
   },
   {
     id: "ambient-8",
-    label: "배경음 8",
-    src: ambientSrc("8.숲속.mp3"),
+    label: "푸른 수요일",
+    src: ambientSrc("8.푸른 수요일.mp3"),
   },
   {
     id: "ambient-9",
-    label: "배경음 9",
-    src: ambientSrc("9.바람.mp3"),
+    label: "배경음 9 (준비중)",
+    src: null,
   },
 ]
 

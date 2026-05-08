@@ -37,6 +37,7 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
     const track = READING_TIMER_AMBIENT_TRACKS.find((t) => t.id === trackId)
     if (!track?.src) return
     const a = new Audio(track.src)
+    a.preload = "auto"
     a.volume = DEFAULT_VOLUME
     let disposed = false
 
@@ -129,6 +130,25 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
       window.clearInterval(id)
     }
   }, [isTimerRunning, trackId])
+
+  /**
+   * 모바일(iOS/Safari) 자동재생 제한 대응:
+   * 사용자 제스처(클릭/탭) 콜스택 안에서 1회 재생-정지로 오디오를 언락합니다.
+   */
+  const primeAmbientPlaybackFromGesture = async (): Promise<void> => {
+    const a = audioRef.current
+    if (!a) return
+    try {
+      const prevTime = a.currentTime
+      await a.play()
+      a.pause()
+      a.currentTime = prevTime
+    } catch {
+      // 제스처 타이밍/기기 정책에 따라 실패 가능: 타이머 시작 시 재시도됨
+    }
+  }
+
+  return { primeAmbientPlaybackFromGesture }
 }
 
 function seekSoftLoopRestartForElement(a: HTMLAudioElement) {

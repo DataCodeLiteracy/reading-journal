@@ -20,6 +20,7 @@ import {
   type QueryConstraint,
   deleteField,
   getCountFromServer,
+  FirestoreError,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
@@ -143,14 +144,13 @@ export class ApiClient {
     id: string,
     data: Partial<T>
   ): Promise<void> {
+    const docRef = doc(db, collectionName, id)
+    const updateData: DocumentData = {
+      updated_at: serverTimestamp(),
+    }
+
     try {
-      const docRef = doc(db, collectionName, id)
-      
       // undefined 값을 가진 필드는 deleteField()로 변환
-      const updateData: any = {
-        updated_at: serverTimestamp(),
-      }
-      
       for (const [key, value] of Object.entries(data)) {
         if (value === undefined) {
           // undefined 값은 필드 삭제로 처리
@@ -161,17 +161,29 @@ export class ApiClient {
       }
       
       await updateDoc(docRef, updateData)
-    } catch (error: any) {
-      const errCode = error?.code ?? error?.name
+    } catch (error: unknown) {
+      const firestoreError = error as FirestoreError
+      if (firestoreError?.code === "not-found") {
+        const createData: DocumentData = {
+          created_at: serverTimestamp(),
+          ...updateData,
+        }
+        await setDoc(docRef, createData, { merge: true })
+        return
+      }
+
+      const rawErr = error as { code?: string; name?: string; message?: string; toString?: () => string }
+      const errCode = rawErr?.code ?? rawErr?.name
       const errMessage =
-        error?.message ??
-        (typeof error?.toString === "function" ? error.toString() : String(error))
+        rawErr?.message ??
+        (typeof rawErr?.toString === "function" ? rawErr.toString() : String(error))
       console.error("[ApiClient.updateDocument] 실제 에러:", {
         code: errCode,
         message: errMessage,
         collectionName,
         id,
         payloadKeys: data ? Object.keys(data) : [],
+        rawError: error,
       })
       throw new ApiError(
         `문서를 업데이트하는 중 오류가 발생했습니다. ${errMessage}`,
