@@ -30,7 +30,7 @@ import {
   getLastWeekISOStringKST,
   getWeekdayLabelKST,
 } from "@/utils/timeUtils"
-import { sortBooksByLastReadFromSessions } from "@/utils/booksSortByLastRead"
+import { sortBooksByRecentlyRead } from "@/utils/booksSortByLastRead"
 import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import WeeklyRecapModal, { DaySummary } from "@/components/WeeklyRecapModal"
 import { HomePageSkeleton } from "@/components/skeletons"
@@ -79,7 +79,7 @@ export default function Home() {
 
   const recentReadingBooks = useMemo(() => {
     const reading = allBooks.filter((b) => b.status === "reading")
-    return sortBooksByLastReadFromSessions(reading, allReadingSessions).slice(
+    return sortBooksByRecentlyRead(reading, allReadingSessions).slice(
       0,
       RECENT_BOOKS_LIMIT,
     )

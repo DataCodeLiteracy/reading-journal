@@ -192,10 +192,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addReadingSession = useCallback(
     async (session: ReadingSession) => {
       if (!userUid) return
+      const endMs = new Date(session.endTime).getTime()
+      const readTouch = Number.isFinite(endMs) ? new Date(endMs) : new Date()
+      const now = new Date()
       queryClient.setQueryData<UserDashboardData>(
         queryKeys.user.dashboard(userUid),
         (old) =>
-          old ? { ...old, sessions: [session, ...old.sessions] } : old
+          old
+            ? {
+                ...old,
+                sessions: [session, ...old.sessions],
+                books: old.books.map((b) =>
+                  b.id === session.bookId
+                    ? {
+                        ...b,
+                        last_read_at: readTouch,
+                        updated_at: now,
+                      }
+                    : b,
+                ),
+              }
+            : old,
       )
       const snap = queryClient.getQueryData<UserDashboardData>(
         queryKeys.user.dashboard(userUid)

@@ -58,6 +58,15 @@ export class BookService {
     await ApiClient.updateDocument("books", bookId, updateData)
   }
 
+  /** 보류 해제 — 읽는 중으로 되돌리고 최근 읽은 순 정렬에 반영 */
+  static async resumeFromHold(bookId: string): Promise<void> {
+    await ApiClient.updateDocument("books", bookId, {
+      status: "reading",
+      hasStartedReading: true,
+      last_read_at: new Date(),
+    })
+  }
+
   static async getUserBooks(user_id: string): Promise<Book[]> {
     return await ApiClient.queryDocuments<Book>("books", [
       ["user_id", "==", user_id],

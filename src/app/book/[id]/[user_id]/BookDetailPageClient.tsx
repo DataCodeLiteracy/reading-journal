@@ -794,6 +794,30 @@ export default function BookDetailPageClient({
     }
   }
 
+  const handleResumeFromHold = async () => {
+    try {
+      setError(null)
+      const now = new Date()
+      await BookService.resumeFromHold(resolvedParams?.id || "")
+
+      const updatedBook = {
+        ...book!,
+        status: "reading" as const,
+        hasStartedReading: true,
+        last_read_at: now,
+        updated_at: now,
+      }
+      setBook(updatedBook)
+      updateBook(resolvedParams?.id || "", updatedBook)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setError(error.message)
+      } else {
+        setError("보류를 해제하는 중 오류가 발생했습니다.")
+      }
+    }
+  }
+
   const handleEditReadingSession = (session: ReadingSession) => {
     setSessionToEdit(session)
     setIsEditSessionModalOpen(true)
@@ -1602,7 +1626,7 @@ export default function BookDetailPageClient({
                       setError(null)
                       try {
                         if (isOnHold) {
-                          await handleReread()
+                          await handleResumeFromHold()
                         } else {
                           await handlePutOnHold()
                         }
@@ -1715,7 +1739,7 @@ export default function BookDetailPageClient({
             isOnHold={isOnHold}
             onStop={stopTimer}
             onRereadModal={() => setIsRereadModalOpen(true)}
-            onReread={handleReread}
+            onReread={handleResumeFromHold}
           />
         )}
 
