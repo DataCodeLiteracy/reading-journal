@@ -10,6 +10,11 @@ import { Book } from "@/types/book"
 import { GenericRouteSkeleton } from "@/components/skeletons"
 import Select, { type SelectOption } from "@/components/Select"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
+import {
+  formatAdminUserSelectLabel,
+  type AdminUserListItem,
+} from "@/utils/adminUserLabel"
+import { countBooksByUserId } from "@/utils/adminBookExport"
 
 function parseCSVLine(line: string): string[] {
   const out: string[] = []
@@ -69,12 +74,10 @@ function isAlreadyRegistered(등록여부: string): boolean {
   return false
 }
 
-type UserOption = { uid: string; displayName: string | null; email: string | null }
-
 export default function AdminBookRegisterPage() {
   const router = useRouter()
   const { loading, isLoggedIn, userData } = useAuth()
-  const [users, setUsers] = useState<UserOption[]>([])
+  const [users, setUsers] = useState<AdminUserListItem[]>([])
   const [selectedUid, setSelectedUid] = useState("")
   const [log, setLog] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
@@ -90,7 +93,7 @@ export default function AdminBookRegisterPage() {
     for (const u of users) {
       opts.push({
         value: u.uid,
-        label: u.displayName || u.email || u.uid,
+        label: formatAdminUserSelectLabel(u),
       })
     }
     return opts
@@ -98,8 +101,19 @@ export default function AdminBookRegisterPage() {
 
   useEffect(() => {
     if (!userData?.isAdmin) return
-    UserService.getAllUsersForAdmin()
-      .then(setUsers)
+    Promise.all([
+      UserService.getAllUsersForAdmin(),
+      import("@/services/bookService").then((m) => m.BookService.getAllBooks(5000)),
+    ])
+      .then(([userList, books]) => {
+        const bookCounts = countBooksByUserId(books)
+        setUsers(
+          userList.map((u) => ({
+            ...u,
+            bookCount: bookCounts.get(u.uid) ?? 0,
+          }))
+        )
+      })
       .catch((err) => {
         console.error("Failed to load users:", err)
         setLog((prev) => [...prev, "유저 목록을 불러오지 못했습니다."])
@@ -144,18 +158,21 @@ export default function AdminBookRegisterPage() {
           continue
         }
 
-        const title = get("제목").trim()
+        const title =
+          get("책 제목").trim() || get("이름").trim() || get("제목").trim()
         if (!title) {
           skipped += 1
           continue
         }
 
-        const category = get("분야").trim() || undefined
+        // 레거시 `분야` 텍스트(예: 그림책/동화책)는 무시하고,
+        // 신규 대분류/중분류 필드만 사용합니다.
         const statusFromCsv = get("상태").trim()
         const toReadVal = get("이번 년도에 읽을 책").trim()
         const author = get("저자").trim() || undefined
         const publisher = get("출판사").trim() || undefined
         const publishedDate = get("출판일").trim() || undefined
+        const notes = get("비고").trim() || undefined
         const ratingStr = get("평점").trim()
         const rereadStr = get("회독수").trim()
 
@@ -172,11 +189,11 @@ export default function AdminBookRegisterPage() {
             rating,
             rereadCount: rereadCount || 0,
           }
-          if (category !== undefined) updateData.category = category || undefined
           if (toReadThisYear !== undefined) updateData.toReadThisYear = toReadThisYear
           if (author !== undefined) updateData.author = author || undefined
           if (publisher !== undefined) updateData.publisher = publisher || undefined
           if (publishedDate !== undefined) updateData.publishedDate = publishedDate || undefined
+          if (notes !== undefined) updateData.notes = notes || undefined
 
           await BookService.updateBook(existing.id, updateData)
           updated += 1
@@ -191,10 +208,10 @@ export default function AdminBookRegisterPage() {
             rereadCount: rereadCount || 0,
           }
           if (author) newBook.author = author
-          if (category) newBook.category = category
           if (toReadThisYear !== undefined) newBook.toReadThisYear = toReadThisYear
           if (publisher) newBook.publisher = publisher
           if (publishedDate) newBook.publishedDate = publishedDate
+          if (notes) newBook.notes = notes
 
           await BookService.createBook(newBook)
           created += 1
@@ -266,7 +283,7 @@ export default function AdminBookRegisterPage() {
             <label className='font-medium text-theme-primary'>CSV 파일</label>
           </div>
           <p className='text-sm text-theme-secondary mb-3'>
-            CSV에는 제목, 분야, 상태, 이번 년도에 읽을 책, 저자, 출판사, 출판일, 평점, 회독수 컬럼이 포함되어야 합니다. 등록여부가 체크된 행은 제외됩니다.
+            CSV에는 책 제목(또는 이름), 비고, 상태, 이번 년도에 읽을 책, 저자, 출판사, 출판일, 평점, 회독수 컬럼을 사용할 수 있습니다. 레거시 분야 컬럼은 무시됩니다.
           </p>
           <input
             ref={fileInputRef}

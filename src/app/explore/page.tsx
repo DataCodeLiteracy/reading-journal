@@ -22,10 +22,10 @@ import {
 import {
   Book,
   BOOK_LEVELS,
-  BOOK_FIELDS,
   type BookLevel,
-  type BookField,
 } from "@/types/book"
+import { useBookCategories } from "@/hooks/useBookCategories"
+import { buildCategoryFilterOptions } from "@/utils/bookCategoryFilterOptions"
 import { BookService } from "@/services/bookService"
 import {
   countExploreBooksForExplore,
@@ -88,7 +88,8 @@ function ExplorePageContent() {
   const [userIdFilter, setUserIdFilter] = useState("")
   const [minRatingFilter, setMinRatingFilter] = useState<string>("")
   const [levelFilter, setLevelFilter] = useState<BookLevel | "">("")
-  const [categoryFilter, setCategoryFilter] = useState<BookField | "">("")
+  const [categoryFilter, setCategoryFilter] = useState("")
+  const { data: categoryTree } = useBookCategories()
   const [onlyNotMineFilter, setOnlyNotMineFilter] = useState(false)
   const [sortBy, setSortBy] =
     useState<(typeof SORT_OPTIONS)[number]["value"]>("title-asc")
@@ -99,16 +100,20 @@ function ExplorePageContent() {
     title: string
     author: string
     publishedDate?: string
+    publisher?: string
     level?: BookLevel
-    category?: BookField
+    categoryDepth1Id?: string
+    categoryDepth2Id?: string
   } | null>(null)
   const [confirmAddOpen, setConfirmAddOpen] = useState(false)
   const [confirmAddInitial, setConfirmAddInitial] = useState<{
     title: string
     author: string
     publishedDate?: string
+    publisher?: string
     level?: BookLevel
-    category?: BookField
+    categoryDepth1Id?: string
+    categoryDepth2Id?: string
   } | null>(null)
   const [isAddingBook, setIsAddingBook] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -295,11 +300,8 @@ function ExplorePageContent() {
   )
 
   const exploreCategoryOptions = useMemo(
-    (): SelectOption<string>[] => [
-      { value: "", label: "전체" },
-      ...BOOK_FIELDS.map((f) => ({ value: f, label: f })),
-    ],
-    [],
+    () => buildCategoryFilterOptions(categoryTree),
+    [categoryTree],
   )
 
   const exploreUserOptions = useMemo(
@@ -518,7 +520,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={categoryFilter}
-                    onChange={(v) => setCategoryFilter(v as BookField | "")}
+                    onChange={setCategoryFilter}
                     options={exploreCategoryOptions}
                     variant='toolbar'
                     aria-label='분야 필터'
@@ -649,12 +651,12 @@ function ExplorePageContent() {
                                 title: g.title,
                                 author: g.author,
                                 publishedDate: g.books[0]?.publishedDate || "",
+                                publisher: g.books[0]?.publisher,
                                 level: g.books[0]?.level as
                                   | BookLevel
                                   | undefined,
-                                category: g.books[0]?.category as
-                                  | BookField
-                                  | undefined,
+                                categoryDepth1Id: g.books[0]?.categoryDepth1Id,
+                                categoryDepth2Id: g.books[0]?.categoryDepth2Id,
                               })
                               setConfirmAddOpen(true)
                             }}
@@ -799,7 +801,9 @@ function ExplorePageContent() {
         initialAuthor={addModalInitial?.author ?? ""}
         initialPublishedDate={addModalInitial?.publishedDate ?? ""}
         initialLevel={addModalInitial?.level}
-        initialCategory={addModalInitial?.category}
+        initialPublisher={addModalInitial?.publisher}
+        initialCategoryDepth1Id={addModalInitial?.categoryDepth1Id}
+        initialCategoryDepth2Id={addModalInitial?.categoryDepth2Id}
         userBookTitleKeys={userBookTitleKeys}
       />
       {isAddingBook && (

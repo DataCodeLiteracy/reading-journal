@@ -151,7 +151,7 @@ export function buildExploreTitlePageConditions(params: {
     c.push(["status", "==", params.statusFilter])
   if (params.levelFilter) c.push(["level", "==", params.levelFilter])
   if (params.categoryFilter)
-    c.push(["category", "==", params.categoryFilter])
+    c.push(["categoryDepth2Id", "==", params.categoryFilter])
   const uid = params.userIdFilter.trim()
   if (uid) c.push(["user_id", "==", uid])
   return c

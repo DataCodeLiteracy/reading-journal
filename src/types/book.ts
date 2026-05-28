@@ -18,9 +18,6 @@ export type BookLevel =
   | "고3"
   | "성인"
 
-/** 책의 분야 (장르/대상) */
-export type BookField = "그림책" | "동화책" | "청소년책" | "성인책"
-
 export const BOOK_LEVELS: BookLevel[] = [
   "유아",
   "초1",
@@ -36,13 +33,6 @@ export const BOOK_LEVELS: BookLevel[] = [
   "고2",
   "고3",
   "성인",
-]
-
-export const BOOK_FIELDS: BookField[] = [
-  "그림책",
-  "동화책",
-  "청소년책",
-  "성인책",
 ]
 
 export interface Book {
@@ -66,14 +56,20 @@ export interface Book {
   completedDate?: string
   rereadCount?: number // 회독 수 (기본값 0)
   currentRereadStartDate?: string // 현재 회독의 시작일 (다시 읽기 시작한 날짜)
-  /** 분야: 그림책, 동화책, 청소년책, 성인책 등 */
+  /** 레거시 분야 문자열(과거 데이터 호환용). 신규 로직에서는 사용하지 않음. */
   category?: string
+  categoryDepth1Id?: string
+  categoryDepth1Label?: string
+  categoryDepth2Id?: string
+  categoryDepth2Label?: string
   /** 대상 연령/학년 (레벨): 유아, 초1~6, 중1~3, 고1~3, 성인 */
   level?: BookLevel
   /** 이번 년도에 읽을 책 여부 */
   toReadThisYear?: boolean
   /** 출판사 */
   publisher?: string
+  /** 비고 (자유 메모) */
+  notes?: string
   created_at?: Date
   updated_at?: Date
   /** 마지막 독서 세션 종료 시각(UTC). 서재 «최근 읽은 순» Firestore 정렬용 */

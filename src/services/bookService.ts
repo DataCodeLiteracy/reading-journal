@@ -217,7 +217,8 @@ export class BookService {
     status: Book["status"]
     sort: "recently_added" | "recently_updated" | "recently_read"
     level?: string
-    category?: string
+    categoryDepth2Id?: string
+    toReadThisYear?: boolean
     titlePrefix?: string
     pageSize: number
     startAfterSnapshot: QueryDocumentSnapshot<DocumentData> | null
@@ -227,7 +228,8 @@ export class BookService {
       status,
       sort,
       level,
-      category,
+      categoryDepth2Id,
+      toReadThisYear,
       titlePrefix,
       pageSize,
       startAfterSnapshot,
@@ -237,7 +239,12 @@ export class BookService {
       ["status", "==", status],
     ]
     if (level) conditions.push(["level", "==", level])
-    if (category) conditions.push(["category", "==", category])
+    if (categoryDepth2Id) {
+      conditions.push(["categoryDepth2Id", "==", categoryDepth2Id])
+    }
+    if (typeof toReadThisYear === "boolean") {
+      conditions.push(["toReadThisYear", "==", toReadThisYear])
+    }
     const tp = titlePrefix?.trim()
     if (tp) {
       conditions.push(["title", ">=", tp])
@@ -264,14 +271,24 @@ export class BookService {
   static async countUserBooksByStatus(
     user_id: string,
     status: Book["status"],
-    options?: { level?: string; category?: string; titlePrefix?: string },
+    options?: {
+      level?: string
+      categoryDepth2Id?: string
+      toReadThisYear?: boolean
+      titlePrefix?: string
+    },
   ): Promise<number> {
     const conditions: Array<[string, string, unknown]> = [
       ["user_id", "==", user_id],
       ["status", "==", status],
     ]
     if (options?.level) conditions.push(["level", "==", options.level])
-    if (options?.category) conditions.push(["category", "==", options.category])
+    if (options?.categoryDepth2Id) {
+      conditions.push(["categoryDepth2Id", "==", options.categoryDepth2Id])
+    }
+    if (typeof options?.toReadThisYear === "boolean") {
+      conditions.push(["toReadThisYear", "==", options.toReadThisYear])
+    }
     const tp = options?.titlePrefix?.trim()
     if (tp) {
       conditions.push(["title", ">=", tp])

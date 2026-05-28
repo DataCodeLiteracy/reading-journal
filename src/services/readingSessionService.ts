@@ -22,6 +22,19 @@ export class ReadingSessionService {
     return sessionId
   }
 
+  /** 관리자 CSV보내기 등: 전체 독서 세션 (상한 있음) */
+  static async getAllReadingSessionsForAdmin(
+    limitCount: number = 10000
+  ): Promise<ReadingSession[]> {
+    return await ApiClient.queryDocuments<ReadingSession>(
+      "readingSessions",
+      [],
+      undefined,
+      "asc",
+      limitCount
+    )
+  }
+
   static async getUserReadingSessions(
     user_id: string
   ): Promise<ReadingSession[]> {

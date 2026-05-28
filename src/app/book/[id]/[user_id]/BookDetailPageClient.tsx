@@ -1192,10 +1192,15 @@ export default function BookDetailPageClient({
                       {book.publishedDate ? `출판일: ${book.publishedDate}` : ""}
                     </span>
                   )}
-                  {book.category && (
+                  {book.categoryDepth1Label && book.categoryDepth2Label && (
                     <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
-                      {book.category}
+                      {`${book.categoryDepth1Label} › ${book.categoryDepth2Label}`}
                     </span>
+                  )}
+                  {book.notes && (
+                    <p className='w-full text-xs text-theme-tertiary'>
+                      비고: {book.notes}
+                    </p>
                   )}
                 </div>
                 <div className='flex items-center gap-2 mb-2'>

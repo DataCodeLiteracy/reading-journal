@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, Home, ArrowLeft, Cpu } from "lucide-react"
+import { BookOpen, Home, ArrowLeft, Cpu, Download, Upload, Tags } from "lucide-react"
 import { adminService } from "@/services/adminService"
 import { useAuth } from "@/contexts/AuthContext"
 import { AdminHubPageSkeleton } from "@/components/skeletons"
@@ -96,7 +96,6 @@ export default function AdminPage() {
           </p>
         </header>
 
-        {/* 메뉴 (독서 골든벨 출제 요청만 노출) */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 mb-6'>
           <button
             onClick={() => router.push("/admin/ai-settings")}
@@ -112,6 +111,54 @@ export default function AdminPage() {
             </h3>
             <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
               이해도 점검·발췌 요약·리뷰 비교용 OpenAI 모델 선택
+            </p>
+          </button>
+          <button
+            onClick={() => router.push("/admin/book-categories")}
+            className='bg-gradient-to-r from-violet-600 to-purple-800 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
+          >
+            <div className='flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3'>
+              <div className='p-1.5 sm:p-2 bg-white/20 rounded-lg'>
+                <Tags className='h-4 w-4 sm:h-5 sm:w-5' />
+              </div>
+            </div>
+            <h3 className='font-semibold text-base sm:text-lg mb-1 sm:mb-2'>
+              책 분야 분류
+            </h3>
+            <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
+              알라딘식 대분류·중분류 등록·수정·시드
+            </p>
+          </button>
+          <button
+            onClick={() => router.push("/admin/book-export")}
+            className='bg-gradient-to-r from-emerald-600 to-teal-700 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
+          >
+            <div className='flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3'>
+              <div className='p-1.5 sm:p-2 bg-white/20 rounded-lg'>
+                <Download className='h-4 w-4 sm:h-5 sm:w-5' />
+              </div>
+            </div>
+            <h3 className='font-semibold text-base sm:text-lg mb-1 sm:mb-2'>
+              노션용 CSV보내기
+            </h3>
+            <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
+              유저 서재를 노션에 맞춘 CSV로 다운로드
+            </p>
+          </button>
+          <button
+            onClick={() => router.push("/admin/book-register")}
+            className='bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
+          >
+            <div className='flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3'>
+              <div className='p-1.5 sm:p-2 bg-white/20 rounded-lg'>
+                <Upload className='h-4 w-4 sm:h-5 sm:w-5' />
+              </div>
+            </div>
+            <h3 className='font-semibold text-base sm:text-lg mb-1 sm:mb-2'>
+              책 등록 (CSV)
+            </h3>
+            <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
+              노션 CSV로 서재 일괄 등록·업데이트
             </p>
           </button>
           <button

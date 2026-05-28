@@ -1,0 +1,5198 @@
+{
+  "version": 3,
+  "description": "알라딘 국내도서 대분류·중분류. depth2.id는 {대분류CID}_{중분류CID} 형식(전역 유일).",
+  "대분류": [
+    {
+      "id": "55890",
+      "label": "건강/취미",
+      "order": 0,
+      "isActive": true
+    },
+    {
+      "id": "170",
+      "label": "경제경영",
+      "order": 1,
+      "isActive": true
+    },
+    {
+      "id": "34582",
+      "label": "공무원 수험서",
+      "order": 2,
+      "isActive": true
+    },
+    {
+      "id": "987",
+      "label": "과학",
+      "order": 3,
+      "isActive": true
+    },
+    {
+      "id": "4395",
+      "label": "달력/기타",
+      "order": 4,
+      "isActive": true
+    },
+    {
+      "id": "8257",
+      "label": "대학교재",
+      "order": 5,
+      "isActive": true
+    },
+    {
+      "id": "2551",
+      "label": "만화/라이트노벨",
+      "order": 6,
+      "isActive": true
+    },
+    {
+      "id": "798",
+      "label": "사회과학",
+      "order": 7,
+      "isActive": true
+    },
+    {
+      "id": "1",
+      "label": "소설/시/희곡",
+      "order": 8,
+      "isActive": true
+    },
+    {
+      "id": "1383",
+      "label": "수험서/자격증",
+      "order": 9,
+      "isActive": true
+    },
+    {
+      "id": "1108",
+      "label": "어린이",
+      "order": 10,
+      "isActive": true
+    },
+    {
+      "id": "55889",
+      "label": "에세이",
+      "order": 11,
+      "isActive": true
+    },
+    {
+      "id": "1196",
+      "label": "여행",
+      "order": 12,
+      "isActive": true
+    },
+    {
+      "id": "74",
+      "label": "역사",
+      "order": 13,
+      "isActive": true
+    },
+    {
+      "id": "517",
+      "label": "예술/대중문화",
+      "order": 14,
+      "isActive": true
+    },
+    {
+      "id": "1322",
+      "label": "외국어",
+      "order": 15,
+      "isActive": true
+    },
+    {
+      "id": "1230",
+      "label": "요리/살림",
+      "order": 16,
+      "isActive": true
+    },
+    {
+      "id": "13789",
+      "label": "유아",
+      "order": 17,
+      "isActive": true
+    },
+    {
+      "id": "656",
+      "label": "인문학",
+      "order": 18,
+      "isActive": true
+    },
+    {
+      "id": "336",
+      "label": "자기계발",
+      "order": 19,
+      "isActive": true
+    },
+    {
+      "id": "2913",
+      "label": "잡지",
+      "order": 20,
+      "isActive": true
+    },
+    {
+      "id": "112011",
+      "label": "장르소설",
+      "order": 21,
+      "isActive": true
+    },
+    {
+      "id": "17195",
+      "label": "전집/중고전집",
+      "order": 22,
+      "isActive": true
+    },
+    {
+      "id": "1237",
+      "label": "종교/역학",
+      "order": 23,
+      "isActive": true
+    },
+    {
+      "id": "2030",
+      "label": "좋은부모",
+      "order": 24,
+      "isActive": true
+    },
+    {
+      "id": "1137",
+      "label": "청소년",
+      "order": 25,
+      "isActive": true
+    },
+    {
+      "id": "351",
+      "label": "컴퓨터/모바일",
+      "order": 26,
+      "isActive": true
+    },
+    {
+      "id": "50246",
+      "label": "초등학교참고서",
+      "order": 27,
+      "isActive": true
+    },
+    {
+      "id": "76000",
+      "label": "중학교참고서",
+      "order": 28,
+      "isActive": true
+    },
+    {
+      "id": "76001",
+      "label": "고등학교참고서",
+      "order": 29,
+      "isActive": true
+    }
+  ],
+  "중분류": [
+    {
+      "id": "55890_53516",
+      "parentId": "55890",
+      "aladinCid": "53516",
+      "label": "건강운동",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53521",
+      "parentId": "55890",
+      "aladinCid": "53521",
+      "label": "건강정보",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53522",
+      "parentId": "55890",
+      "aladinCid": "53522",
+      "label": "걷기/육상스포츠",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53524",
+      "parentId": "55890",
+      "aladinCid": "53524",
+      "label": "골프",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53532",
+      "parentId": "55890",
+      "aladinCid": "53532",
+      "label": "공예",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53525",
+      "parentId": "55890",
+      "aladinCid": "53525",
+      "label": "구기",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_161753",
+      "parentId": "55890",
+      "aladinCid": "161753",
+      "label": "글씨 쓰기",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53528",
+      "parentId": "55890",
+      "aladinCid": "53528",
+      "label": "낚시",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53514",
+      "parentId": "55890",
+      "aladinCid": "53514",
+      "label": "다이어트",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53520",
+      "parentId": "55890",
+      "aladinCid": "53520",
+      "label": "대체의학",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53529",
+      "parentId": "55890",
+      "aladinCid": "53529",
+      "label": "등산/캠핑",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53526",
+      "parentId": "55890",
+      "aladinCid": "53526",
+      "label": "무예/무술",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53530",
+      "parentId": "55890",
+      "aladinCid": "53530",
+      "label": "바둑/장기",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53534",
+      "parentId": "55890",
+      "aladinCid": "53534",
+      "label": "반려동물",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53523",
+      "parentId": "55890",
+      "aladinCid": "53523",
+      "label": "수영/수상스포츠",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_147647",
+      "parentId": "55890",
+      "aladinCid": "147647",
+      "label": "스티커북",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53527",
+      "parentId": "55890",
+      "aladinCid": "53527",
+      "label": "스포츠/레저 기타",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53533",
+      "parentId": "55890",
+      "aladinCid": "53533",
+      "label": "원예",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_140262",
+      "parentId": "55890",
+      "aladinCid": "140262",
+      "label": "재난/생존/서바이벌",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53517",
+      "parentId": "55890",
+      "aladinCid": "53517",
+      "label": "정신건강",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53518",
+      "parentId": "55890",
+      "aladinCid": "53518",
+      "label": "질병치료와 예방",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53535",
+      "parentId": "55890",
+      "aladinCid": "53535",
+      "label": "취미기타",
+      "order": 21,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_114987",
+      "parentId": "55890",
+      "aladinCid": "114987",
+      "label": "컬러링북",
+      "order": 22,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53531",
+      "parentId": "55890",
+      "aladinCid": "53531",
+      "label": "퍼즐/스도쿠/퀴즈",
+      "order": 23,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53519",
+      "parentId": "55890",
+      "aladinCid": "53519",
+      "label": "한의학",
+      "order": 24,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_53515",
+      "parentId": "55890",
+      "aladinCid": "53515",
+      "label": "헬스/피트니스",
+      "order": 25,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_3049",
+      "parentId": "170",
+      "aladinCid": "3049",
+      "label": "CEO/비즈니스맨을 위한 능력계발",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_3057",
+      "parentId": "170",
+      "aladinCid": "3057",
+      "label": "경제학/경제일반",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_2172",
+      "parentId": "170",
+      "aladinCid": "2172",
+      "label": "기업 경영",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_2028",
+      "parentId": "170",
+      "aladinCid": "2028",
+      "label": "기업/경영자 스토리",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_261",
+      "parentId": "170",
+      "aladinCid": "261",
+      "label": "마케팅/세일즈",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_172",
+      "parentId": "170",
+      "aladinCid": "172",
+      "label": "재테크/투자",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_177",
+      "parentId": "170",
+      "aladinCid": "177",
+      "label": "창업/취업/은퇴",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "170_197414",
+      "parentId": "170",
+      "aladinCid": "197414",
+      "label": "트렌드/미래전망",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_140176",
+      "parentId": "34582",
+      "aladinCid": "140176",
+      "label": "7/9급 공무원",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_140194",
+      "parentId": "34582",
+      "aladinCid": "140194",
+      "label": "8급 공무원",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34723",
+      "parentId": "34582",
+      "aladinCid": "34723",
+      "label": "LEET:법학적성시험",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34724",
+      "parentId": "34582",
+      "aladinCid": "34724",
+      "label": "MEET&DEET&PEET",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34725",
+      "parentId": "34582",
+      "aladinCid": "34725",
+      "label": "PSAT (행정고시)",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34942",
+      "parentId": "34582",
+      "aladinCid": "34942",
+      "label": "TESAT",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34608",
+      "parentId": "34582",
+      "aladinCid": "34608",
+      "label": "경찰공무원(승진)",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34591",
+      "parentId": "34582",
+      "aladinCid": "34591",
+      "label": "공무원 면접/수기",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34582",
+      "parentId": "34582",
+      "aladinCid": "34582",
+      "label": "공무원 수험서",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34690",
+      "parentId": "34582",
+      "aladinCid": "34690",
+      "label": "공인중개사/주택관리사",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34697",
+      "parentId": "34582",
+      "aladinCid": "34697",
+      "label": "교원임용시험",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_178951",
+      "parentId": "34582",
+      "aladinCid": "178951",
+      "label": "국가기술자격",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_178952",
+      "parentId": "34582",
+      "aladinCid": "178952",
+      "label": "국가전문자격",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34605",
+      "parentId": "34582",
+      "aladinCid": "34605",
+      "label": "군무원/부사관",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_182299",
+      "parentId": "34582",
+      "aladinCid": "182299",
+      "label": "귀화시험",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_140198",
+      "parentId": "34582",
+      "aladinCid": "140198",
+      "label": "기능직",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34640",
+      "parentId": "34582",
+      "aladinCid": "34640",
+      "label": "기능직 일반직 전환",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_36286",
+      "parentId": "34582",
+      "aladinCid": "36286",
+      "label": "기술직",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_36562",
+      "parentId": "34582",
+      "aladinCid": "36562",
+      "label": "매경 TEST",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_178953",
+      "parentId": "34582",
+      "aladinCid": "178953",
+      "label": "민간자격",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34927",
+      "parentId": "34582",
+      "aladinCid": "34927",
+      "label": "소방공무원(승진)",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_182841",
+      "parentId": "34582",
+      "aladinCid": "182841",
+      "label": "역량평가",
+      "order": 21,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34921",
+      "parentId": "34582",
+      "aladinCid": "34921",
+      "label": "운전면허",
+      "order": 22,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34700",
+      "parentId": "34582",
+      "aladinCid": "34700",
+      "label": "인문/사회/법(고등고시)",
+      "order": 23,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34704",
+      "parentId": "34582",
+      "aladinCid": "34704",
+      "label": "취업/상식/적성",
+      "order": 24,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_35777",
+      "parentId": "34582",
+      "aladinCid": "35777",
+      "label": "컴퓨터 활용능력",
+      "order": 25,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34705",
+      "parentId": "34582",
+      "aladinCid": "34705",
+      "label": "편입/검정고시/독학사",
+      "order": 26,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34894",
+      "parentId": "34582",
+      "aladinCid": "34894",
+      "label": "한국사능력검정시험",
+      "order": 27,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_34895",
+      "parentId": "34582",
+      "aladinCid": "34895",
+      "label": "한국어능력검정시험",
+      "order": 28,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "34582_117990",
+      "parentId": "34582",
+      "aladinCid": "117990",
+      "label": "한자시험",
+      "order": 29,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51038",
+      "parentId": "987",
+      "aladinCid": "51038",
+      "label": "공학",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51007",
+      "parentId": "987",
+      "aladinCid": "51007",
+      "label": "과학사회학(STS)",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51005",
+      "parentId": "987",
+      "aladinCid": "51005",
+      "label": "과학의 이해",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51010",
+      "parentId": "987",
+      "aladinCid": "51010",
+      "label": "과학자의 생애",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51002",
+      "parentId": "987",
+      "aladinCid": "51002",
+      "label": "기초과학/교양과학",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51045",
+      "parentId": "987",
+      "aladinCid": "51045",
+      "label": "농업",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51013",
+      "parentId": "987",
+      "aladinCid": "51013",
+      "label": "뇌과학",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51022",
+      "parentId": "987",
+      "aladinCid": "51022",
+      "label": "동물과 식물",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51024",
+      "parentId": "987",
+      "aladinCid": "51024",
+      "label": "물리학",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51043",
+      "parentId": "987",
+      "aladinCid": "51043",
+      "label": "발명/발견",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51275",
+      "parentId": "987",
+      "aladinCid": "51275",
+      "label": "법의학",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51015",
+      "parentId": "987",
+      "aladinCid": "51015",
+      "label": "생명과학",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51039",
+      "parentId": "987",
+      "aladinCid": "51039",
+      "label": "세계의 불가사의",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51033",
+      "parentId": "987",
+      "aladinCid": "51033",
+      "label": "수학",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51272",
+      "parentId": "987",
+      "aladinCid": "51272",
+      "label": "의학",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51017",
+      "parentId": "987",
+      "aladinCid": "51017",
+      "label": "인체의 이해",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51030",
+      "parentId": "987",
+      "aladinCid": "51030",
+      "label": "지구과학",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51027",
+      "parentId": "987",
+      "aladinCid": "51027",
+      "label": "천문학",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "987_51035",
+      "parentId": "987",
+      "aladinCid": "51035",
+      "label": "화학",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_236337",
+      "parentId": "4395",
+      "aladinCid": "236337",
+      "label": "2025년 가계부",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_232140",
+      "parentId": "4395",
+      "aladinCid": "232140",
+      "label": "2025년 다이어리",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_232638",
+      "parentId": "4395",
+      "aladinCid": "232638",
+      "label": "2025년 달력",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_258411",
+      "parentId": "4395",
+      "aladinCid": "258411",
+      "label": "2026년 가계부",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_254515",
+      "parentId": "4395",
+      "aladinCid": "254515",
+      "label": "2026년 다이어리",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_254516",
+      "parentId": "4395",
+      "aladinCid": "254516",
+      "label": "2026년 달력",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_217816",
+      "parentId": "4395",
+      "aladinCid": "217816",
+      "label": "만년 가계부",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_217818",
+      "parentId": "4395",
+      "aladinCid": "217818",
+      "label": "만년 다이어리",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_217817",
+      "parentId": "4395",
+      "aladinCid": "217817",
+      "label": "만년 달력",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_8981",
+      "parentId": "4395",
+      "aladinCid": "8981",
+      "label": "영어로 쓰인 한국서적",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_6653",
+      "parentId": "4395",
+      "aladinCid": "6653",
+      "label": "오디오북",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_167572",
+      "parentId": "4395",
+      "aladinCid": "167572",
+      "label": "출판사 제작 상품",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "4395_184996",
+      "parentId": "4395",
+      "aladinCid": "184996",
+      "label": "큰글자책",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8261",
+      "parentId": "8257",
+      "aladinCid": "8261",
+      "label": "경상계열",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8262",
+      "parentId": "8257",
+      "aladinCid": "8262",
+      "label": "공학계열",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8263",
+      "parentId": "8257",
+      "aladinCid": "8263",
+      "label": "농축산생명계열",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8264",
+      "parentId": "8257",
+      "aladinCid": "8264",
+      "label": "법학계열",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8265",
+      "parentId": "8257",
+      "aladinCid": "8265",
+      "label": "사범계열",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8259",
+      "parentId": "8257",
+      "aladinCid": "8259",
+      "label": "사회과학계열",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8267",
+      "parentId": "8257",
+      "aladinCid": "8267",
+      "label": "생활환경계열",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8266",
+      "parentId": "8257",
+      "aladinCid": "8266",
+      "label": "어문학계열",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8725",
+      "parentId": "8257",
+      "aladinCid": "8725",
+      "label": "연감",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8269",
+      "parentId": "8257",
+      "aladinCid": "8269",
+      "label": "예체능계열",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8268",
+      "parentId": "8257",
+      "aladinCid": "8268",
+      "label": "의약학간호계열",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8258",
+      "parentId": "8257",
+      "aladinCid": "8258",
+      "label": "인문계열",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8260",
+      "parentId": "8257",
+      "aladinCid": "8260",
+      "label": "자연과학계열",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_8724",
+      "parentId": "8257",
+      "aladinCid": "8724",
+      "label": "전문사전",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "8257_164281",
+      "parentId": "8257",
+      "aladinCid": "164281",
+      "label": "한국방송통신대학교",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_134823",
+      "parentId": "2551",
+      "aladinCid": "134823",
+      "label": "19금",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3747",
+      "parentId": "2551",
+      "aladinCid": "3747",
+      "label": "가족만화",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_4668",
+      "parentId": "2551",
+      "aladinCid": "4668",
+      "label": "교양만화",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_36192",
+      "parentId": "2551",
+      "aladinCid": "36192",
+      "label": "그래픽노블",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3748",
+      "parentId": "2551",
+      "aladinCid": "3748",
+      "label": "논픽션/휴먼만화",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3751",
+      "parentId": "2551",
+      "aladinCid": "3751",
+      "label": "대하/서사만화",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3936",
+      "parentId": "2551",
+      "aladinCid": "3936",
+      "label": "동물만화",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_50927",
+      "parentId": "2551",
+      "aladinCid": "50927",
+      "label": "라이트 노벨",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3726",
+      "parentId": "2551",
+      "aladinCid": "3726",
+      "label": "만화그리기와 읽기",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3728",
+      "parentId": "2551",
+      "aladinCid": "3728",
+      "label": "본격장르만화",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_2562",
+      "parentId": "2551",
+      "aladinCid": "2562",
+      "label": "성인/성애만화",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3727",
+      "parentId": "2551",
+      "aladinCid": "3727",
+      "label": "소년만화",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3741",
+      "parentId": "2551",
+      "aladinCid": "3741",
+      "label": "순정만화",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_2561",
+      "parentId": "2551",
+      "aladinCid": "2561",
+      "label": "스포츠만화",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3750",
+      "parentId": "2551",
+      "aladinCid": "3750",
+      "label": "요리만화",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3949",
+      "parentId": "2551",
+      "aladinCid": "3949",
+      "label": "유럽/서구만화",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_9680",
+      "parentId": "2551",
+      "aladinCid": "9680",
+      "label": "인디만화",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_7443",
+      "parentId": "2551",
+      "aladinCid": "7443",
+      "label": "인터넷 연재 만화",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_3749",
+      "parentId": "2551",
+      "aladinCid": "3749",
+      "label": "직장인만화",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_69397",
+      "parentId": "2551",
+      "aladinCid": "69397",
+      "label": "캐릭터상품",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2551_2552",
+      "parentId": "2551",
+      "aladinCid": "2552",
+      "label": "코믹/명랑만화",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51052",
+      "parentId": "798",
+      "aladinCid": "51052",
+      "label": "계간지/무크",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_50999",
+      "parentId": "798",
+      "aladinCid": "50999",
+      "label": "교육학",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51050",
+      "parentId": "798",
+      "aladinCid": "51050",
+      "label": "국방/군사학",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51008",
+      "parentId": "798",
+      "aladinCid": "51008",
+      "label": "미래학",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51046",
+      "parentId": "798",
+      "aladinCid": "51046",
+      "label": "법과 생활",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_50992",
+      "parentId": "798",
+      "aladinCid": "50992",
+      "label": "비평/칼럼",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_50995",
+      "parentId": "798",
+      "aladinCid": "50995",
+      "label": "사회문제",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51004",
+      "parentId": "798",
+      "aladinCid": "51004",
+      "label": "사회사상/사회사상사",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51001",
+      "parentId": "798",
+      "aladinCid": "51001",
+      "label": "사회운동",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51026",
+      "parentId": "798",
+      "aladinCid": "51026",
+      "label": "사회학",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51041",
+      "parentId": "798",
+      "aladinCid": "51041",
+      "label": "언론/미디어",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51037",
+      "parentId": "798",
+      "aladinCid": "51037",
+      "label": "여성학/젠더",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51016",
+      "parentId": "798",
+      "aladinCid": "51016",
+      "label": "정치학/외교학/행정학",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51011",
+      "parentId": "798",
+      "aladinCid": "51011",
+      "label": "지리학/지정학",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51048",
+      "parentId": "798",
+      "aladinCid": "51048",
+      "label": "통일/북한관계",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_51021",
+      "parentId": "798",
+      "aladinCid": "51021",
+      "label": "한국정치사정/정치사",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "798_50997",
+      "parentId": "798",
+      "aladinCid": "50997",
+      "label": "환경/생태문제",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50930",
+      "parentId": "1",
+      "aladinCid": "50930",
+      "label": "과학소설(SF)",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50922",
+      "parentId": "1",
+      "aladinCid": "50922",
+      "label": "독일소설",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_52650",
+      "parentId": "1",
+      "aladinCid": "52650",
+      "label": "러시아소설",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50935",
+      "parentId": "1",
+      "aladinCid": "50935",
+      "label": "로맨스소설",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50932",
+      "parentId": "1",
+      "aladinCid": "50932",
+      "label": "무협소설",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50951",
+      "parentId": "1",
+      "aladinCid": "50951",
+      "label": "문학 잡지",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50945",
+      "parentId": "1",
+      "aladinCid": "50945",
+      "label": "문학의 이해",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50955",
+      "parentId": "1",
+      "aladinCid": "50955",
+      "label": "세계의 문학",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50925",
+      "parentId": "1",
+      "aladinCid": "50925",
+      "label": "세계의 소설",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50920",
+      "parentId": "1",
+      "aladinCid": "50920",
+      "label": "스페인/중남미소설",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50940",
+      "parentId": "1",
+      "aladinCid": "50940",
+      "label": "시",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50942",
+      "parentId": "1",
+      "aladinCid": "50942",
+      "label": "신춘문예작품집",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50933",
+      "parentId": "1",
+      "aladinCid": "50933",
+      "label": "액션/스릴러소설",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_51252",
+      "parentId": "1",
+      "aladinCid": "51252",
+      "label": "여성문학",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50929",
+      "parentId": "1",
+      "aladinCid": "50929",
+      "label": "역사소설",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50919",
+      "parentId": "1",
+      "aladinCid": "50919",
+      "label": "영미소설",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50943",
+      "parentId": "1",
+      "aladinCid": "50943",
+      "label": "우리나라 옛글",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50918",
+      "parentId": "1",
+      "aladinCid": "50918",
+      "label": "일본소설",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50923",
+      "parentId": "1",
+      "aladinCid": "50923",
+      "label": "중국소설",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50926",
+      "parentId": "1",
+      "aladinCid": "50926",
+      "label": "추리/미스터리소설",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50953",
+      "parentId": "1",
+      "aladinCid": "50953",
+      "label": "테마문학",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50928",
+      "parentId": "1",
+      "aladinCid": "50928",
+      "label": "판타지/환상문학",
+      "order": 21,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50921",
+      "parentId": "1",
+      "aladinCid": "50921",
+      "label": "프랑스소설",
+      "order": 22,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50917",
+      "parentId": "1",
+      "aladinCid": "50917",
+      "label": "한국소설",
+      "order": 23,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50931",
+      "parentId": "1",
+      "aladinCid": "50931",
+      "label": "호러.공포소설",
+      "order": 24,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1_50948",
+      "parentId": "1",
+      "aladinCid": "50948",
+      "label": "희곡",
+      "order": 25,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34723",
+      "parentId": "1383",
+      "aladinCid": "34723",
+      "label": "LEET:법학적성시험",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34724",
+      "parentId": "1383",
+      "aladinCid": "34724",
+      "label": "MEET&DEET&PEET",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34725",
+      "parentId": "1383",
+      "aladinCid": "34725",
+      "label": "PSAT (행정고시)",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34942",
+      "parentId": "1383",
+      "aladinCid": "34942",
+      "label": "TESAT",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34582",
+      "parentId": "1383",
+      "aladinCid": "34582",
+      "label": "공무원 수험서",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34690",
+      "parentId": "1383",
+      "aladinCid": "34690",
+      "label": "공인중개사/주택관리사",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_178951",
+      "parentId": "1383",
+      "aladinCid": "178951",
+      "label": "국가기술자격",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_178952",
+      "parentId": "1383",
+      "aladinCid": "178952",
+      "label": "국가전문자격",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_182299",
+      "parentId": "1383",
+      "aladinCid": "182299",
+      "label": "귀화시험",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_36562",
+      "parentId": "1383",
+      "aladinCid": "36562",
+      "label": "매경 TEST",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_178953",
+      "parentId": "1383",
+      "aladinCid": "178953",
+      "label": "민간자격",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34921",
+      "parentId": "1383",
+      "aladinCid": "34921",
+      "label": "운전면허",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34700",
+      "parentId": "1383",
+      "aladinCid": "34700",
+      "label": "인문/사회/법(고등고시)",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34704",
+      "parentId": "1383",
+      "aladinCid": "34704",
+      "label": "취업/상식/적성",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_35777",
+      "parentId": "1383",
+      "aladinCid": "35777",
+      "label": "컴퓨터 활용능력",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34705",
+      "parentId": "1383",
+      "aladinCid": "34705",
+      "label": "편입/검정고시/독학사",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34894",
+      "parentId": "1383",
+      "aladinCid": "34894",
+      "label": "한국사능력검정시험",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_34895",
+      "parentId": "1383",
+      "aladinCid": "34895",
+      "label": "한국어능력검정시험",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1383_117990",
+      "parentId": "1383",
+      "aladinCid": "117990",
+      "label": "한자시험",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48821",
+      "parentId": "1108",
+      "aladinCid": "48821",
+      "label": "TV/만화/영화",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_139408",
+      "parentId": "1108",
+      "aladinCid": "139408",
+      "label": "게임 만화/캐릭터도감",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48809",
+      "parentId": "1108",
+      "aladinCid": "48809",
+      "label": "과학/수학/컴퓨터",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48806",
+      "parentId": "1108",
+      "aladinCid": "48806",
+      "label": "교과서 수록도서",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48810",
+      "parentId": "1108",
+      "aladinCid": "48810",
+      "label": "동화/명작/고전",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48812",
+      "parentId": "1108",
+      "aladinCid": "48812",
+      "label": "문화/예술/인물",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48813",
+      "parentId": "1108",
+      "aladinCid": "48813",
+      "label": "사회/역사/철학",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48814",
+      "parentId": "1108",
+      "aladinCid": "48814",
+      "label": "아동 문학론",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48815",
+      "parentId": "1108",
+      "aladinCid": "48815",
+      "label": "어린이 사전/도감",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48817",
+      "parentId": "1108",
+      "aladinCid": "48817",
+      "label": "어린이 영어",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_49179",
+      "parentId": "1108",
+      "aladinCid": "49179",
+      "label": "어린이 중국어",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48819",
+      "parentId": "1108",
+      "aladinCid": "48819",
+      "label": "어린이 한자",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48820",
+      "parentId": "1108",
+      "aladinCid": "48820",
+      "label": "책읽기/글쓰기",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_54856",
+      "parentId": "1108",
+      "aladinCid": "54856",
+      "label": "초등 1학년 입학 준비",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48808",
+      "parentId": "1108",
+      "aladinCid": "48808",
+      "label": "초등 전학년",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48904",
+      "parentId": "1108",
+      "aladinCid": "48904",
+      "label": "초등 한국사",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48803",
+      "parentId": "1108",
+      "aladinCid": "48803",
+      "label": "초등1~2학년",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48804",
+      "parentId": "1108",
+      "aladinCid": "48804",
+      "label": "초등3~4학년",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_48805",
+      "parentId": "1108",
+      "aladinCid": "48805",
+      "label": "초등5~6학년",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1108_112080",
+      "parentId": "1108",
+      "aladinCid": "112080",
+      "label": "학습만화",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51392",
+      "parentId": "55889",
+      "aladinCid": "51392",
+      "label": "노년을 위한 에세이",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51380",
+      "parentId": "55889",
+      "aladinCid": "51380",
+      "label": "독서에세이",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_174700",
+      "parentId": "55889",
+      "aladinCid": "174700",
+      "label": "동물에세이",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51416",
+      "parentId": "55889",
+      "aladinCid": "51416",
+      "label": "명사에세이",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51374",
+      "parentId": "55889",
+      "aladinCid": "51374",
+      "label": "명상에세이",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51398",
+      "parentId": "55889",
+      "aladinCid": "51398",
+      "label": "명언/잠언록",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51391",
+      "parentId": "55889",
+      "aladinCid": "51391",
+      "label": "사랑/연애 에세이",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51376",
+      "parentId": "55889",
+      "aladinCid": "51376",
+      "label": "사진/그림 에세이",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51375",
+      "parentId": "55889",
+      "aladinCid": "51375",
+      "label": "심리치유 에세이",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51377",
+      "parentId": "55889",
+      "aladinCid": "51377",
+      "label": "여행에세이",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51842",
+      "parentId": "55889",
+      "aladinCid": "51842",
+      "label": "예술에세이",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51373",
+      "parentId": "55889",
+      "aladinCid": "51373",
+      "label": "외국에세이",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51404",
+      "parentId": "55889",
+      "aladinCid": "51404",
+      "label": "유머/풍자/우화",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_180236",
+      "parentId": "55889",
+      "aladinCid": "180236",
+      "label": "음식에세이",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51402",
+      "parentId": "55889",
+      "aladinCid": "51402",
+      "label": "일기/편지",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51394",
+      "parentId": "55889",
+      "aladinCid": "51394",
+      "label": "자연에세이",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51413",
+      "parentId": "55889",
+      "aladinCid": "51413",
+      "label": "작은 이야기 모음",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51389",
+      "parentId": "55889",
+      "aladinCid": "51389",
+      "label": "종교에세이",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51408",
+      "parentId": "55889",
+      "aladinCid": "51408",
+      "label": "포켓에세이",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55889_51371",
+      "parentId": "55889",
+      "aladinCid": "51371",
+      "label": "한국에세이",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63975",
+      "parentId": "1196",
+      "aladinCid": "63975",
+      "label": "괌/사이판/하와이여행",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50830",
+      "parentId": "1196",
+      "aladinCid": "50830",
+      "label": "국내 여행가이드",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50827",
+      "parentId": "1196",
+      "aladinCid": "50827",
+      "label": "국내 여행에세이",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50841",
+      "parentId": "1196",
+      "aladinCid": "50841",
+      "label": "기타지역여행",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63849",
+      "parentId": "1196",
+      "aladinCid": "63849",
+      "label": "독일여행",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50834",
+      "parentId": "1196",
+      "aladinCid": "50834",
+      "label": "동남아시아여행",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_110285",
+      "parentId": "1196",
+      "aladinCid": "110285",
+      "label": "동유럽여행",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63679",
+      "parentId": "1196",
+      "aladinCid": "63679",
+      "label": "미국여행",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63977",
+      "parentId": "1196",
+      "aladinCid": "63977",
+      "label": "발리/몰디브여행",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_110284",
+      "parentId": "1196",
+      "aladinCid": "110284",
+      "label": "북유럽여행",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50828",
+      "parentId": "1196",
+      "aladinCid": "50828",
+      "label": "서울/수도권 여행가이드",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50840",
+      "parentId": "1196",
+      "aladinCid": "50840",
+      "label": "세계일주여행",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63688",
+      "parentId": "1196",
+      "aladinCid": "63688",
+      "label": "스페인여행",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50839",
+      "parentId": "1196",
+      "aladinCid": "50839",
+      "label": "아프리카여행",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63634",
+      "parentId": "1196",
+      "aladinCid": "63634",
+      "label": "영국여행",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50844",
+      "parentId": "1196",
+      "aladinCid": "50844",
+      "label": "워킹 홀리데이",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50831",
+      "parentId": "1196",
+      "aladinCid": "50831",
+      "label": "유럽여행",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50845",
+      "parentId": "1196",
+      "aladinCid": "50845",
+      "label": "유학/해외연수/이민",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63942",
+      "parentId": "1196",
+      "aladinCid": "63942",
+      "label": "이탈리아여행",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63860",
+      "parentId": "1196",
+      "aladinCid": "63860",
+      "label": "인도/티베트/네팔여행",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50832",
+      "parentId": "1196",
+      "aladinCid": "50832",
+      "label": "일본여행",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50829",
+      "parentId": "1196",
+      "aladinCid": "50829",
+      "label": "제주도 여행가이드",
+      "order": 21,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50833",
+      "parentId": "1196",
+      "aladinCid": "50833",
+      "label": "중국여행",
+      "order": 22,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50837",
+      "parentId": "1196",
+      "aladinCid": "50837",
+      "label": "중남미여행",
+      "order": 23,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_64448",
+      "parentId": "1196",
+      "aladinCid": "64448",
+      "label": "중동여행",
+      "order": 24,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50843",
+      "parentId": "1196",
+      "aladinCid": "50843",
+      "label": "지도",
+      "order": 25,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63682",
+      "parentId": "1196",
+      "aladinCid": "63682",
+      "label": "캐나다여행",
+      "order": 26,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_73807",
+      "parentId": "1196",
+      "aladinCid": "73807",
+      "label": "캠핑여행",
+      "order": 27,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_50842",
+      "parentId": "1196",
+      "aladinCid": "50842",
+      "label": "테마여행",
+      "order": 28,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63980",
+      "parentId": "1196",
+      "aladinCid": "63980",
+      "label": "튀르키예여행",
+      "order": 29,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63847",
+      "parentId": "1196",
+      "aladinCid": "63847",
+      "label": "프랑스여행",
+      "order": 30,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63828",
+      "parentId": "1196",
+      "aladinCid": "63828",
+      "label": "호주/뉴질랜드여행",
+      "order": 31,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1196_63512",
+      "parentId": "1196",
+      "aladinCid": "63512",
+      "label": "홍콩/대만/마카오여행",
+      "order": 32,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_78",
+      "parentId": "74",
+      "aladinCid": "78",
+      "label": "고고학",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_1628",
+      "parentId": "74",
+      "aladinCid": "1628",
+      "label": "동양사일반",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_2177",
+      "parentId": "74",
+      "aladinCid": "2177",
+      "label": "문화/역사기행",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_147",
+      "parentId": "74",
+      "aladinCid": "147",
+      "label": "북한사",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_5242",
+      "parentId": "74",
+      "aladinCid": "5242",
+      "label": "서양사",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_169",
+      "parentId": "74",
+      "aladinCid": "169",
+      "label": "세계사 일반",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_5029",
+      "parentId": "74",
+      "aladinCid": "5029",
+      "label": "아메리카사",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_148",
+      "parentId": "74",
+      "aladinCid": "148",
+      "label": "아시아사",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_5027",
+      "parentId": "74",
+      "aladinCid": "5027",
+      "label": "아프리카/오세아니아사",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_75",
+      "parentId": "74",
+      "aladinCid": "75",
+      "label": "역사학",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_159",
+      "parentId": "74",
+      "aladinCid": "159",
+      "label": "유럽사",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_52606",
+      "parentId": "74",
+      "aladinCid": "52606",
+      "label": "이슬람/중동/이스라엘",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_52595",
+      "parentId": "74",
+      "aladinCid": "52595",
+      "label": "일본사",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_52610",
+      "parentId": "74",
+      "aladinCid": "52610",
+      "label": "전쟁/분쟁사",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_52589",
+      "parentId": "74",
+      "aladinCid": "52589",
+      "label": "조선사",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_52594",
+      "parentId": "74",
+      "aladinCid": "52594",
+      "label": "중국사",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_81",
+      "parentId": "74",
+      "aladinCid": "81",
+      "label": "테마로 보는 역사",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_3266",
+      "parentId": "74",
+      "aladinCid": "3266",
+      "label": "학회/무크/계간지",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_109",
+      "parentId": "74",
+      "aladinCid": "109",
+      "label": "한국고대~고려시대",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_52590",
+      "parentId": "74",
+      "aladinCid": "52590",
+      "label": "한국근현대사",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "74_52593",
+      "parentId": "74",
+      "aladinCid": "52593",
+      "label": "한국사 일반",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50975",
+      "parentId": "517",
+      "aladinCid": "50975",
+      "label": "TV/라디오",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50969",
+      "parentId": "517",
+      "aladinCid": "50969",
+      "label": "건축",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50972",
+      "parentId": "517",
+      "aladinCid": "50972",
+      "label": "디자인/공예",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50973",
+      "parentId": "517",
+      "aladinCid": "50973",
+      "label": "무용",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50970",
+      "parentId": "517",
+      "aladinCid": "50970",
+      "label": "뮤지컬/오페라",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50965",
+      "parentId": "517",
+      "aladinCid": "50965",
+      "label": "미술",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50976",
+      "parentId": "517",
+      "aladinCid": "50976",
+      "label": "미술/음악/예술치료",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50968",
+      "parentId": "517",
+      "aladinCid": "50968",
+      "label": "사진",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50974",
+      "parentId": "517",
+      "aladinCid": "50974",
+      "label": "연극",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50967",
+      "parentId": "517",
+      "aladinCid": "50967",
+      "label": "영화/드라마",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50950",
+      "parentId": "517",
+      "aladinCid": "50950",
+      "label": "예술/대중문화의 이해",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50971",
+      "parentId": "517",
+      "aladinCid": "50971",
+      "label": "예술경영/공연기획",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_50966",
+      "parentId": "517",
+      "aladinCid": "50966",
+      "label": "음악",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "517_114988",
+      "parentId": "517",
+      "aladinCid": "114988",
+      "label": "컬러링북",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49873",
+      "parentId": "1322",
+      "aladinCid": "49873",
+      "label": "OPIc/인터뷰 영어",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49932",
+      "parentId": "1322",
+      "aladinCid": "49932",
+      "label": "기타 동양어",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49933",
+      "parentId": "1322",
+      "aladinCid": "49933",
+      "label": "기타 서양어",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49905",
+      "parentId": "1322",
+      "aladinCid": "49905",
+      "label": "독일어",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49930",
+      "parentId": "1322",
+      "aladinCid": "49930",
+      "label": "러시아어",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49929",
+      "parentId": "1322",
+      "aladinCid": "49929",
+      "label": "스페인어",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_8723",
+      "parentId": "1322",
+      "aladinCid": "8723",
+      "label": "어학사전",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49834",
+      "parentId": "1322",
+      "aladinCid": "49834",
+      "label": "영문법",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49835",
+      "parentId": "1322",
+      "aladinCid": "49835",
+      "label": "영어독해",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49837",
+      "parentId": "1322",
+      "aladinCid": "49837",
+      "label": "영어듣기/말하기",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49839",
+      "parentId": "1322",
+      "aladinCid": "49839",
+      "label": "영어사전",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49874",
+      "parentId": "1322",
+      "aladinCid": "49874",
+      "label": "영어시험대비",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49838",
+      "parentId": "1322",
+      "aladinCid": "49838",
+      "label": "영어어휘",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49833",
+      "parentId": "1322",
+      "aladinCid": "49833",
+      "label": "영어학습법",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49845",
+      "parentId": "1322",
+      "aladinCid": "49845",
+      "label": "영어회화",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49949",
+      "parentId": "1322",
+      "aladinCid": "49949",
+      "label": "영작문",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49908",
+      "parentId": "1322",
+      "aladinCid": "49908",
+      "label": "외국인을 위한 한국어",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49931",
+      "parentId": "1322",
+      "aladinCid": "49931",
+      "label": "이탈리아어",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49884",
+      "parentId": "1322",
+      "aladinCid": "49884",
+      "label": "일본어",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49903",
+      "parentId": "1322",
+      "aladinCid": "49903",
+      "label": "중국어",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49847",
+      "parentId": "1322",
+      "aladinCid": "49847",
+      "label": "텝스",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49846",
+      "parentId": "1322",
+      "aladinCid": "49846",
+      "label": "토익",
+      "order": 21,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49848",
+      "parentId": "1322",
+      "aladinCid": "49848",
+      "label": "토플",
+      "order": 22,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49909",
+      "parentId": "1322",
+      "aladinCid": "49909",
+      "label": "통역/번역",
+      "order": 23,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49906",
+      "parentId": "1322",
+      "aladinCid": "49906",
+      "label": "프랑스어",
+      "order": 24,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1322_49904",
+      "parentId": "1322",
+      "aladinCid": "49904",
+      "label": "한자",
+      "order": 25,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_90452",
+      "parentId": "1230",
+      "aladinCid": "90452",
+      "label": "가계부",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53471",
+      "parentId": "1230",
+      "aladinCid": "53471",
+      "label": "건강요리",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53489",
+      "parentId": "1230",
+      "aladinCid": "53489",
+      "label": "결혼/가족",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53476",
+      "parentId": "1230",
+      "aladinCid": "53476",
+      "label": "나라별 요리",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53474",
+      "parentId": "1230",
+      "aladinCid": "53474",
+      "label": "다이어트 요리",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53478",
+      "parentId": "1230",
+      "aladinCid": "53478",
+      "label": "도시락",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53480",
+      "parentId": "1230",
+      "aladinCid": "53480",
+      "label": "디저트",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53485",
+      "parentId": "1230",
+      "aladinCid": "53485",
+      "label": "뜨개질/바느질/DIY",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53473",
+      "parentId": "1230",
+      "aladinCid": "53473",
+      "label": "사찰요리",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53484",
+      "parentId": "1230",
+      "aladinCid": "53484",
+      "label": "살림/정리수납",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53479",
+      "parentId": "1230",
+      "aladinCid": "53479",
+      "label": "샐러드/샌드위치",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53472",
+      "parentId": "1230",
+      "aladinCid": "53472",
+      "label": "생활요리",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53482",
+      "parentId": "1230",
+      "aladinCid": "53482",
+      "label": "술/음료/차",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53487",
+      "parentId": "1230",
+      "aladinCid": "53487",
+      "label": "원예/조경/텃밭",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53483",
+      "parentId": "1230",
+      "aladinCid": "53483",
+      "label": "음식 이야기",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53477",
+      "parentId": "1230",
+      "aladinCid": "53477",
+      "label": "이유식",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53475",
+      "parentId": "1230",
+      "aladinCid": "53475",
+      "label": "전문가/연예인/블로거 요리",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53481",
+      "parentId": "1230",
+      "aladinCid": "53481",
+      "label": "제과제빵",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53486",
+      "parentId": "1230",
+      "aladinCid": "53486",
+      "label": "집/인테리어",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1230_53488",
+      "parentId": "1230",
+      "aladinCid": "53488",
+      "label": "패션/뷰티",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_35088",
+      "parentId": "13789",
+      "aladinCid": "35088",
+      "label": "0~3세",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_73222",
+      "parentId": "13789",
+      "aladinCid": "73222",
+      "label": "100세 그림책",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_35089",
+      "parentId": "13789",
+      "aladinCid": "35089",
+      "label": "4~7세",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_70125",
+      "parentId": "13789",
+      "aladinCid": "70125",
+      "label": "_주제별 책읽기",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_35091",
+      "parentId": "13789",
+      "aladinCid": "35091",
+      "label": "그림책",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_35092",
+      "parentId": "13789",
+      "aladinCid": "35092",
+      "label": "놀이책",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_4298",
+      "parentId": "13789",
+      "aladinCid": "4298",
+      "label": "애니메이션/캐릭터",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_131949",
+      "parentId": "13789",
+      "aladinCid": "131949",
+      "label": "예비초등",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_35094",
+      "parentId": "13789",
+      "aladinCid": "35094",
+      "label": "유아 교양/학습",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_69170",
+      "parentId": "13789",
+      "aladinCid": "69170",
+      "label": "유아 세트",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "13789_88620",
+      "parentId": "13789",
+      "aladinCid": "88620",
+      "label": "유아 워크북",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51378",
+      "parentId": "656",
+      "aladinCid": "51378",
+      "label": "교양 인문학",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51409",
+      "parentId": "656",
+      "aladinCid": "51409",
+      "label": "기호학/언어학",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51412",
+      "parentId": "656",
+      "aladinCid": "51412",
+      "label": "논리와 비판적 사고",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51393",
+      "parentId": "656",
+      "aladinCid": "51393",
+      "label": "동양철학",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51417",
+      "parentId": "656",
+      "aladinCid": "51417",
+      "label": "문화/문화이론",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_65237",
+      "parentId": "656",
+      "aladinCid": "65237",
+      "label": "사상가/인문학자",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51390",
+      "parentId": "656",
+      "aladinCid": "51390",
+      "label": "서양철학",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51405",
+      "parentId": "656",
+      "aladinCid": "51405",
+      "label": "서지/출판",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51399",
+      "parentId": "656",
+      "aladinCid": "51399",
+      "label": "신화/종교학",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51395",
+      "parentId": "656",
+      "aladinCid": "51395",
+      "label": "심리학/정신분석학",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51415",
+      "parentId": "656",
+      "aladinCid": "51415",
+      "label": "인류학/고고학",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51384",
+      "parentId": "656",
+      "aladinCid": "51384",
+      "label": "인문 비평",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51381",
+      "parentId": "656",
+      "aladinCid": "51381",
+      "label": "인문 에세이",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51385",
+      "parentId": "656",
+      "aladinCid": "51385",
+      "label": "인문학 전문사전",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51403",
+      "parentId": "656",
+      "aladinCid": "51403",
+      "label": "책읽기/글쓰기",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51387",
+      "parentId": "656",
+      "aladinCid": "51387",
+      "label": "철학 일반",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "656_51419",
+      "parentId": "656",
+      "aladinCid": "51419",
+      "label": "학회/무크/계간지",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70241",
+      "parentId": "336",
+      "aladinCid": "70241",
+      "label": "20대의 자기계발",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70228",
+      "parentId": "336",
+      "aladinCid": "70228",
+      "label": "기획/보고",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70212",
+      "parentId": "336",
+      "aladinCid": "70212",
+      "label": "리더십",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70214",
+      "parentId": "336",
+      "aladinCid": "70214",
+      "label": "성공",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70220",
+      "parentId": "336",
+      "aladinCid": "70220",
+      "label": "시간관리/정보관리",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70218",
+      "parentId": "336",
+      "aladinCid": "70218",
+      "label": "여성의 자기계발",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_2951",
+      "parentId": "336",
+      "aladinCid": "2951",
+      "label": "인간관계",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_107822",
+      "parentId": "336",
+      "aladinCid": "107822",
+      "label": "정리/심플라이프",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70219",
+      "parentId": "336",
+      "aladinCid": "70219",
+      "label": "중년의 자기계발",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70223",
+      "parentId": "336",
+      "aladinCid": "70223",
+      "label": "창의적사고/두뇌계발",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_2943",
+      "parentId": "336",
+      "aladinCid": "2943",
+      "label": "취업/진로/유망직업",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70233",
+      "parentId": "336",
+      "aladinCid": "70233",
+      "label": "프레젠테이션/회의",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70211",
+      "parentId": "336",
+      "aladinCid": "70211",
+      "label": "행복론",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70224",
+      "parentId": "336",
+      "aladinCid": "70224",
+      "label": "협상/설득/화술",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "336_70236",
+      "parentId": "336",
+      "aladinCid": "70236",
+      "label": "힐링",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_7607",
+      "parentId": "2913",
+      "aladinCid": "7607",
+      "label": "건강/의학",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_7605",
+      "parentId": "2913",
+      "aladinCid": "7605",
+      "label": "경제/경영",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_11282",
+      "parentId": "2913",
+      "aladinCid": "11282",
+      "label": "과학/기술",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_148481",
+      "parentId": "2913",
+      "aladinCid": "148481",
+      "label": "교양/문예/인문",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_5419",
+      "parentId": "2913",
+      "aladinCid": "5419",
+      "label": "교육/취업",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_2925",
+      "parentId": "2913",
+      "aladinCid": "2925",
+      "label": "대중문화/예술",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_75997",
+      "parentId": "2913",
+      "aladinCid": "75997",
+      "label": "독립/인디잡지",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_5421",
+      "parentId": "2913",
+      "aladinCid": "5421",
+      "label": "리빙/가정/주택",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_2924",
+      "parentId": "2913",
+      "aladinCid": "2924",
+      "label": "만화/애니메이션",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_148480",
+      "parentId": "2913",
+      "aladinCid": "148480",
+      "label": "수험/어학교재",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_3563",
+      "parentId": "2913",
+      "aladinCid": "3563",
+      "label": "시사지",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_3560",
+      "parentId": "2913",
+      "aladinCid": "3560",
+      "label": "어린이/청소년",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_5420",
+      "parentId": "2913",
+      "aladinCid": "5420",
+      "label": "여성/남성/패션",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_8097",
+      "parentId": "2913",
+      "aladinCid": "8097",
+      "label": "여행/스포츠/취미",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_33027",
+      "parentId": "2913",
+      "aladinCid": "33027",
+      "label": "요리/제과제빵",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_33026",
+      "parentId": "2913",
+      "aladinCid": "33026",
+      "label": "육아",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_27607",
+      "parentId": "2913",
+      "aladinCid": "27607",
+      "label": "정기구독",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_3125",
+      "parentId": "2913",
+      "aladinCid": "3125",
+      "label": "종교",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_32539",
+      "parentId": "2913",
+      "aladinCid": "32539",
+      "label": "주간지",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2913_9897",
+      "parentId": "2913",
+      "aladinCid": "9897",
+      "label": "컴퓨터/인터넷/게임",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "112011_50930",
+      "parentId": "112011",
+      "aladinCid": "50930",
+      "label": "과학소설(SF)",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "112011_50935",
+      "parentId": "112011",
+      "aladinCid": "50935",
+      "label": "로맨스소설",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "112011_50932",
+      "parentId": "112011",
+      "aladinCid": "50932",
+      "label": "무협소설",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "112011_50933",
+      "parentId": "112011",
+      "aladinCid": "50933",
+      "label": "액션/스릴러소설",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "112011_50926",
+      "parentId": "112011",
+      "aladinCid": "50926",
+      "label": "추리/미스터리소설",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "112011_50928",
+      "parentId": "112011",
+      "aladinCid": "50928",
+      "label": "판타지/환상문학",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "112011_50931",
+      "parentId": "112011",
+      "aladinCid": "50931",
+      "label": "호러.공포소설",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28460",
+      "parentId": "17195",
+      "aladinCid": "28460",
+      "label": "_0-3세",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28461",
+      "parentId": "17195",
+      "aladinCid": "28461",
+      "label": "_4-7세",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_158699",
+      "parentId": "17195",
+      "aladinCid": "158699",
+      "label": "_단행본 전집",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_29035",
+      "parentId": "17195",
+      "aladinCid": "29035",
+      "label": "_초등(1-3)저학년",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_29036",
+      "parentId": "17195",
+      "aladinCid": "29036",
+      "label": "_초등(4-6)고학년",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_29680",
+      "parentId": "17195",
+      "aladinCid": "29680",
+      "label": "_출판사별보기",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_29670",
+      "parentId": "17195",
+      "aladinCid": "29670",
+      "label": "_토이북/교구",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28466",
+      "parentId": "17195",
+      "aladinCid": "28466",
+      "label": "문학/논술/고전",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28467",
+      "parentId": "17195",
+      "aladinCid": "28467",
+      "label": "영어/학습",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28464",
+      "parentId": "17195",
+      "aladinCid": "28464",
+      "label": "인물/역사/사회",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28465",
+      "parentId": "17195",
+      "aladinCid": "28465",
+      "label": "자연/과학/수학",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28463",
+      "parentId": "17195",
+      "aladinCid": "28463",
+      "label": "전래/명작동화",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "17195_28462",
+      "parentId": "17195",
+      "aladinCid": "28462",
+      "label": "창작동화",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1237_51565",
+      "parentId": "1237",
+      "aladinCid": "51565",
+      "label": "가톨릭",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1237_51564",
+      "parentId": "1237",
+      "aladinCid": "51564",
+      "label": "기독교(개신교)",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1237_51569",
+      "parentId": "1237",
+      "aladinCid": "51569",
+      "label": "명상/선",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1237_51566",
+      "parentId": "1237",
+      "aladinCid": "51566",
+      "label": "불교",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1237_51567",
+      "parentId": "1237",
+      "aladinCid": "51567",
+      "label": "세계의 종교",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1237_51568",
+      "parentId": "1237",
+      "aladinCid": "51568",
+      "label": "역학",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1237_51570",
+      "parentId": "1237",
+      "aladinCid": "51570",
+      "label": "종교일반",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51789",
+      "parentId": "2030",
+      "aladinCid": "51789",
+      "label": "건강/환경",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51767",
+      "parentId": "2030",
+      "aladinCid": "51767",
+      "label": "교육/학습",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_73196",
+      "parentId": "2030",
+      "aladinCid": "73196",
+      "label": "부모교육",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51763",
+      "parentId": "2030",
+      "aladinCid": "51763",
+      "label": "영유아 육아",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51766",
+      "parentId": "2030",
+      "aladinCid": "51766",
+      "label": "육아",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51790",
+      "parentId": "2030",
+      "aladinCid": "51790",
+      "label": "육아/교육 에세이",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51762",
+      "parentId": "2030",
+      "aladinCid": "51762",
+      "label": "임신/출산",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_7259",
+      "parentId": "2030",
+      "aladinCid": "7259",
+      "label": "청소년/사춘기/성교육",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51764",
+      "parentId": "2030",
+      "aladinCid": "51764",
+      "label": "초등 자녀",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51770",
+      "parentId": "2030",
+      "aladinCid": "51770",
+      "label": "태교",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "2030_51801",
+      "parentId": "2030",
+      "aladinCid": "51801",
+      "label": "특수교육",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_36380",
+      "parentId": "1137",
+      "aladinCid": "36380",
+      "label": "고등교육과정",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1147",
+      "parentId": "1137",
+      "aladinCid": "1147",
+      "label": "논술참고도서",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1146",
+      "parentId": "1137",
+      "aladinCid": "1146",
+      "label": "수능시험성공수기",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_36379",
+      "parentId": "1137",
+      "aladinCid": "36379",
+      "label": "중등교육과정",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_9671",
+      "parentId": "1137",
+      "aladinCid": "9671",
+      "label": "청소년 경제",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_7268",
+      "parentId": "1137",
+      "aladinCid": "7268",
+      "label": "청소년 고전",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_50758",
+      "parentId": "1137",
+      "aladinCid": "50758",
+      "label": "청소년 문학",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1141",
+      "parentId": "1137",
+      "aladinCid": "1141",
+      "label": "청소년 문화/예술",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1143",
+      "parentId": "1137",
+      "aladinCid": "1143",
+      "label": "청소년 수학/과학",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1140",
+      "parentId": "1137",
+      "aladinCid": "1140",
+      "label": "청소년 역사",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_4410",
+      "parentId": "1137",
+      "aladinCid": "4410",
+      "label": "청소년 영어",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1142",
+      "parentId": "1137",
+      "aladinCid": "1142",
+      "label": "청소년 인문/사회",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_32663",
+      "parentId": "1137",
+      "aladinCid": "32663",
+      "label": "청소년 인물",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_32399",
+      "parentId": "1137",
+      "aladinCid": "32399",
+      "label": "청소년 자기계발",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1139",
+      "parentId": "1137",
+      "aladinCid": "1139",
+      "label": "청소년 철학",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_2574",
+      "parentId": "1137",
+      "aladinCid": "2574",
+      "label": "청소년과 성(性)",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_28969",
+      "parentId": "1137",
+      "aladinCid": "28969",
+      "label": "청소년의 사회생활",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_2012",
+      "parentId": "1137",
+      "aladinCid": "2012",
+      "label": "청소년의 진로선택",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_1149",
+      "parentId": "1137",
+      "aladinCid": "1149",
+      "label": "청소년이 쓴 책",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "1137_4621",
+      "parentId": "1137",
+      "aladinCid": "4621",
+      "label": "학습법",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_363",
+      "parentId": "351",
+      "aladinCid": "363",
+      "label": "OS/Networking",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_2613",
+      "parentId": "351",
+      "aladinCid": "2613",
+      "label": "PC/게임/디지털 카메라",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_2349",
+      "parentId": "351",
+      "aladinCid": "2349",
+      "label": "e비즈니스/창업",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_2630",
+      "parentId": "351",
+      "aladinCid": "2630",
+      "label": "그래픽/멀티미디어",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_55977",
+      "parentId": "351",
+      "aladinCid": "55977",
+      "label": "모바일 프로그래밍",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_55055",
+      "parentId": "351",
+      "aladinCid": "55055",
+      "label": "스마트폰/태블릿/SNS",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_2599",
+      "parentId": "351",
+      "aladinCid": "2599",
+      "label": "오피스(엑셀/파워포인트)",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_6348",
+      "parentId": "351",
+      "aladinCid": "6348",
+      "label": "웹디자인/홈페이지",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_212364",
+      "parentId": "351",
+      "aladinCid": "212364",
+      "label": "인공지능",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_128622",
+      "parentId": "351",
+      "aladinCid": "128622",
+      "label": "초중고 소프트웨어 교육/코딩",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_2719",
+      "parentId": "351",
+      "aladinCid": "2719",
+      "label": "컴퓨터 공학",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_7396",
+      "parentId": "351",
+      "aladinCid": "7396",
+      "label": "프로그래밍 개발/방법론",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_437",
+      "parentId": "351",
+      "aladinCid": "437",
+      "label": "프로그래밍 언어",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "351_479",
+      "parentId": "351",
+      "aladinCid": "479",
+      "label": "활용능력",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52102",
+      "parentId": "50246",
+      "aladinCid": "52102",
+      "label": "1학년",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52103",
+      "parentId": "50246",
+      "aladinCid": "52103",
+      "label": "2학년",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52106",
+      "parentId": "50246",
+      "aladinCid": "52106",
+      "label": "3학년",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52107",
+      "parentId": "50246",
+      "aladinCid": "52107",
+      "label": "4학년",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52108",
+      "parentId": "50246",
+      "aladinCid": "52108",
+      "label": "5학년",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52109",
+      "parentId": "50246",
+      "aladinCid": "52109",
+      "label": "6학년",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52101",
+      "parentId": "50246",
+      "aladinCid": "52101",
+      "label": "EBS 초등",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52116",
+      "parentId": "50246",
+      "aladinCid": "52116",
+      "label": "경시/올림피아드",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_264158",
+      "parentId": "50246",
+      "aladinCid": "264158",
+      "label": "교과서 어휘가 핵심이다",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52111",
+      "parentId": "50246",
+      "aladinCid": "52111",
+      "label": "국어독해/어휘/논술",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_89769",
+      "parentId": "50246",
+      "aladinCid": "89769",
+      "label": "단계별 연산/계산",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_7059",
+      "parentId": "50246",
+      "aladinCid": "7059",
+      "label": "미취학 학습",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_86701",
+      "parentId": "50246",
+      "aladinCid": "86701",
+      "label": "서술형.논술형",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52115",
+      "parentId": "50246",
+      "aladinCid": "52115",
+      "label": "영재교육원대비",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52114",
+      "parentId": "50246",
+      "aladinCid": "52114",
+      "label": "예비중학",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52100",
+      "parentId": "50246",
+      "aladinCid": "52100",
+      "label": "전과/자습서",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52113",
+      "parentId": "50246",
+      "aladinCid": "52113",
+      "label": "초등영어전문교재",
+      "order": 16,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_7839",
+      "parentId": "50246",
+      "aladinCid": "7839",
+      "label": "초등학교 출판사별",
+      "order": 17,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_163885",
+      "parentId": "50246",
+      "aladinCid": "163885",
+      "label": "초등한국사",
+      "order": 18,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_52112",
+      "parentId": "50246",
+      "aladinCid": "52112",
+      "label": "초등한자/중국어",
+      "order": 19,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_131616",
+      "parentId": "50246",
+      "aladinCid": "131616",
+      "label": "학습교구",
+      "order": 20,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "50246_63824",
+      "parentId": "50246",
+      "aladinCid": "63824",
+      "label": "학습월간지(초등)",
+      "order": 21,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76729",
+      "parentId": "76000",
+      "aladinCid": "76729",
+      "label": "EBS 중등",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76727",
+      "parentId": "76000",
+      "aladinCid": "76727",
+      "label": "논술/글쓰기(중등)",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76725",
+      "parentId": "76000",
+      "aladinCid": "76725",
+      "label": "예비고등",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76790",
+      "parentId": "76000",
+      "aladinCid": "76790",
+      "label": "중1-문제집",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76793",
+      "parentId": "76000",
+      "aladinCid": "76793",
+      "label": "중1-자습서",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76791",
+      "parentId": "76000",
+      "aladinCid": "76791",
+      "label": "중2-문제집",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76794",
+      "parentId": "76000",
+      "aladinCid": "76794",
+      "label": "중2-자습서",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76792",
+      "parentId": "76000",
+      "aladinCid": "76792",
+      "label": "중3-문제집",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76795",
+      "parentId": "76000",
+      "aladinCid": "76795",
+      "label": "중3-자습서",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76728",
+      "parentId": "76000",
+      "aladinCid": "76728",
+      "label": "중학경시대회",
+      "order": 9,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76730",
+      "parentId": "76000",
+      "aladinCid": "76730",
+      "label": "중학교 출판사별",
+      "order": 10,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_160465",
+      "parentId": "76000",
+      "aladinCid": "160465",
+      "label": "중학국어독해",
+      "order": 11,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_139887",
+      "parentId": "76000",
+      "aladinCid": "139887",
+      "label": "중학연산/도형",
+      "order": 12,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76731",
+      "parentId": "76000",
+      "aladinCid": "76731",
+      "label": "중학영어전문교재",
+      "order": 13,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_76726",
+      "parentId": "76000",
+      "aladinCid": "76726",
+      "label": "특목고대비",
+      "order": 14,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76000_127768",
+      "parentId": "76000",
+      "aladinCid": "127768",
+      "label": "학습/기타",
+      "order": 15,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77441",
+      "parentId": "76001",
+      "aladinCid": "77441",
+      "label": "EBS 고등",
+      "order": 0,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77021",
+      "parentId": "76001",
+      "aladinCid": "77021",
+      "label": "고등-문제집",
+      "order": 1,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77020",
+      "parentId": "76001",
+      "aladinCid": "77020",
+      "label": "고등-자습서",
+      "order": 2,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77027",
+      "parentId": "76001",
+      "aladinCid": "77027",
+      "label": "고등영어전문교재",
+      "order": 3,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77026",
+      "parentId": "76001",
+      "aladinCid": "77026",
+      "label": "고등학교 출판사별",
+      "order": 4,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77024",
+      "parentId": "76001",
+      "aladinCid": "77024",
+      "label": "논술/면접/수시",
+      "order": 5,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77022",
+      "parentId": "76001",
+      "aladinCid": "77022",
+      "label": "수능대비",
+      "order": 6,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77023",
+      "parentId": "76001",
+      "aladinCid": "77023",
+      "label": "수능모의고사/기출",
+      "order": 7,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "76001_77025",
+      "parentId": "76001",
+      "aladinCid": "77025",
+      "label": "학습자료",
+      "order": 8,
+      "isActive": true,
+      "isOther": false
+    },
+    {
+      "id": "55890_other",
+      "parentId": "55890",
+      "label": "기타",
+      "order": 26,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "170_other",
+      "parentId": "170",
+      "label": "기타",
+      "order": 8,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "34582_other",
+      "parentId": "34582",
+      "label": "기타",
+      "order": 30,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "987_other",
+      "parentId": "987",
+      "label": "기타",
+      "order": 19,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "4395_other",
+      "parentId": "4395",
+      "label": "기타",
+      "order": 13,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "8257_other",
+      "parentId": "8257",
+      "label": "기타",
+      "order": 15,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "2551_other",
+      "parentId": "2551",
+      "label": "기타",
+      "order": 21,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "798_other",
+      "parentId": "798",
+      "label": "기타",
+      "order": 17,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1_other",
+      "parentId": "1",
+      "label": "기타",
+      "order": 26,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1383_other",
+      "parentId": "1383",
+      "label": "기타",
+      "order": 19,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1108_other",
+      "parentId": "1108",
+      "label": "기타",
+      "order": 20,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "55889_other",
+      "parentId": "55889",
+      "label": "기타",
+      "order": 20,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1196_other",
+      "parentId": "1196",
+      "label": "기타",
+      "order": 33,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "74_other",
+      "parentId": "74",
+      "label": "기타",
+      "order": 21,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "517_other",
+      "parentId": "517",
+      "label": "기타",
+      "order": 14,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1322_other",
+      "parentId": "1322",
+      "label": "기타",
+      "order": 26,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1230_other",
+      "parentId": "1230",
+      "label": "기타",
+      "order": 20,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "13789_other",
+      "parentId": "13789",
+      "label": "기타",
+      "order": 11,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "656_other",
+      "parentId": "656",
+      "label": "기타",
+      "order": 17,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "336_other",
+      "parentId": "336",
+      "label": "기타",
+      "order": 15,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "2913_other",
+      "parentId": "2913",
+      "label": "기타",
+      "order": 20,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "112011_other",
+      "parentId": "112011",
+      "label": "기타",
+      "order": 7,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "17195_other",
+      "parentId": "17195",
+      "label": "기타",
+      "order": 13,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1237_other",
+      "parentId": "1237",
+      "label": "기타",
+      "order": 7,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "2030_other",
+      "parentId": "2030",
+      "label": "기타",
+      "order": 11,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "1137_other",
+      "parentId": "1137",
+      "label": "기타",
+      "order": 20,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "351_other",
+      "parentId": "351",
+      "label": "기타",
+      "order": 14,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "50246_other",
+      "parentId": "50246",
+      "label": "기타",
+      "order": 22,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "76000_other",
+      "parentId": "76000",
+      "label": "기타",
+      "order": 16,
+      "isActive": true,
+      "isOther": true
+    },
+    {
+      "id": "76001_other",
+      "parentId": "76001",
+      "label": "기타",
+      "order": 9,
+      "isActive": true,
+      "isOther": true
+    }
+  ]
+}

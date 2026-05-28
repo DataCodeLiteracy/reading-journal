@@ -16,7 +16,9 @@ import {
   ChevronUp,
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
+import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
+import { useBookCategories } from "@/hooks/useBookCategories"
+import { buildCategoryFilterOptions } from "@/utils/bookCategoryFilterOptions"
 import AddBookModal from "@/components/AddBookModal"
 import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -79,7 +81,9 @@ function BooksPageContent() {
 
   // 필터
   const [levelFilter, setLevelFilter] = useState<BookLevel | "">("")
-  const [categoryFilter, setCategoryFilter] = useState<BookField | "">("")
+  const [categoryFilter, setCategoryFilter] = useState("")
+  const [toReadThisYearFilter, setToReadThisYearFilter] = useState<"" | "yes">("")
+  const { data: categoryTree } = useBookCategories()
   const [filterOpen, setFilterOpen] = useState(false)
 
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false)
@@ -126,12 +130,14 @@ function BooksPageContent() {
       activeTab,
       levelFilter,
       categoryFilter,
+      toReadThisYearFilter,
       titlePrefix ?? "",
     ),
     queryFn: () =>
       BookService.countUserBooksByStatus(userUid!, activeTab, {
         level: levelFilter || undefined,
-        category: categoryFilter || undefined,
+        categoryDepth2Id: categoryFilter || undefined,
+        toReadThisYear: toReadThisYearFilter === "yes" ? true : undefined,
         titlePrefix,
       }),
     enabled: Boolean(userUid) && !isLocalSearchMode,
@@ -145,6 +151,7 @@ function BooksPageContent() {
       sortOrder,
       levelFilter,
       categoryFilter,
+      toReadThisYearFilter,
       titlePrefix ?? "",
       currentPage,
     ),
@@ -156,7 +163,8 @@ function BooksPageContent() {
           status: activeTab,
           sort: sortOrder,
           level: levelFilter || undefined,
-          category: categoryFilter || undefined,
+          categoryDepth2Id: categoryFilter || undefined,
+          toReadThisYear: toReadThisYearFilter === "yes" ? true : undefined,
           titlePrefix,
           pageSize: PAGE_SIZE,
           startAfterSnapshot: cursor,
@@ -171,7 +179,8 @@ function BooksPageContent() {
         status: activeTab,
         sort: sortOrder,
         level: levelFilter || undefined,
-        category: categoryFilter || undefined,
+        categoryDepth2Id: categoryFilter || undefined,
+        toReadThisYear: toReadThisYearFilter === "yes" ? true : undefined,
         titlePrefix,
         pageSize: PAGE_SIZE,
         startAfterSnapshot: cursor,
@@ -186,7 +195,8 @@ function BooksPageContent() {
     const byStatus = allBooks.filter((b) => b.status === activeTab)
     const byFilters = byStatus.filter((b) => {
       if (levelFilter && b.level !== levelFilter) return false
-      if (categoryFilter && b.category !== categoryFilter) return false
+      if (categoryFilter && b.categoryDepth2Id !== categoryFilter) return false
+      if (toReadThisYearFilter === "yes" && b.toReadThisYear !== true) return false
       return normalizeBookTitleKey(b.title).includes(normalizedSearchKey)
     })
     const sorted = [...byFilters].sort((a, b) => {
@@ -205,6 +215,7 @@ function BooksPageContent() {
     activeTab,
     levelFilter,
     categoryFilter,
+    toReadThisYearFilter,
     normalizedSearchKey,
     sortOrder,
     currentPage,
@@ -247,16 +258,27 @@ function BooksPageContent() {
   )
 
   const categorySelectOptions = useMemo(
+    () => buildCategoryFilterOptions(categoryTree),
+    [categoryTree],
+  )
+  const toReadThisYearOptions = useMemo(
     (): SelectOption<string>[] => [
       { value: "", label: "전체" },
-      ...BOOK_FIELDS.map((f) => ({ value: f, label: f })),
+      { value: "yes", label: "이번 년도에 읽을 책만" },
     ],
     [],
   )
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab, sortOrder, levelFilter, categoryFilter, titlePrefix])
+  }, [
+    activeTab,
+    sortOrder,
+    levelFilter,
+    categoryFilter,
+    toReadThisYearFilter,
+    titlePrefix,
+  ])
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -539,7 +561,7 @@ function BooksPageContent() {
             <span className='flex items-center gap-2 text-sm'>
               <Filter className='h-4 w-4' />
               필터
-              {(levelFilter || categoryFilter) && (
+              {(levelFilter || categoryFilter || toReadThisYearFilter) && (
                 <span className='text-xs font-normal text-accent-theme'>
                   · 적용됨
                 </span>
@@ -568,19 +590,32 @@ function BooksPageContent() {
                   <label className='block text-xs text-theme-tertiary mb-1'>분야</label>
                   <Select
                     value={categoryFilter}
-                    onChange={(v) => setCategoryFilter(v as BookField | "")}
+                    onChange={setCategoryFilter}
                     options={categorySelectOptions}
                     variant='toolbar'
                     aria-label='분야 필터'
                   />
                 </div>
+                <div className='col-span-2'>
+                  <label className='block text-xs text-theme-tertiary mb-1'>
+                    올해 읽을 책
+                  </label>
+                  <Select
+                    value={toReadThisYearFilter}
+                    onChange={(v) => setToReadThisYearFilter(v as "" | "yes")}
+                    options={toReadThisYearOptions}
+                    variant='toolbar'
+                    aria-label='올해 읽을 책 필터'
+                  />
+                </div>
               </div>
-              {(levelFilter || categoryFilter) && (
+              {(levelFilter || categoryFilter || toReadThisYearFilter) && (
                 <button
                   type='button'
                   onClick={() => {
                     setLevelFilter("")
                     setCategoryFilter("")
+                    setToReadThisYearFilter("")
                   }}
                   className='mt-3 text-xs text-accent-theme hover:underline'
                 >
@@ -613,7 +648,7 @@ function BooksPageContent() {
           <div className='text-center py-12'>
             <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
             <h3 className='text-lg font-medium text-theme-primary mb-2'>
-              {searchQuery || levelFilter || categoryFilter
+              {searchQuery || levelFilter || categoryFilter || toReadThisYearFilter
                 ? "검색 결과가 없습니다"
                 : getTotalBooks() === 0
                 ? "아직 등록된 책이 없습니다"
@@ -626,7 +661,7 @@ function BooksPageContent() {
                 : "읽고 싶은 책이 없습니다"}
             </h3>
             <p className='text-theme-secondary mb-4'>
-              {searchQuery || levelFilter || categoryFilter
+              {searchQuery || levelFilter || categoryFilter || toReadThisYearFilter
                 ? "다른 검색어나 필터를 시도해보세요."
                 : getTotalBooks() === 0
                 ? "새로운 책을 추가해보세요!"
@@ -640,7 +675,10 @@ function BooksPageContent() {
             </p>
             {(getTotalBooks() === 0 ||
               activeTab === "want-to-read" ||
-              (searchQuery || levelFilter || categoryFilter)) && (
+              (searchQuery ||
+                levelFilter ||
+                categoryFilter ||
+                toReadThisYearFilter)) && (
               <button
                 onClick={() => setIsAddBookModalOpen(true)}
                 className='inline-flex items-center gap-2 bg-accent-theme hover:bg-accent-theme-secondary text-white px-4 py-2 rounded-lg transition-colors'

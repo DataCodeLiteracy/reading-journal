@@ -30,7 +30,8 @@ export const queryKeys = {
       status: string,
       sort: string,
       level: string,
-      category: string,
+      categoryDepth2Id: string,
+      toReadThisYear: string,
       titlePrefix: string,
       page: number,
     ) =>
@@ -41,7 +42,8 @@ export const queryKeys = {
         status,
         sort,
         level,
-        category,
+        categoryDepth2Id,
+        toReadThisYear,
         titlePrefix,
         page,
       ] as const,
@@ -49,7 +51,8 @@ export const queryKeys = {
       uid: string,
       status: string,
       level: string,
-      category: string,
+      categoryDepth2Id: string,
+      toReadThisYear: string,
       titlePrefix: string,
     ) =>
       [
@@ -58,7 +61,8 @@ export const queryKeys = {
         "tabCount",
         status,
         level,
-        category,
+        categoryDepth2Id,
+        toReadThisYear,
         titlePrefix,
       ] as const,
     libraryCounts: (uid: string) => ["userLibraryCounts", uid] as const,
@@ -86,6 +90,9 @@ export const queryKeys = {
       page: number,
       sortKey: string,
     ) => ["homeTabBooks", uid, tab, page, sortKey] as const,
+  },
+  bookCategories: {
+    tree: () => ["bookCategoryTree"] as const,
   },
   record: {
     availableBooks: (uid: string, onlyMine: boolean) =>

@@ -1,28 +1,30 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { BookOpen, AlertCircle } from "lucide-react"
-import { Book, BOOK_LEVELS, BOOK_FIELDS, type BookLevel, type BookField } from "@/types/book"
+import { BookOpen, AlertCircle, Star } from "lucide-react"
+import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
 import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
+import BookCategoryPicker from "@/components/BookCategoryPicker"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import { useBookCategories } from "@/hooks/useBookCategories"
+import { BookCategoryService } from "@/services/bookCategoryService"
+import { buildBookCategoryFields } from "@/utils/bookCategoryFields"
 
 interface AddBookModalProps {
   isOpen: boolean
   onClose: () => void
   onAddBook: (book: Omit<Book, "id" | "user_id">) => void
-  /** 탐색 등에서 다른 유저 책을 내 책으로 추가할 때 제목/저자 미리 채우기 */
   initialTitle?: string
   initialAuthor?: string
   initialPublishedDate?: string
+  initialPublisher?: string
+  initialNotes?: string
   initialLevel?: BookLevel
-  initialCategory?: BookField
-  /**
-   * 현재 로그인 유저 서재에 이미 있는 책 제목 키 목록
-   * (`normalizeBookTitleKey` 적용값). 중복 등록 방지용.
-   */
+  initialCategoryDepth1Id?: string
+  initialCategoryDepth2Id?: string
   userBookTitleKeys: readonly string[]
 }
 
@@ -33,17 +35,25 @@ export default function AddBookModal({
   initialTitle = "",
   initialAuthor = "",
   initialPublishedDate = "",
+  initialPublisher = "",
+  initialNotes = "",
   initialLevel,
-  initialCategory,
+  initialCategoryDepth1Id = "",
+  initialCategoryDepth2Id = "",
   userBookTitleKeys,
 }: AddBookModalProps) {
+  const { data: categoryTree } = useBookCategories()
   const [title, setTitle] = useState(initialTitle)
   const [author, setAuthor] = useState(initialAuthor)
+  const [publisher, setPublisher] = useState(initialPublisher)
   const [publishedDate, setPublishedDate] = useState(initialPublishedDate)
+  const [notes, setNotes] = useState(initialNotes)
   const [status, setStatus] = useState<Book["status"]>("want-to-read")
   const [rating, setRating] = useState(0)
+  const [toReadThisYear, setToReadThisYear] = useState(false)
   const [level, setLevel] = useState<BookLevel | "">(initialLevel || "")
-  const [category, setCategory] = useState<BookField | "">(initialCategory || "")
+  const [categoryDepth1Id, setCategoryDepth1Id] = useState(initialCategoryDepth1Id)
+  const [categoryDepth2Id, setCategoryDepth2Id] = useState(initialCategoryDepth2Id)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const [ownDuplicateModalOpen, setOwnDuplicateModalOpen] = useState(false)
 
@@ -68,12 +78,43 @@ export default function AddBookModal({
     if (isOpen) {
       setTitle(initialTitle)
       setAuthor(initialAuthor)
+      setPublisher(initialPublisher)
       setPublishedDate(initialPublishedDate)
+      setNotes(initialNotes)
       setLevel(initialLevel || "")
-      setCategory(initialCategory || "")
+      setCategoryDepth1Id(initialCategoryDepth1Id)
+      setCategoryDepth2Id(initialCategoryDepth2Id)
       setOwnDuplicateModalOpen(false)
+      setStatus("want-to-read")
+      setRating(0)
+      setToReadThisYear(false)
     }
-  }, [isOpen, initialTitle, initialAuthor, initialPublishedDate, initialLevel, initialCategory])
+  }, [
+    isOpen,
+    initialTitle,
+    initialAuthor,
+    initialPublisher,
+    initialPublishedDate,
+    initialNotes,
+    initialLevel,
+    initialCategoryDepth1Id,
+    initialCategoryDepth2Id,
+  ])
+
+  const resetForm = () => {
+    setTitle("")
+    setAuthor("")
+    setPublisher("")
+    setPublishedDate("")
+    setNotes("")
+    setStatus("want-to-read")
+    setRating(0)
+    setToReadThisYear(false)
+    setLevel("")
+    setCategoryDepth1Id("")
+    setCategoryDepth2Id("")
+    setOwnDuplicateModalOpen(false)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,47 +125,41 @@ export default function AddBookModal({
       return
     }
 
+    const d1 = categoryTree
+      ? BookCategoryService.findDepth1(categoryTree, categoryDepth1Id)
+      : undefined
+    const d2 = categoryTree
+      ? BookCategoryService.findDepth2(categoryTree, categoryDepth2Id)
+      : undefined
+    const categoryFields = buildBookCategoryFields(d1, d2)
+
     const newBook: Omit<Book, "id" | "user_id"> = {
       title: title.trim(),
       author: author.trim() || "",
+      publisher: publisher.trim() || undefined,
       publishedDate: publishedDate || "",
+      notes: notes.trim() || undefined,
       status,
       rating,
-      hasStartedReading: false,
+      hasStartedReading: status === "reading" || status === "completed",
+      toReadThisYear: toReadThisYear || undefined,
       ...(level ? { level } : {}),
-      ...(category ? { category } : {}),
+      ...categoryFields,
     }
 
     onAddBook(newBook)
-    setTitle("")
-    setAuthor("")
-    setPublishedDate("")
-    setStatus("want-to-read")
-    setRating(0)
-    setLevel("")
-    setCategory("")
+    resetForm()
     onClose()
   }
 
   const handleClose = () => {
-    setTitle("")
-    setAuthor("")
-    setPublishedDate("")
-    setStatus("want-to-read")
-    setRating(0)
-    setLevel("")
-    setCategory("")
-    setOwnDuplicateModalOpen(false)
+    resetForm()
     onClose()
   }
 
   const levelOptions: SelectOption<BookLevel | "">[] = [
     { value: "", label: "선택 안 함" },
     ...BOOK_LEVELS.map((l) => ({ value: l, label: l })),
-  ]
-  const categoryOptions: SelectOption<BookField | "">[] = [
-    { value: "", label: "선택 안 함" },
-    ...BOOK_FIELDS.map((f) => ({ value: f, label: f })),
   ]
   const statusOptions: SelectOption<Book["status"]>[] = [
     { value: "want-to-read", label: "읽고 싶은 책" },
@@ -145,8 +180,12 @@ export default function AddBookModal({
           </div>
         }
       >
-        <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="form-modal-fieldset max-h-[min(70vh,32rem)] space-y-3 overflow-y-auto sm:space-y-4"
+        >
           <div>
+            <p className="mb-1 text-xs font-semibold text-theme-secondary">필수</p>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
               책 제목 *
             </label>
@@ -165,8 +204,7 @@ export default function AddBookModal({
               <p className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span>
-                  내 서재에 이미 같은 제목으로 등록된 책이 있습니다. 제목을 바꾸거나
-                  추가하기를 누르면 안내를 확인할 수 있어요.
+                  내 서재에 이미 같은 제목으로 등록된 책이 있습니다.
                 </span>
               </p>
             )}
@@ -174,20 +212,53 @@ export default function AddBookModal({
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              저자 (선택사항)
+              상태 *
+            </label>
+            <Select<Book["status"]>
+              value={status}
+              onChange={setStatus}
+              options={statusOptions}
+              variant="form-modal"
+            />
+          </div>
+
+          <div>
+            <p className="mb-1 text-xs font-semibold text-theme-secondary">선택 (권장 순)</p>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
+              저자
             </label>
             <input
               type="text"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               className="form-control"
-              placeholder="저자를 입력하세요"
+              placeholder="저자"
+            />
+          </div>
+
+          <BookCategoryPicker
+            depth1Id={categoryDepth1Id}
+            depth2Id={categoryDepth2Id}
+            onDepth1Change={setCategoryDepth1Id}
+            onDepth2Change={setCategoryDepth2Id}
+          />
+
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
+              출판사
+            </label>
+            <input
+              type="text"
+              value={publisher}
+              onChange={(e) => setPublisher(e.target.value)}
+              className="form-control"
+              placeholder="출판사"
             />
           </div>
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              출판일 (선택사항)
+              출판일
             </label>
             <FormNativePickerInput
               picker="date"
@@ -198,7 +269,20 @@ export default function AddBookModal({
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              레벨 (대상 연령/학년, 선택사항)
+              비고
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="form-control min-h-[64px] resize-y"
+              placeholder="시리즈명, 메모 등"
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
+              문해력 수준 (레벨)
             </label>
             <Select<BookLevel | "">
               value={level}
@@ -208,42 +292,53 @@ export default function AddBookModal({
             />
           </div>
 
-          <div>
-            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              분야 (선택사항)
-            </label>
-            <Select<BookField | "">
-              value={category}
-              onChange={setCategory}
-              options={categoryOptions}
-              variant="form-modal"
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-theme-primary">
+            <input
+              type="checkbox"
+              checked={toReadThisYear}
+              onChange={(e) => setToReadThisYear(e.target.checked)}
+              className="rounded border-theme-tertiary"
             />
-          </div>
+            이번 년도에 읽을 책
+          </label>
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              상태
+              평점 (선택)
             </label>
-            <Select<Book["status"]>
-              value={status}
-              onChange={setStatus}
-              options={statusOptions}
-              variant="form-modal"
-            />
+            <div className="flex gap-0.5 pt-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star === rating ? 0 : star)}
+                  className="p-1"
+                  aria-label={`${star}점`}
+                >
+                  <Star
+                    className={`h-6 w-6 ${
+                      star <= rating
+                        ? "text-yellow-400 fill-current"
+                        : "text-theme-tertiary"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="mt-4 flex justify-end gap-2 sm:mt-6">
+          <div className="sticky bottom-0 flex justify-end gap-2 border-t border-theme-tertiary bg-theme-secondary pt-3">
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-tertiary"
+              className="rounded-md bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={!title.trim()}
-              className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               추가하기
             </button>

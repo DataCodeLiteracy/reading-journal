@@ -21,21 +21,44 @@ export class UserService {
     return await ApiClient.getDocument<User>("users", uid)
   }
 
-  /** 관리자용: 전체 유저 목록 (uid, displayName, email) */
+  /** 관리자용: 전체 유저 목록 (users + 서재만 있는 user_id) */
   static async getAllUsersForAdmin(): Promise<
     { uid: string; displayName: string | null; email: string | null }[]
   > {
-    const list = await ApiClient.queryDocuments<User & { id?: string }>(
-      "users",
-      []
-    )
-    return list.map((doc) => {
+    const { BookService } = await import("@/services/bookService")
+    const [list, books] = await Promise.all([
+      ApiClient.queryDocuments<User & { id?: string }>("users", []),
+      BookService.getAllBooks(5000),
+    ])
+
+    const byUid = new Map<
+      string,
+      { uid: string; displayName: string | null; email: string | null }
+    >()
+
+    for (const doc of list) {
       const d = doc as User & { id?: string }
-      return {
-        uid: d.id ?? d.uid ?? "",
+      const uid = (d.uid ?? d.id ?? "").trim()
+      if (!uid) continue
+      byUid.set(uid, {
+        uid,
         displayName: d.displayName ?? null,
         email: d.email ?? null,
+      })
+    }
+
+    for (const book of books) {
+      const uid = book.user_id?.trim()
+      if (!uid) continue
+      if (!byUid.has(uid)) {
+        byUid.set(uid, { uid, displayName: null, email: null })
       }
+    }
+
+    return [...byUid.values()].sort((a, b) => {
+      const la = (a.displayName || a.email || a.uid).toLowerCase()
+      const lb = (b.displayName || b.email || b.uid).toLowerCase()
+      return la.localeCompare(lb, "ko")
     })
   }
 
