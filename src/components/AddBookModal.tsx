@@ -65,6 +65,7 @@ export default function AddBookModal({
   const titleInputRef = useRef<HTMLInputElement>(null)
   const [ownDuplicateModalOpen, setOwnDuplicateModalOpen] = useState(false)
   const [promptCoverUpload, setPromptCoverUpload] = useState(false)
+  const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
 
   const titleKeySet = useMemo(
     () => new Set(userBookTitleKeys),
@@ -100,6 +101,7 @@ export default function AddBookModal({
       setCoverUrl("")
       setIsbn13("")
       setPromptCoverUpload(false)
+      setCoverUploadHint(undefined)
     }
   }, [
     isOpen,
@@ -129,6 +131,7 @@ export default function AddBookModal({
     setIsbn13("")
     setOwnDuplicateModalOpen(false)
     setPromptCoverUpload(false)
+    setCoverUploadHint(undefined)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -229,7 +232,18 @@ export default function AddBookModal({
 
           <AladinBookLookup
             title={title}
-            onAladinCoverMissing={() => setPromptCoverUpload(true)}
+            onLookupStart={() => {
+              setPromptCoverUpload(false)
+              setCoverUploadHint(undefined)
+            }}
+            onNeedsManualCover={(reason) => {
+              setPromptCoverUpload(true)
+              setCoverUploadHint(
+                reason === "not_found"
+                  ? "알라딘에서 책을 찾지 못했습니다. 표지를 직접 올려 주세요."
+                  : "알라딘에 표지가 없습니다. 표지를 직접 올려 주세요.",
+              )
+            }}
             onApply={(metadata) => {
               applyAladinBookMetadata(
                 enrichAladinBookMetadata(metadata, categoryTree),
@@ -248,6 +262,7 @@ export default function AddBookModal({
               )
               if (metadata.coverUrl?.trim()) {
                 setPromptCoverUpload(false)
+                setCoverUploadHint(undefined)
               }
             }}
           />
@@ -256,6 +271,7 @@ export default function AddBookModal({
             visible={!coverUrl && promptCoverUpload}
             coverUrl={coverUrl}
             onCoverUrlChange={setCoverUrl}
+            hint={coverUploadHint}
           />
 
           {coverUrl && (

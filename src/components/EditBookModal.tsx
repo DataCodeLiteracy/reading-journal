@@ -50,6 +50,7 @@ export default function EditBookModal({
   const [coverUrl, setCoverUrl] = useState(book.coverUrl || "")
   const [isbn13, setIsbn13] = useState(book.isbn13 || "")
   const [promptCoverUpload, setPromptCoverUpload] = useState(false)
+  const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
 
   useEffect(() => {
     if (isOpen) {
@@ -65,7 +66,8 @@ export default function EditBookModal({
       setCategoryDepth2Id(book.categoryDepth2Id || "")
       setCoverUrl(book.coverUrl || "")
       setIsbn13(book.isbn13 || "")
-      setPromptCoverUpload(!book.coverUrl?.trim())
+      setPromptCoverUpload(false)
+      setCoverUploadHint(undefined)
     }
   }, [isOpen, book])
 
@@ -136,7 +138,18 @@ export default function EditBookModal({
 
         <AladinBookLookup
           title={title}
-          onAladinCoverMissing={() => setPromptCoverUpload(true)}
+          onLookupStart={() => {
+            setPromptCoverUpload(false)
+            setCoverUploadHint(undefined)
+          }}
+          onNeedsManualCover={(reason) => {
+            setPromptCoverUpload(true)
+            setCoverUploadHint(
+              reason === "not_found"
+                ? "알라딘에서 책을 찾지 못했습니다. 표지를 직접 올려 주세요."
+                : "알라딘에 표지가 없습니다. 표지를 직접 올려 주세요.",
+            )
+          }}
           onApply={(metadata) => {
             applyAladinBookMetadata(
               enrichAladinBookMetadata(metadata, categoryTree),
@@ -155,6 +168,7 @@ export default function EditBookModal({
             )
             if (metadata.coverUrl?.trim()) {
               setPromptCoverUpload(false)
+              setCoverUploadHint(undefined)
             }
           }}
         />
@@ -164,6 +178,7 @@ export default function EditBookModal({
           visible={!coverUrl && promptCoverUpload}
           coverUrl={coverUrl}
           onCoverUrlChange={setCoverUrl}
+          hint={coverUploadHint}
         />
 
         {coverUrl && (

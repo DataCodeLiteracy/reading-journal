@@ -15,15 +15,21 @@ interface AladinBookLookupProps {
   title: string
   disabled?: boolean
   onApply: (metadata: AladinFormApplyPayload) => void
-  /** 알라딘 조회 후 표지 URL이 없을 때 (또는 검색 결과 없음) */
-  onAladinCoverMissing?: () => void
+  /** 검색 시작 시 (표지 업로드 안내 초기화) */
+  onLookupStart?: () => void
+  /**
+   * 알라딘 조회를 시도한 뒤, 표지를 직접 올려야 할 때만 호출
+   * (검색 결과 없음 · 메타는 채웠으나 표지 URL 없음)
+   */
+  onNeedsManualCover?: (reason: "not_found" | "no_cover") => void
 }
 
 export default function AladinBookLookup({
   title,
   disabled,
   onApply,
-  onAladinCoverMissing,
+  onLookupStart,
+  onNeedsManualCover,
 }: AladinBookLookupProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +44,7 @@ export default function AladinBookLookup({
       const metadata = await lookupAladinBookMetadata(hit)
       onApply(metadata)
       if (!metadata.coverUrl?.trim()) {
-        onAladinCoverMissing?.()
+        onNeedsManualCover?.("no_cover")
       }
       setCandidates(null)
     } catch (e) {
@@ -54,6 +60,7 @@ export default function AladinBookLookup({
       setError("제목을 먼저 입력해 주세요.")
       return
     }
+    onLookupStart?.()
     setLoading(true)
     setError(null)
     setCandidates(null)
@@ -61,7 +68,7 @@ export default function AladinBookLookup({
       const items = await searchAladinByTitle(q)
       if (items.length === 0) {
         setError("알라딘에서 일치하는 도서를 찾지 못했습니다.")
-        onAladinCoverMissing?.()
+        onNeedsManualCover?.("not_found")
         return
       }
       if (items.length === 1) {

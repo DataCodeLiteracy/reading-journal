@@ -1,15 +1,15 @@
 /** 서재 목록 카드: 분야 한 줄 최대 글자 수(초과 시 …) */
 export const LIBRARY_CARD_CATEGORY_MAX_CHARS = 28
 
-/** `2007-12-15` → `출판 2007` */
+/** `2007-12-15` → `2007` (연도만, 없으면 앞부분 그대로) */
 export function formatBookPublishedLabel(
   publishedDate?: string,
 ): string | null {
   const raw = publishedDate?.trim()
   if (!raw) return null
   const year = raw.match(/^(\d{4})/)?.[1]
-  if (year) return `출판 ${year}`
-  return `출판 ${raw.length > 12 ? `${raw.slice(0, 12)}…` : raw}`
+  if (year) return year
+  return raw.length > 12 ? `${raw.slice(0, 12)}…` : raw
 }
 
 export function formatBookCategoryLine(

@@ -25,10 +25,7 @@ import {
   NotebookPen,
   Sparkles,
   Settings,
-  ListTree,
-  Tag,
 } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -78,6 +75,13 @@ import {
   setPreReadTimerPromptDismissedToday,
 } from "@/utils/preReadingTimerPrompt"
 import { navigateBackSmart, withReturnQuery } from "@/utils/navigateBack"
+import BookDetailHeroCard from "@/components/book/BookDetailHeroCard"
+import {
+  BOOK_HERO_READING_TIME_ID,
+  BOOK_READING_SESSIONS_SECTION_ID,
+  formatTotalReadingTimeCompact,
+  scrollToElementId,
+} from "@/utils/scrollToElement"
 import { startPostCompleteReadingFlow } from "@/utils/postCompleteReadingFlow"
 
 export default function BookDetailPageClient({
@@ -1086,233 +1090,19 @@ export default function BookDetailPageClient({
           </div>
         </div>
 
-        {/* 책 기본 정보: 타이머 진행 시 아이콘 유지 + 제목·저자·총 독서 시간만 남기고 부드럽게 축소 */}
-        <div
-          className={`bg-theme-secondary rounded-xl shadow-sm overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] mb-4 ${
-            isTimerRunning ? "p-3 shadow-md" : "p-4"
-          }`}
-        >
-          <div
-            className={`flex transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-              isTimerRunning ? "items-center gap-3" : "items-start gap-3"
-            }`}
-          >
-            <div
-              className={`flex shrink-0 flex-col items-stretch transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                isTimerRunning ? "gap-0" : "gap-2"
-              }`}
-            >
-              <div
-                className={`relative bg-theme-tertiary rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
-                  isTimerRunning
-                    ? "mx-auto h-16 w-12 opacity-100"
-                    : "h-20 w-16 opacity-100"
-                }`}
-              >
-                {book.coverUrl ? (
-                  <Image
-                    src={book.coverUrl}
-                    alt=''
-                    fill
-                    className='object-cover'
-                    sizes={isTimerRunning ? "48px" : "64px"}
-                    unoptimized
-                  />
-                ) : (
-                  <BookOpen
-                    className={`text-gray-400 transition-all duration-500 ${
-                      isTimerRunning ? "h-6 w-6" : "h-8 w-8"
-                    }`}
-                    aria-hidden
-                  />
-                )}
-              </div>
-              {!isTimerRunning && resolvedParams && userUid === book.user_id && (
-                <nav
-                  className='flex w-16 flex-col gap-1.5'
-                  aria-label='목차·준비·핵심'
-                >
-                  <Link
-                    href={withReturnQuery(
-                      `/book/${resolvedParams.id}/${resolvedParams.user_id}/toc`,
-                      `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
-                    )}
-                    className='inline-flex w-full items-center justify-center gap-0.5 rounded-lg border border-theme-tertiary px-1 py-1.5 text-center text-[11px] font-medium leading-tight text-theme-secondary transition-colors hover:border-accent-theme/50 hover:text-accent-theme sm:text-xs'
-                  >
-                    <ListTree className='h-3 w-3 shrink-0' aria-hidden />
-                    목차
-                  </Link>
-                  <Link
-                    href={`/book/${resolvedParams.id}/${resolvedParams.user_id}/pre-reading?return=${encodeURIComponent(
-                      `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
-                    )}`}
-                    aria-label='읽기 준비 메모'
-                    className='flex w-full items-center justify-center gap-1 rounded-lg border border-theme-tertiary px-1 py-1.5 text-[11px] font-medium leading-tight text-theme-secondary transition-colors hover:border-accent-theme/50 hover:text-accent-theme sm:gap-0.5 sm:text-xs'
-                  >
-                    <Sparkles
-                      className='h-3.5 w-3.5 shrink-0 sm:h-3 sm:w-3'
-                      aria-hidden
-                    />
-                    <span className='text-center leading-[1.15]'>준비</span>
-                  </Link>
-                  <Link
-                    href={withReturnQuery(
-                      `/book/${resolvedParams.id}/${resolvedParams.user_id}/takeaways`,
-                      `/book/${resolvedParams.id}/${resolvedParams.user_id}`,
-                    )}
-                    className='inline-flex w-full items-center justify-center gap-0.5 rounded-lg border border-theme-tertiary px-1 py-1.5 text-center text-[11px] font-medium leading-tight text-theme-secondary transition-colors hover:border-accent-theme/50 hover:text-accent-theme sm:text-xs'
-                    aria-label='이 책의 키워드와 핵심 메시지'
-                  >
-                    <Tag className='h-3 w-3 shrink-0' aria-hidden />
-                    핵심
-                  </Link>
-                </nav>
-              )}
-            </div>
-            <div className='flex-1 min-w-0'>
-              <h2
-                className={`font-semibold text-theme-primary tracking-tight transition-all duration-500 ${
-                  isTimerRunning ? "text-base mb-0.5 line-clamp-2" : "text-lg mb-1"
-                }`}
-              >
-                {book.title}
-              </h2>
-              <p
-                className={`text-theme-secondary transition-all duration-500 ${
-                  isTimerRunning ? "text-xs mb-1 line-clamp-1" : "text-sm mb-2"
-                }`}
-              >
-                {book.author || "저자 미상"}
-              </p>
-              {isTimerRunning && (
-                <div className='flex items-center gap-1.5 text-xs text-theme-secondary'>
-                  <Clock className='h-3.5 w-3.5 shrink-0 text-accent-theme' />
-                  <span>총 독서 시간: {formatTotalTime(totalReadingTime)}</span>
-                </div>
-              )}
-
-              <div
-                className={`transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
-                  isTimerRunning
-                    ? "max-h-0 opacity-0 pointer-events-none mt-0"
-                    : "max-h-[2000px] opacity-100 mt-0"
-                }`}
-              >
-                <div className='flex flex-wrap gap-2 mb-3'>
-                  {book.publisher && (
-                    <span className='text-xs text-theme-tertiary'>출판사: {book.publisher}</span>
-                  )}
-                  {(book.publishedDate || book.publisher) && (
-                    <span className='text-xs text-theme-tertiary'>
-                      {book.publishedDate ? `출판일: ${book.publishedDate}` : ""}
-                    </span>
-                  )}
-                  {book.categoryDepth1Label && book.categoryDepth2Label && (
-                    <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
-                      {`${book.categoryDepth1Label} › ${book.categoryDepth2Label}`}
-                    </span>
-                  )}
-                  {book.level && (
-                    <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
-                      문해력 수준: {book.level}
-                    </span>
-                  )}
-                  {book.notes && (
-                    <p className='w-full text-xs text-theme-tertiary'>
-                      비고: {book.notes}
-                    </p>
-                  )}
-                </div>
-                <div className='flex items-center gap-2 mb-2'>
-                  <span className='text-xs text-theme-tertiary'>상태</span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      book.status === "reading"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                        : book.status === "completed"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-                          : book.status === "on-hold"
-                            ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                    }`}
-                  >
-                    {book.status === "reading"
-                      ? "읽는 중"
-                      : book.status === "completed"
-                        ? "완독"
-                        : book.status === "on-hold"
-                          ? "보류"
-                          : "읽고 싶은 책"}
-                  </span>
-                  {book.toReadThisYear && (
-                    <span className='text-xs text-theme-tertiary'>이번 년도에 읽을 책</span>
-                  )}
-                </div>
-                <div className='flex items-center gap-2 mb-3'>
-                  <span className='text-sm text-theme-secondary'>평점</span>
-                  <div className='flex gap-0.5'>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`h-4 w-4 ${
-                          star <= book.rating
-                            ? "text-yellow-400 fill-current"
-                            : "text-gray-300"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className='border-t border-theme-tertiary pt-3 mt-3 space-y-1.5 text-sm text-theme-secondary'>
-                  <div className='flex items-center gap-1.5'>
-                    <Clock className='h-4 w-4 shrink-0' />
-                    <span>총 독서 시간: {formatTotalTime(totalReadingTime)}</span>
-                  </div>
-                  {book.startDate && (
-                    <div className='flex items-center gap-1.5'>
-                      <Calendar className='h-4 w-4 shrink-0' />
-                      <span>읽기 시작: {book.startDate}</span>
-                    </div>
-                  )}
-                  {book.completedDate && (
-                    <div className='flex items-center gap-1.5 text-green-600 dark:text-green-400'>
-                      <CheckCircle className='h-4 w-4 shrink-0' />
-                      <span>완독일: {book.completedDate}</span>
-                    </div>
-                  )}
-                  {book.currentRereadStartDate && (
-                    <div className='flex items-center gap-1.5'>
-                      <Calendar className='h-4 w-4 shrink-0' />
-                      <span>현재 회독 시작: {book.currentRereadStartDate}</span>
-                    </div>
-                  )}
-                  {rereads.length > 0 && (() => {
-                    const totalDays = rereads.reduce(
-                      (sum, reread) => sum + (reread.durationDays || 0),
-                      0
-                    )
-                    return totalDays > 0 ? (
-                      <div className='flex items-center gap-1.5 text-theme-secondary'>
-                        <Clock className='h-4 w-4 shrink-0' />
-                        <span>총 읽은 일수: {totalDays}일</span>
-                      </div>
-                    ) : null
-                  })()}
-                  <button
-                    type='button'
-                    onClick={() => setIsRereadDetailModalOpen(true)}
-                    className='flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer'
-                  >
-                    <BookOpen className='h-4 w-4 shrink-0' />
-                    <span className='underline'>회독: {book.rereadCount ?? 0}회</span>
-                    <ChevronRight className='h-3 w-3' />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {resolvedParams && (
+          <BookDetailHeroCard
+            book={book}
+            bookBasePath={`/book/${resolvedParams.id}/${resolvedParams.user_id}`}
+            isTimerRunning={isTimerRunning}
+            isOwner={userUid === book.user_id}
+            totalReadingTime={totalReadingTime}
+            formatTotalTime={formatTotalTime}
+            heroReadingTimeId={BOOK_HERO_READING_TIME_ID}
+            readingSessionsSectionId={BOOK_READING_SESSIONS_SECTION_ID}
+            onOpenRereadDetail={() => setIsRereadDetailModalOpen(true)}
+          />
+        )}
 
         {/* 독서 타이머 (정지 시 카드 — 실행 중에는 전체 화면 독서 모드) */}
         {!isTimerRunning && (
@@ -1518,10 +1308,21 @@ export default function BookDetailPageClient({
         </div>
         */}
 
-        <div className='bg-theme-secondary rounded-lg shadow-sm p-4'>
+        <div
+          id={BOOK_READING_SESSIONS_SECTION_ID}
+          className='scroll-mt-20 bg-theme-secondary rounded-lg shadow-sm p-4'
+        >
           <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-lg font-semibold text-theme-primary'>
-              독서 기록
+            <h3 className='flex flex-wrap items-baseline gap-x-1.5 text-lg font-semibold text-theme-primary'>
+              <span>독서 기록</span>
+              <button
+                type='button'
+                onClick={() => scrollToElementId(BOOK_HERO_READING_TIME_ID)}
+                className='text-base font-semibold text-accent-theme transition-colors hover:underline'
+                aria-label='상단 총 독서 시간으로 이동'
+              >
+                (총 {formatTotalReadingTimeCompact(totalReadingTime)})
+              </button>
             </h3>
             <div className='flex items-center gap-2'>
               <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
