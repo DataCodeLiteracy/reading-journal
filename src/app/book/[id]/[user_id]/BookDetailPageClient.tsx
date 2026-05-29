@@ -28,6 +28,7 @@ import {
   ListTree,
   Tag,
 } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
@@ -1100,17 +1101,29 @@ export default function BookDetailPageClient({
               }`}
             >
               <div
-                className={`bg-theme-tertiary rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
+                className={`relative bg-theme-tertiary rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
                   isTimerRunning
                     ? "mx-auto h-16 w-12 opacity-100"
                     : "h-20 w-16 opacity-100"
                 }`}
               >
-                <BookOpen
-                  className={`text-gray-400 transition-all duration-500 ${
-                    isTimerRunning ? "h-6 w-6" : "h-8 w-8"
-                  }`}
-                />
+                {book.coverUrl ? (
+                  <Image
+                    src={book.coverUrl}
+                    alt=''
+                    fill
+                    className='object-cover'
+                    sizes={isTimerRunning ? "48px" : "64px"}
+                    unoptimized
+                  />
+                ) : (
+                  <BookOpen
+                    className={`text-gray-400 transition-all duration-500 ${
+                      isTimerRunning ? "h-6 w-6" : "h-8 w-8"
+                    }`}
+                    aria-hidden
+                  />
+                )}
               </div>
               {!isTimerRunning && resolvedParams && userUid === book.user_id && (
                 <nav

@@ -68,6 +68,10 @@ export interface Book {
   toReadThisYear?: boolean
   /** 출판사 */
   publisher?: string
+  /** 표지 이미지 URL (알라딘 등) */
+  coverUrl?: string
+  /** ISBN-13 (알라딘 조회·식별용) */
+  isbn13?: string
   /** 비고 (자유 메모) */
   notes?: string
   created_at?: Date

@@ -1,7 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { BookOpen, Star } from "lucide-react"
+import AladinBookLookup from "@/components/AladinBookLookup"
+import BookCoverUpload from "@/components/BookCoverUpload"
+import { coverPreviewCaption } from "@/utils/coverUrlSource"
+import { applyAladinBookMetadata } from "@/utils/applyAladinBookMetadata"
+import { enrichAladinBookMetadata } from "@/utils/enrichAladinBookMetadata"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
@@ -41,6 +47,9 @@ export default function EditBookModal({
   const [categoryDepth2Id, setCategoryDepth2Id] = useState(
     book.categoryDepth2Id || ""
   )
+  const [coverUrl, setCoverUrl] = useState(book.coverUrl || "")
+  const [isbn13, setIsbn13] = useState(book.isbn13 || "")
+  const [promptCoverUpload, setPromptCoverUpload] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -54,6 +63,9 @@ export default function EditBookModal({
       setLevel((book.level as BookLevel) || "")
       setCategoryDepth1Id(book.categoryDepth1Id || "")
       setCategoryDepth2Id(book.categoryDepth2Id || "")
+      setCoverUrl(book.coverUrl || "")
+      setIsbn13(book.isbn13 || "")
+      setPromptCoverUpload(!book.coverUrl?.trim())
     }
   }, [isOpen, book])
 
@@ -80,6 +92,8 @@ export default function EditBookModal({
       toReadThisYear: toReadThisYear || undefined,
       ...(level ? { level } : { level: undefined }),
       ...categoryFields,
+      coverUrl: coverUrl.trim() || undefined,
+      isbn13: isbn13.trim() || undefined,
     }
 
     onSave(updatedBook)
@@ -119,6 +133,56 @@ export default function EditBookModal({
             required
           />
         </div>
+
+        <AladinBookLookup
+          title={title}
+          onAladinCoverMissing={() => setPromptCoverUpload(true)}
+          onApply={(metadata) => {
+            applyAladinBookMetadata(
+              enrichAladinBookMetadata(metadata, categoryTree),
+              {
+                setTitle,
+                setAuthor,
+                setPublisher,
+                setPublishedDate,
+                setCategoryDepth1Id,
+                setCategoryDepth2Id,
+                setCoverUrl,
+                setIsbn13,
+                setNotes,
+                getNotes: () => notes,
+              },
+            )
+            if (metadata.coverUrl?.trim()) {
+              setPromptCoverUpload(false)
+            }
+          }}
+        />
+
+        <BookCoverUpload
+          bookId={book.id}
+          visible={!coverUrl && promptCoverUpload}
+          coverUrl={coverUrl}
+          onCoverUrlChange={setCoverUrl}
+        />
+
+        {coverUrl && (
+          <div className="flex items-start gap-3">
+            <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
+              <Image
+                src={coverUrl}
+                alt="표지 미리보기"
+                fill
+                className="object-cover"
+                sizes="64px"
+                unoptimized
+              />
+            </div>
+            <p className="text-xs text-theme-tertiary pt-1">
+              {coverPreviewCaption(coverUrl)}
+            </p>
+          </div>
+        )}
 
         <div>
           <p className="mb-1 text-xs font-semibold text-theme-secondary">선택 (권장 순)</p>

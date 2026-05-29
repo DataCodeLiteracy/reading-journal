@@ -1,7 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
+import Image from "next/image"
 import { BookOpen, AlertCircle, Star } from "lucide-react"
+import AladinBookLookup from "@/components/AladinBookLookup"
+import BookCoverUpload from "@/components/BookCoverUpload"
+import { coverPreviewCaption } from "@/utils/coverUrlSource"
+import { applyAladinBookMetadata } from "@/utils/applyAladinBookMetadata"
+import { enrichAladinBookMetadata } from "@/utils/enrichAladinBookMetadata"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
@@ -54,8 +60,11 @@ export default function AddBookModal({
   const [level, setLevel] = useState<BookLevel | "">(initialLevel || "")
   const [categoryDepth1Id, setCategoryDepth1Id] = useState(initialCategoryDepth1Id)
   const [categoryDepth2Id, setCategoryDepth2Id] = useState(initialCategoryDepth2Id)
+  const [coverUrl, setCoverUrl] = useState("")
+  const [isbn13, setIsbn13] = useState("")
   const titleInputRef = useRef<HTMLInputElement>(null)
   const [ownDuplicateModalOpen, setOwnDuplicateModalOpen] = useState(false)
+  const [promptCoverUpload, setPromptCoverUpload] = useState(false)
 
   const titleKeySet = useMemo(
     () => new Set(userBookTitleKeys),
@@ -88,6 +97,9 @@ export default function AddBookModal({
       setStatus("want-to-read")
       setRating(0)
       setToReadThisYear(false)
+      setCoverUrl("")
+      setIsbn13("")
+      setPromptCoverUpload(false)
     }
   }, [
     isOpen,
@@ -113,7 +125,10 @@ export default function AddBookModal({
     setLevel("")
     setCategoryDepth1Id("")
     setCategoryDepth2Id("")
+    setCoverUrl("")
+    setIsbn13("")
     setOwnDuplicateModalOpen(false)
+    setPromptCoverUpload(false)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -145,6 +160,8 @@ export default function AddBookModal({
       toReadThisYear: toReadThisYear || undefined,
       ...(level ? { level } : {}),
       ...categoryFields,
+      ...(coverUrl.trim() ? { coverUrl: coverUrl.trim() } : {}),
+      ...(isbn13.trim() ? { isbn13: isbn13.trim() } : {}),
     }
 
     onAddBook(newBook)
@@ -209,6 +226,55 @@ export default function AddBookModal({
               </p>
             )}
           </div>
+
+          <AladinBookLookup
+            title={title}
+            onAladinCoverMissing={() => setPromptCoverUpload(true)}
+            onApply={(metadata) => {
+              applyAladinBookMetadata(
+                enrichAladinBookMetadata(metadata, categoryTree),
+                {
+                  setTitle,
+                  setAuthor,
+                  setPublisher,
+                  setPublishedDate,
+                  setCategoryDepth1Id,
+                  setCategoryDepth2Id,
+                  setCoverUrl,
+                  setIsbn13,
+                  setNotes,
+                  getNotes: () => notes,
+                },
+              )
+              if (metadata.coverUrl?.trim()) {
+                setPromptCoverUpload(false)
+              }
+            }}
+          />
+
+          <BookCoverUpload
+            visible={!coverUrl && promptCoverUpload}
+            coverUrl={coverUrl}
+            onCoverUrlChange={setCoverUrl}
+          />
+
+          {coverUrl && (
+            <div className="flex items-start gap-3">
+              <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
+                <Image
+                  src={coverUrl}
+                  alt="표지 미리보기"
+                  fill
+                  className="object-cover"
+                  sizes="64px"
+                  unoptimized
+                />
+              </div>
+              <p className="text-xs text-theme-tertiary pt-1">
+                {coverPreviewCaption(coverUrl)} (저장 시 URL이 함께 기록됩니다)
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">

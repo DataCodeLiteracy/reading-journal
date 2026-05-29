@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef, Suspense } from "react"
+import Image from "next/image"
 import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query"
 import {
@@ -838,8 +839,21 @@ function BooksPageContent() {
                 className='bg-theme-secondary rounded-lg shadow-sm border-card hover:shadow-md transition-shadow p-3 cursor-pointer relative group'
               >
                 <div className='flex items-start gap-3'>
-                  <div className='w-14 h-18 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                    <BookOpen className='h-7 w-7 text-gray-400' />
+                  <div className='relative h-[4.5rem] w-14 shrink-0 overflow-hidden rounded-md bg-theme-tertiary'>
+                    {book.coverUrl ? (
+                      <Image
+                        src={book.coverUrl}
+                        alt=''
+                        fill
+                        className='object-cover'
+                        sizes='56px'
+                        unoptimized
+                      />
+                    ) : (
+                      <div className='flex h-full w-full items-center justify-center'>
+                        <BookOpen className='h-7 w-7 text-gray-400' />
+                      </div>
+                    )}
                   </div>
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-start justify-between mb-2'>

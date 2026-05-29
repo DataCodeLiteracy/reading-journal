@@ -2723,6 +2723,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cloudinary@npm:^2.10.0":
+  version: 2.10.0
+  resolution: "cloudinary@npm:2.10.0"
+  dependencies:
+    lodash: "npm:^4.17.23"
+  checksum: 10/946142c9803c6c2d2478e1c995d16b0f691bd3d46f451cd62c762530752d11bde9e1562b165b6526daa5a7040881aa6c2276f334969d40832d57200083ba25e6
+  languageName: node
+  linkType: hard
+
 "codepage@npm:~1.15.0":
   version: 1.15.0
   resolution: "codepage@npm:1.15.0"
@@ -4837,6 +4846,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lodash@npm:^4.17.23":
+  version: 4.18.1
+  resolution: "lodash@npm:4.18.1"
+  checksum: 10/306fea53dfd39dad1f03d45ba654a2405aebd35797b673077f401edb7df2543623dc44b9effbb98f69b32152295fff725a4cec99c684098947430600c6af0c3f
+  languageName: node
+  linkType: hard
+
 "long@npm:^5.0.0, long@npm:^5.3.2":
   version: 5.3.2
   resolution: "long@npm:5.3.2"
@@ -5497,6 +5513,7 @@ __metadata:
     "@types/react": "npm:^19.1.8"
     "@types/react-dom": "npm:^19.1.6"
     chart.js: "npm:^4.5.0"
+    cloudinary: "npm:^2.10.0"
     eslint: "npm:^9"
     eslint-config-next: "npm:^16.1.1"
     firebase: "npm:^12.1.0"

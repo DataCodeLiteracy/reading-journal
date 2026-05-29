@@ -49,6 +49,12 @@ export default function BookCategoryPicker({
   }, [depth2List, depth2Query])
 
   useEffect(() => {
+    if (!tree || !depth2Id || depth1Id) return
+    const d2 = BookCategoryService.findDepth2(tree, depth2Id)
+    if (d2) onDepth1Change(d2.parentId)
+  }, [tree, depth1Id, depth2Id, onDepth1Change])
+
+  useEffect(() => {
     if (!depth1Id || !depth2Id || !tree) return
     const valid = depth2List.some((d) => d.id === depth2Id)
     if (!valid) onDepth2Change("")
