@@ -1,5 +1,6 @@
 import type { AladinBookMetadata, AladinSearchHit } from "@/types/aladin"
 import { parseAladinAuthor } from "@/utils/parseAladinAuthor"
+import { decodeHtmlEntities } from "@/utils/decodeHtmlEntities"
 import { loadBookCategoryTreeServer } from "@/lib/loadBookCategorySeedServer"
 import {
   extractAladinCategoryInfos,
@@ -63,7 +64,9 @@ function mapItemToSearchHit(item: Record<string, unknown>): AladinSearchHit {
     publishedDate: pub ? formatPubDate(pub) : undefined,
     coverUrl: str(item.cover) || undefined,
     isbn13,
-    description: description ? description.slice(0, 500) : undefined,
+    description: description
+      ? decodeHtmlEntities(description).slice(0, 500)
+      : undefined,
   }
 }
 

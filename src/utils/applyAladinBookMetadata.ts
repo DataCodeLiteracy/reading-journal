@@ -1,5 +1,6 @@
 import type { AladinBookMetadata } from "@/types/aladin"
 import { parseAladinAuthor } from "@/utils/parseAladinAuthor"
+import { decodeHtmlEntities } from "@/utils/decodeHtmlEntities"
 
 export type AladinBookFormSetters = {
   setTitle: (v: string) => void
@@ -32,7 +33,7 @@ export function applyAladinBookMetadata(
     setters.getNotes &&
     !setters.getNotes().trim()
   ) {
-    setters.setNotes(metadata.description)
+    setters.setNotes(decodeHtmlEntities(metadata.description))
   }
 
   const d1 = metadata.categoryDepth1Id
