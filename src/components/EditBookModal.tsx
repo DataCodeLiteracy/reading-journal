@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import { BookOpen, Star } from "lucide-react"
 import AladinBookLookup from "@/components/AladinBookLookup"
-import BookCoverUpload from "@/components/BookCoverUpload"
-import { coverPreviewCaption } from "@/utils/coverUrlSource"
+import BookCoverInlineEditor from "@/components/BookCoverInlineEditor"
 import { applyAladinBookMetadata } from "@/utils/applyAladinBookMetadata"
 import { enrichAladinBookMetadata } from "@/utils/enrichAladinBookMetadata"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
@@ -49,7 +47,6 @@ export default function EditBookModal({
   )
   const [coverUrl, setCoverUrl] = useState(book.coverUrl || "")
   const [isbn13, setIsbn13] = useState(book.isbn13 || "")
-  const [promptCoverUpload, setPromptCoverUpload] = useState(false)
   const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
 
   useEffect(() => {
@@ -66,7 +63,6 @@ export default function EditBookModal({
       setCategoryDepth2Id(book.categoryDepth2Id || "")
       setCoverUrl(book.coverUrl || "")
       setIsbn13(book.isbn13 || "")
-      setPromptCoverUpload(false)
       setCoverUploadHint(undefined)
     }
   }, [isOpen, book])
@@ -139,15 +135,13 @@ export default function EditBookModal({
         <AladinBookLookup
           title={title}
           onLookupStart={() => {
-            setPromptCoverUpload(false)
             setCoverUploadHint(undefined)
           }}
           onNeedsManualCover={(reason) => {
-            setPromptCoverUpload(true)
             setCoverUploadHint(
               reason === "not_found"
-                ? "알라딘에서 책을 찾지 못했습니다. 표지를 직접 올려 주세요."
-                : "알라딘에 표지가 없습니다. 표지를 직접 올려 주세요.",
+                ? "알라딘에서 책을 찾지 못했습니다."
+                : "알라딘에 표지가 없습니다.",
             )
           }}
           onApply={(metadata) => {
@@ -167,37 +161,20 @@ export default function EditBookModal({
               },
             )
             if (metadata.coverUrl?.trim()) {
-              setPromptCoverUpload(false)
               setCoverUploadHint(undefined)
             }
           }}
         />
 
-        <BookCoverUpload
+        <BookCoverInlineEditor
           bookId={book.id}
-          visible={!coverUrl && promptCoverUpload}
           coverUrl={coverUrl}
-          onCoverUrlChange={setCoverUrl}
+          onCoverUrlChange={(url) => {
+            setCoverUrl(url)
+            if (url.trim()) setCoverUploadHint(undefined)
+          }}
           hint={coverUploadHint}
         />
-
-        {coverUrl && (
-          <div className="flex items-start gap-3">
-            <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
-              <Image
-                src={coverUrl}
-                alt="표지 미리보기"
-                fill
-                className="object-cover"
-                sizes="64px"
-                unoptimized
-              />
-            </div>
-            <p className="text-xs text-theme-tertiary pt-1">
-              {coverPreviewCaption(coverUrl)}
-            </p>
-          </div>
-        )}
 
         <div>
           <p className="mb-1 text-xs font-semibold text-theme-secondary">선택 (권장 순)</p>

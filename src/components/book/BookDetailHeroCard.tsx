@@ -71,26 +71,30 @@ const INFO_LABEL_COL = "grid-cols-[2.625rem_1fr]"
 function InfoRow({
   label,
   children,
-  labelVertical = "center",
+  align = "center",
 }: {
   label: string
   children: ReactNode
-  /** 비고 행만: 세로 중앙 대신 라벨 2px 아래 */
-  labelVertical?: "center" | "offset"
+  /** 비고 등 여러 줄 값은 top, 나머지는 라벨·값 세로 중앙 */
+  align?: "center" | "top"
 }) {
-  const labelClass =
-    labelVertical === "offset"
-      ? "mt-[2px] self-start text-center text-[11px] font-medium leading-snug text-theme-tertiary"
-      : "self-center text-center text-[11px] font-medium leading-snug text-theme-tertiary"
-
+  const top = align === "top"
   return (
     <div
       className={`grid ${INFO_LABEL_COL} gap-x-[2px] ${
-        labelVertical === "offset" ? "items-start" : "items-center"
+        top ? "items-start" : "items-center"
       }`}
     >
-      <span className={labelClass}>{label}</span>
-      <div className='min-w-0 text-xs leading-relaxed'>{children}</div>
+      <span
+        className={`text-center text-[11px] font-medium leading-4 text-theme-tertiary ${
+          top ? "self-start pt-[1px]" : "self-center"
+        }`}
+      >
+        {label}
+      </span>
+      <div className='min-w-0 text-xs leading-4 [&_p]:m-0 [&_p]:leading-4'>
+        {children}
+      </div>
     </div>
   )
 }
@@ -110,19 +114,19 @@ function BookInfoLabeled({ book }: { book: Book }) {
     <>
     <div className='flex flex-col gap-1.5'>
       <InfoRow label='제목'>
-        <p className='line-clamp-3 font-semibold text-theme-primary sm:text-sm'>
+        <p className='line-clamp-3 font-semibold leading-4 text-theme-primary sm:text-sm sm:leading-4'>
           {book.title}
         </p>
       </InfoRow>
 
       <InfoRow label='저자'>
-        <p className='line-clamp-2 text-slate-600 dark:text-slate-400'>
+        <p className='line-clamp-2 leading-4 text-slate-600 dark:text-slate-400'>
           {book.author || "저자 미상"}
         </p>
       </InfoRow>
 
       <InfoRow label='평점'>
-        <div className='flex gap-px' aria-label={`${book.rating}점`}>
+        <div className='flex h-4 items-center gap-px' aria-label={`${book.rating}점`}>
           {[1, 2, 3, 4, 5].map((star) => (
             <Star
               key={star}
@@ -137,14 +141,14 @@ function BookInfoLabeled({ book }: { book: Book }) {
       </InfoRow>
 
       <InfoRow label='상태'>
-        <div className='flex flex-wrap items-center gap-1.5'>
+        <div className='flex min-h-4 flex-wrap items-center gap-1.5'>
           <span
             className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${status.className}`}
           >
             {status.label}
           </span>
           {book.toReadThisYear && (
-            <span className='rounded bg-theme-tertiary px-1.5 py-0.5 text-[11px] text-theme-tertiary'>
+            <span className='rounded bg-indigo-500/12 px-1.5 py-0.5 text-[11px] font-medium text-indigo-800 dark:text-indigo-300'>
               올해 읽을 책
             </span>
           )}
@@ -153,7 +157,7 @@ function BookInfoLabeled({ book }: { book: Book }) {
 
       {(hasPublisher || hasDate) && (
         <InfoRow label='출판'>
-          <p className='flex flex-wrap items-center gap-x-1 gap-y-0.5'>
+          <p className='flex flex-wrap items-center gap-x-1 gap-y-0.5 leading-4'>
             {hasPublisher && (
               <span className='font-medium text-sky-700 dark:text-sky-300'>
                 {book.publisher!.trim()}
@@ -165,7 +169,7 @@ function BookInfoLabeled({ book }: { book: Book }) {
               </span>
             )}
             {hasDate && (
-              <span className='font-medium text-amber-700 dark:text-amber-300'>
+              <span className='font-medium text-amber-700/70 dark:text-amber-300/70'>
                 {pubLabel}
               </span>
             )}
@@ -175,7 +179,7 @@ function BookInfoLabeled({ book }: { book: Book }) {
 
       {hasCategory && (
         <InfoRow label='분야'>
-          <p className='flex flex-wrap items-center gap-x-1 gap-y-0.5'>
+          <p className='flex flex-wrap items-center gap-x-1 gap-y-0.5 leading-4'>
             {d1 && (
               <span className='font-medium text-emerald-700 dark:text-emerald-300'>
                 {d1}
@@ -197,13 +201,15 @@ function BookInfoLabeled({ book }: { book: Book }) {
 
       {book.level && (
         <InfoRow label='문해력'>
-          <span className='font-medium text-theme-primary'>{book.level}</span>
+          <span className='inline-block leading-4 font-medium text-theme-primary'>
+            {book.level}
+          </span>
         </InfoRow>
       )}
 
       {book.startDate && (
         <InfoRow label='시작'>
-          <span className='inline-flex items-center gap-1 text-theme-secondary'>
+          <span className='inline-flex h-4 items-center gap-1 leading-4 text-theme-secondary'>
             <Calendar className='h-3 w-3 shrink-0 text-theme-tertiary' />
             {book.startDate}
           </span>
@@ -212,7 +218,7 @@ function BookInfoLabeled({ book }: { book: Book }) {
 
       {book.completedDate && (
         <InfoRow label='완독'>
-          <span className='inline-flex items-center gap-1 text-green-600 dark:text-green-400'>
+          <span className='inline-flex h-4 items-center gap-1 leading-4 text-green-600 dark:text-green-400'>
             <CheckCircle className='h-3 w-3 shrink-0' />
             {book.completedDate}
           </span>
@@ -220,14 +226,14 @@ function BookInfoLabeled({ book }: { book: Book }) {
       )}
 
       {notesText && (
-        <InfoRow label='비고' labelVertical='offset'>
+        <InfoRow label='비고' align='top'>
           <button
             type='button'
             onClick={() => setNotesModalOpen(true)}
-            className='group w-full rounded-md text-left transition-colors hover:bg-theme-tertiary/30 -mx-1 px-1 py-0.5'
+            className='group w-full rounded-md text-left transition-colors hover:bg-theme-tertiary/30 -mx-1 px-1'
             aria-label='비고 전체 보기'
           >
-            <p className='line-clamp-5 whitespace-pre-wrap text-theme-secondary'>
+            <p className='line-clamp-5 whitespace-pre-wrap leading-4 text-theme-secondary'>
               {notesText}
             </p>
             <span className='mt-0.5 inline-block text-[10px] font-medium text-accent-theme group-hover:underline'>

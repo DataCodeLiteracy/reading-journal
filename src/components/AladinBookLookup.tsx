@@ -65,7 +65,7 @@ export default function AladinBookLookup({
     setError(null)
     setCandidates(null)
     try {
-      const items = await searchAladinByTitle(q)
+      const items = await searchAladinByTitle(q, 25)
       if (items.length === 0) {
         setError("알라딘에서 일치하는 도서를 찾지 못했습니다.")
         onNeedsManualCover?.("not_found")
@@ -109,7 +109,7 @@ export default function AladinBookLookup({
       )}
 
       {candidates && candidates.length > 0 && (
-        <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto">
+        <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto">
           {candidates.map((hit, idx) => (
             <li key={`${hit.isbn13 ?? hit.title}-${idx}`}>
               <button

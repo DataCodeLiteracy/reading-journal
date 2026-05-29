@@ -16,7 +16,7 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
 
 export async function searchAladinByTitle(
   query: string,
-  maxResults = 8,
+  maxResults = 25,
 ): Promise<AladinSearchHit[]> {
   const idToken = await getClientIdToken()
   const data = await postJson<{ items: AladinSearchHit[] }>("/api/aladin/search", {

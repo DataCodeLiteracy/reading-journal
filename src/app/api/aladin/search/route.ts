@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "검색어가 필요합니다." }, { status: 400 })
     }
 
-    const items = await aladinSearchByTitle(query, body.maxResults ?? 8)
+    const items = await aladinSearchByTitle(query, body.maxResults ?? 25)
     return NextResponse.json({ items })
   } catch (e) {
     console.error("aladin search:", e)

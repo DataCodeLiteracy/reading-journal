@@ -100,18 +100,19 @@ async function fetchAladin(
 
 export async function aladinSearchByTitle(
   query: string,
-  maxResults = 8,
+  maxResults = 25,
 ): Promise<AladinSearchHit[]> {
   const q = query.trim()
   if (!q) return []
 
   const data = await fetchAladin("ItemSearch.aspx", {
     Query: q,
-    QueryType: "Title",
+    // 홈페이지 통합검색과 비슷하게 제목·저자·출판사 등 키워드로 검색
+    QueryType: "Keyword",
     SearchTarget: "Book",
     MaxResults: String(Math.min(Math.max(maxResults, 1), 50)),
     Start: "1",
-    outofStockfilter: "1",
+    outofStockfilter: "0",
   })
 
   return normalizeItems(data)
