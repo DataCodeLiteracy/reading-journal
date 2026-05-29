@@ -77,7 +77,7 @@ import {
   isPreReadTimerPromptDismissedToday,
   setPreReadTimerPromptDismissedToday,
 } from "@/utils/preReadingTimerPrompt"
-import { withReturnQuery } from "@/utils/navigateBack"
+import { navigateBackSmart, withReturnQuery } from "@/utils/navigateBack"
 import { startPostCompleteReadingFlow } from "@/utils/postCompleteReadingFlow"
 
 export default function BookDetailPageClient({
@@ -1011,10 +1011,10 @@ export default function BookDetailPageClient({
           <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
           <p className='text-theme-secondary mb-4'>{error}</p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => navigateBackSmart(router, "/books")}
             className='px-4 py-2 bg-accent-theme text-white rounded-lg hover:bg-accent-theme-secondary transition-colors'
           >
-            홈으로 돌아가기
+            이전으로
           </button>
         </div>
       </div>
@@ -1028,10 +1028,10 @@ export default function BookDetailPageClient({
           <BookOpen className='h-12 w-12 text-gray-400 mx-auto mb-4' />
           <p className='text-theme-secondary'>책을 찾을 수 없습니다.</p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => navigateBackSmart(router, "/books")}
             className='mt-4 px-4 py-2 bg-accent-theme text-white rounded-lg hover:bg-accent-theme-secondary transition-colors'
           >
-            홈으로 돌아가기
+            이전으로
           </button>
         </div>
       </div>
@@ -1060,8 +1060,10 @@ export default function BookDetailPageClient({
         {/* 상단 헤더 - 간소화 */}
         <div className='flex items-center gap-4 mb-6'>
           <button
-            onClick={() => router.push("/")}
+            type='button'
+            onClick={() => navigateBackSmart(router, "/books")}
             className='p-2 rounded-full bg-theme-secondary shadow-sm hover:shadow-md transition-shadow'
+            aria-label='이전 페이지'
           >
             <ArrowLeft className='h-5 w-5 text-theme-secondary' />
           </button>
@@ -1208,6 +1210,11 @@ export default function BookDetailPageClient({
                   {book.categoryDepth1Label && book.categoryDepth2Label && (
                     <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
                       {`${book.categoryDepth1Label} › ${book.categoryDepth2Label}`}
+                    </span>
+                  )}
+                  {book.level && (
+                    <span className='text-xs px-2 py-0.5 rounded-full bg-theme-tertiary text-theme-secondary'>
+                      문해력 수준: {book.level}
                     </span>
                   )}
                   {book.notes && (

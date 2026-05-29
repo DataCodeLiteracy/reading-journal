@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { withReturnQuery } from "@/utils/navigateBack"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import { useBookCategories } from "@/hooks/useBookCategories"
 import { buildCategoryFilterOptions } from "@/utils/bookCategoryFilterOptions"
@@ -36,6 +37,11 @@ import {
 import Pagination from "@/components/Pagination"
 import Select, { type SelectOption } from "@/components/Select"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import {
+  formatBookCategoryLine,
+  formatBookPublishedLabel,
+  truncateLibraryCardCategory,
+} from "@/utils/bookLibraryCardMeta"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
 type LibraryTab = "reading" | "want-to-read" | "completed" | "on-hold"
@@ -81,6 +87,7 @@ export default function BooksPage() {
 
 function BooksPageContent() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const { user, loading, isLoggedIn, userUid } = useAuth()
@@ -462,9 +469,15 @@ function BooksPageContent() {
     setSortOrder(getDefaultSortForTab(tab))
   }
 
+  const libraryReturnPath = useMemo(() => {
+    const q = searchParams.toString()
+    return q ? `${pathname}?${q}` : pathname
+  }, [pathname, searchParams])
+
   const handleBookClick = (bookId: string) => {
     setIsNavigating(true)
-    router.push(`/book/${bookId}/${userUid || "1"}`)
+    const detailPath = `/book/${bookId}/${userUid || "1"}`
+    router.push(withReturnQuery(detailPath, libraryReturnPath))
   }
 
   const handleAddBook = async (newBook: Omit<Book, "id" | "user_id">) => {
@@ -719,13 +732,13 @@ function BooksPageContent() {
             <div className='px-4 pb-4 pt-0 border-t border-theme-tertiary/50'>
               <div className='grid grid-cols-2 gap-3 pt-3'>
                 <div>
-                  <label className='block text-xs text-theme-tertiary mb-1'>레벨</label>
+                  <label className='block text-xs text-theme-tertiary mb-1'>문해력 수준</label>
                   <Select
                     value={levelFilter}
                     onChange={(v) => setLevelFilter(v as BookLevel | "")}
                     options={levelSelectOptions}
                     variant='toolbar'
-                    aria-label='레벨 필터'
+                    aria-label='문해력 수준 필터'
                   />
                 </div>
                 <div>
@@ -832,7 +845,17 @@ function BooksPageContent() {
           </div>
         ) : (
           <div className='grid grid-cols-1 gap-3'>
-            {visibleBooks.map((book: Book) => (
+            {visibleBooks.map((book: Book) => {
+              const categoryFull = formatBookCategoryLine(
+                book.categoryDepth1Label,
+                book.categoryDepth2Label,
+              )
+              const categoryDisplay = categoryFull
+                ? truncateLibraryCardCategory(categoryFull)
+                : null
+              const publishedLabel = formatBookPublishedLabel(book.publishedDate)
+
+              return (
               <div
                 key={book.id}
                 onClick={() => handleBookClick(book.id)}
@@ -855,21 +878,16 @@ function BooksPageContent() {
                       </div>
                     )}
                   </div>
-                  <div className='flex-1 min-w-0'>
-                    <div className='flex items-start justify-between mb-2'>
-                      <div className='flex-1 min-w-0'>
-                        <h3 className='font-semibold text-theme-primary mb-1 truncate'>
-                          {book.title}
-                        </h3>
-                        <p className='text-sm text-theme-secondary truncate'>
-                          {book.author || "저자 미상"}
-                        </p>
-                      </div>
-                      <div className='flex items-center gap-1 ml-2'>
+                  <div className='flex min-w-0 flex-1 flex-col gap-2'>
+                    <div className='grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1'>
+                      <h3 className='m-0 truncate font-semibold leading-5 text-theme-primary'>
+                        {book.title}
+                      </h3>
+                      <div className='flex items-start justify-end gap-0.5 self-start'>
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`h-3 w-3 ${
+                            className={`h-3 w-3 shrink-0 ${
                               i < book.rating
                                 ? "text-yellow-400 fill-current"
                                 : "text-gray-300"
@@ -877,14 +895,36 @@ function BooksPageContent() {
                           />
                         ))}
                       </div>
+                      <p className='m-0 truncate text-sm leading-5 text-theme-secondary'>
+                        {book.author || "저자 미상"}
+                      </p>
+                      {publishedLabel ? (
+                        <p className='m-0 whitespace-nowrap text-right text-sm leading-5 text-theme-tertiary'>
+                          {publishedLabel}
+                        </p>
+                      ) : (
+                        <span className='block min-h-5' aria-hidden />
+                      )}
                     </div>
 
-                    <div className='flex items-center justify-between text-xs text-theme-tertiary'>
-                      <span className='text-xs'>
-                        {book.publishedDate || book.startDate}
-                      </span>
+                    <div className='flex items-center justify-between gap-3'>
+                      {categoryDisplay ? (
+                        <span
+                          className='min-w-0 flex-1 truncate text-xs text-theme-tertiary'
+                          title={
+                            categoryFull &&
+                            categoryFull !== categoryDisplay
+                              ? categoryFull
+                              : undefined
+                          }
+                        >
+                          {categoryDisplay}
+                        </span>
+                      ) : (
+                        <span className='flex-1' aria-hidden />
+                      )}
                       <span
-                        className={`px-2 py-1 rounded-full text-xs ${
+                        className={`shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-xs ${
                           book.status === "reading"
                             ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                             : book.status === "completed"
@@ -906,7 +946,8 @@ function BooksPageContent() {
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

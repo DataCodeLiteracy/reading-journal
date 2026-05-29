@@ -348,7 +348,7 @@ export default function AddBookModal({
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              문해력 수준 (레벨)
+              문해력 수준
             </label>
             <Select<BookLevel | "">
               value={level}

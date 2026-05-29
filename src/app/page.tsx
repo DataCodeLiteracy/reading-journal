@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
+import Image from "next/image"
 import {
   BookOpen,
   Clock,
@@ -17,6 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { withReturnQuery } from "@/utils/navigateBack"
 import { Book } from "@/types/book"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/SettingsContext"
@@ -184,7 +186,9 @@ export default function Home() {
   }, [isLoggedIn, loading, router])
 
   const handleBookClick = (bookId: string) => {
-    router.push(`/book/${bookId}/${userUid || "1"}`)
+    router.push(
+      withReturnQuery(`/book/${bookId}/${userUid || "1"}`, "/"),
+    )
   }
 
   if (loading) {
@@ -432,8 +436,21 @@ export default function Home() {
                       onClick={() => handleBookClick(book.id)}
                       className='flex items-center gap-3 py-3 px-3 -mx-1 rounded-lg cursor-pointer hover:bg-theme-tertiary/40 active:bg-theme-tertiary/50 transition-colors first:pt-3 last:pb-3 border border-transparent hover:border-theme-tertiary/50'
                     >
-                      <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                        <BookOpen className='h-6 w-6 text-theme-tertiary' />
+                      <div className='relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-theme-tertiary'>
+                        {book.coverUrl ? (
+                          <Image
+                            src={book.coverUrl}
+                            alt=''
+                            fill
+                            className='object-cover'
+                            sizes='48px'
+                            unoptimized
+                          />
+                        ) : (
+                          <div className='flex h-full w-full items-center justify-center'>
+                            <BookOpen className='h-6 w-6 text-theme-tertiary' />
+                          </div>
+                        )}
                       </div>
                       <div className='flex-1 min-w-0'>
                         <h3 className='font-medium text-theme-primary truncate'>
@@ -479,8 +496,21 @@ export default function Home() {
                       onClick={() => handleBookClick(book.id)}
                       className='flex items-center gap-3 py-3 px-3 -mx-1 rounded-lg cursor-pointer hover:bg-theme-tertiary/40 active:bg-theme-tertiary/50 transition-colors first:pt-3 last:pb-3 border border-transparent hover:border-theme-tertiary/50'
                     >
-                      <div className='w-12 h-14 bg-theme-tertiary rounded-md flex items-center justify-center flex-shrink-0'>
-                        <BookOpen className='h-6 w-6 text-theme-tertiary' />
+                      <div className='relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-theme-tertiary'>
+                        {book.coverUrl ? (
+                          <Image
+                            src={book.coverUrl}
+                            alt=''
+                            fill
+                            className='object-cover'
+                            sizes='48px'
+                            unoptimized
+                          />
+                        ) : (
+                          <div className='flex h-full w-full items-center justify-center'>
+                            <BookOpen className='h-6 w-6 text-theme-tertiary' />
+                          </div>
+                        )}
                       </div>
                       <div className='flex-1 min-w-0'>
                         <h3 className='font-medium text-theme-primary truncate'>

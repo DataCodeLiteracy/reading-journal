@@ -1,7 +1,7 @@
 import { AppDate } from "./firebase"
 import type { BookTocEntry } from "./bookToc"
 
-/** 책의 대상 연령/학년 (레벨) */
+/** 책의 대상 연령/학년 (문해력 수준) */
 export type BookLevel =
   | "유아"
   | "초1"
@@ -62,7 +62,7 @@ export interface Book {
   categoryDepth1Label?: string
   categoryDepth2Id?: string
   categoryDepth2Label?: string
-  /** 대상 연령/학년 (레벨): 유아, 초1~6, 중1~3, 고1~3, 성인 */
+  /** 대상 연령/학년 (문해력 수준): 유아, 초1~6, 중1~3, 고1~3, 성인 */
   level?: BookLevel
   /** 이번 년도에 읽을 책 여부 */
   toReadThisYear?: boolean

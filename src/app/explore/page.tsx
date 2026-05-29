@@ -504,14 +504,14 @@ function ExplorePageContent() {
                 </div>
                 <div>
                   <label className='block text-xs text-theme-tertiary mb-1'>
-                    레벨
+                    문해력 수준
                   </label>
                   <Select
                     value={levelFilter}
                     onChange={(v) => setLevelFilter(v as BookLevel | "")}
                     options={exploreLevelOptions}
                     variant='toolbar'
-                    aria-label='레벨 필터'
+                    aria-label='문해력 수준 필터'
                   />
                 </div>
                 <div>
@@ -571,7 +571,7 @@ function ExplorePageContent() {
                 )}
               </div>
               <p className='text-xs text-theme-tertiary'>
-                검색·상태·저자·평점·레벨·분야·유저·정렬·내 책 제외는 모두 서버에서 적용된 뒤, 10권 단위로
+                검색·상태·저자·평점·문해력 수준·분야·유저·정렬·내 책 제외는 모두 서버에서 적용된 뒤, 10권 단위로
                 불러옵니다. 같은 제목은 한 줄로 묶어 보여 줍니다. «등록 유저 많은/적은 순»은 등록 시각
                 기준으로 정렬합니다.
               </p>
