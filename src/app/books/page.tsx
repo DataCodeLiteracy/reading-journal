@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useMemo, Suspense } from "react"
+import { useState, useEffect, useMemo, useRef, Suspense } from "react"
 import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query"
 import {
   BookOpen,
   Plus,
@@ -37,6 +37,39 @@ import Select, { type SelectOption } from "@/components/Select"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
 
+type LibraryTab = "reading" | "want-to-read" | "completed" | "on-hold"
+
+const LIBRARY_TABS: { key: LibraryTab; label: string }[] = [
+  { key: "reading", label: "읽는 중" },
+  { key: "want-to-read", label: "읽고 싶은 책" },
+  { key: "completed", label: "완독" },
+  { key: "on-hold", label: "보류" },
+]
+
+const LIBRARY_TAB_PRIORITY: LibraryTab[] = LIBRARY_TABS.map((t) => t.key)
+
+const SEARCH_DEBOUNCE_MS = 250
+
+function computeLocalSearchMatchCounts(
+  allBooks: Book[],
+  normalizedSearchKey: string,
+  levelFilter: BookLevel | "",
+  categoryFilter: string,
+  toReadThisYearFilter: "" | "yes",
+): Record<LibraryTab, number> {
+  const counts = {} as Record<LibraryTab, number>
+  for (const tab of LIBRARY_TAB_PRIORITY) {
+    counts[tab] = allBooks.filter((b) => {
+      if (b.status !== tab) return false
+      if (levelFilter && b.level !== levelFilter) return false
+      if (categoryFilter && b.categoryDepth2Id !== categoryFilter) return false
+      if (toReadThisYearFilter === "yes" && b.toReadThisYear !== true) return false
+      return normalizeBookTitleKey(b.title).includes(normalizedSearchKey)
+    }).length
+  }
+  return counts
+}
+
 export default function BooksPage() {
   return (
     <Suspense fallback={<MinimalShellFallback />}>
@@ -63,12 +96,13 @@ function BooksPageContent() {
 
   const [error, setError] = useState<string | null>(null)
 
-  const [activeTab, setActiveTab] = useState<
-    "reading" | "completed" | "want-to-read" | "on-hold"
-  >("reading")
+  const [activeTab, setActiveTab] = useState<LibraryTab>("reading")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
+  const userPickedTabDuringSearchRef = useRef(false)
+  const lastDebouncedSearchRef = useRef("")
 
   const getDefaultSortForTab = (
-    tab: "reading" | "completed" | "want-to-read" | "on-hold"
+    tab: LibraryTab,
   ): "recently_added" | "recently_updated" | "recently_read" =>
     tab === "want-to-read" ? "recently_added" : "recently_read"
 
@@ -123,6 +157,86 @@ function BooksPageContent() {
     [searchQuery],
   )
   const isLocalSearchMode = normalizedSearchKey.length > 0
+  const isSearching = searchQuery.trim().length > 0
+
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setDebouncedSearchQuery(searchQuery),
+      SEARCH_DEBOUNCE_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const localSearchMatchCounts = useMemo(() => {
+    if (!isSearching || !isLocalSearchMode) return null
+    return computeLocalSearchMatchCounts(
+      allBooks,
+      normalizedSearchKey,
+      levelFilter,
+      categoryFilter,
+      toReadThisYearFilter,
+    )
+  }, [
+    isSearching,
+    isLocalSearchMode,
+    allBooks,
+    normalizedSearchKey,
+    levelFilter,
+    categoryFilter,
+    toReadThisYearFilter,
+  ])
+
+  const searchTabCountQueries = useQueries({
+    queries: LIBRARY_TABS.map(({ key }) => ({
+      queryKey: queryKeys.user.libraryTabCount(
+        userUid!,
+        key,
+        levelFilter,
+        categoryFilter,
+        toReadThisYearFilter,
+        titlePrefix ?? "",
+      ),
+      queryFn: () =>
+        BookService.countUserBooksByStatus(userUid!, key, {
+          level: levelFilter || undefined,
+          categoryDepth2Id: categoryFilter || undefined,
+          toReadThisYear: toReadThisYearFilter === "yes" ? true : undefined,
+          titlePrefix,
+        }),
+      enabled:
+        Boolean(userUid) && isSearching && !isLocalSearchMode && Boolean(titlePrefix),
+      staleTime: 15_000,
+    })),
+  })
+
+  const serverSearchMatchCounts = useMemo((): Record<LibraryTab, number> | null => {
+    if (!isSearching || isLocalSearchMode) return null
+    if (searchTabCountQueries.some((q) => q.isPending)) return null
+    const counts = {} as Record<LibraryTab, number>
+    LIBRARY_TABS.forEach(({ key }, i) => {
+      counts[key] = searchTabCountQueries[i]?.data ?? 0
+    })
+    return counts
+  }, [isSearching, isLocalSearchMode, searchTabCountQueries])
+
+  const searchMatchCounts = localSearchMatchCounts ?? serverSearchMatchCounts
+
+  const totalCountsByTab: Record<LibraryTab, number> = useMemo(
+    () => ({
+      reading: countsQuery.data?.reading ?? 0,
+      "want-to-read": countsQuery.data?.want ?? 0,
+      completed: countsQuery.data?.completed ?? 0,
+      "on-hold": countsQuery.data?.onHold ?? 0,
+    }),
+    [countsQuery.data],
+  )
+
+  const getTabDisplayCount = (tab: LibraryTab) => {
+    if (isSearching) {
+      return searchMatchCounts?.[tab] ?? 0
+    }
+    return totalCountsByTab[tab]
+  }
 
   const tabCountQuery = useQuery({
     queryKey: queryKeys.user.libraryTabCount(
@@ -287,10 +401,6 @@ function BooksPageContent() {
   }, [currentPage, totalPages])
 
   const getTotalBooks = () => countsQuery.data?.total ?? 0
-  const getReadingBooks = () => countsQuery.data?.reading ?? 0
-  const getCompletedBooks = () => countsQuery.data?.completed ?? 0
-  const getWantToReadBooks = () => countsQuery.data?.want ?? 0
-  const getOnHoldBooks = () => countsQuery.data?.onHold ?? 0
 
   // URL ?tab= 에서 탭 복원 (전체 보기 등에서 진입 시)
   useEffect(() => {
@@ -312,9 +422,41 @@ function BooksPageContent() {
     }
   }, [isLoggedIn, loading, router])
 
-  const handleTabChange = (
-    tab: "reading" | "completed" | "want-to-read" | "on-hold"
-  ) => {
+  const searchCountsSynced =
+    debouncedSearchQuery.trim() === searchQuery.trim()
+
+  useEffect(() => {
+    const q = debouncedSearchQuery.trim()
+    if (!q) {
+      lastDebouncedSearchRef.current = ""
+      return
+    }
+    if (!searchCountsSynced) return
+    if (q !== lastDebouncedSearchRef.current) {
+      userPickedTabDuringSearchRef.current = false
+      lastDebouncedSearchRef.current = q
+    }
+    if (userPickedTabDuringSearchRef.current) return
+    if (!searchMatchCounts) return
+
+    if (searchMatchCounts[activeTab] > 0) return
+
+    const nextTab = LIBRARY_TAB_PRIORITY.find((tab) => searchMatchCounts[tab] > 0)
+    if (nextTab) {
+      setActiveTab(nextTab)
+      setSortOrder(getDefaultSortForTab(nextTab))
+    }
+  }, [
+    debouncedSearchQuery,
+    searchCountsSynced,
+    searchMatchCounts,
+    activeTab,
+  ])
+
+  const handleTabChange = (tab: LibraryTab) => {
+    if (isSearching) {
+      userPickedTabDuringSearchRef.current = true
+    }
     setActiveTab(tab)
     setSortOrder(getDefaultSortForTab(tab))
   }
@@ -469,54 +611,48 @@ function BooksPageContent() {
         )}
 
         <div className='flex space-x-1 bg-theme-secondary rounded-lg p-1 mb-4 shadow-sm border-card'>
-          {[
-            {
-              key: "reading",
-              label: "읽는 중",
-              count: getReadingBooks(),
-            },
-            {
-              key: "completed",
-              label: "완독",
-              count: getCompletedBooks(),
-            },
-            {
-              key: "want-to-read",
-              label: "읽고 싶은 책",
-              count: getWantToReadBooks(),
-            },
-            {
-              key: "on-hold",
-              label: "보류",
-              count: getOnHoldBooks(),
-            },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() =>
-                handleTabChange(
-                  tab.key as
-                    | "reading"
-                    | "completed"
-                    | "want-to-read"
-                    | "on-hold"
-                )
-              }
-              className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "bg-accent-theme text-white"
-                  : "text-theme-secondary hover:text-theme-primary"
-              }`}
-            >
-              {tab.label} ({tab.count})
-            </button>
-          ))}
+          {LIBRARY_TABS.map((tab) => {
+            const isActive = activeTab === tab.key
+            const displayCount = getTabDisplayCount(tab.key)
+            const isZeroSearchHit = isSearching && displayCount === 0
+            return (
+              <button
+                key={tab.key}
+                type='button'
+                onClick={() => handleTabChange(tab.key)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-md text-xs font-medium transition-colors ${
+                  isActive
+                    ? "bg-accent-theme text-white"
+                    : "text-theme-secondary hover:text-theme-primary"
+                }`}
+              >
+                <span className='leading-tight text-center'>{tab.label}</span>
+                <span
+                  className={`text-[11px] tabular-nums leading-none ${
+                    isActive
+                      ? isSearching
+                        ? "text-white font-semibold"
+                        : "text-white/80"
+                      : isZeroSearchHit
+                        ? "text-theme-tertiary/40"
+                        : isSearching && displayCount > 0
+                          ? "text-accent-theme font-semibold"
+                          : "text-theme-tertiary"
+                  }`}
+                >
+                  ({displayCount})
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {/* 검색 섹션 */}
         <div className='mb-4'>
           <p className='text-xs text-theme-tertiary mb-1'>
-            검색어를 입력하면 제목이 그 글자로 시작하는 책만 서버에서 불러옵니다.
+            {isSearching
+              ? "모든 탭에서 검색하며, 탭 숫자는 검색된 권수입니다. 다른 탭에도 결과가 있으면 숫자를 눌러 이동할 수 있습니다."
+              : "검색어를 입력하면 제목이 그 글자로 시작하는 책만 서버에서 불러옵니다."}
           </p>
           <div className='relative'>
             <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
@@ -529,7 +665,12 @@ function BooksPageContent() {
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery("")}
+                type='button'
+                onClick={() => {
+                  userPickedTabDuringSearchRef.current = false
+                  lastDebouncedSearchRef.current = ""
+                  setSearchQuery("")
+                }}
                 className='absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors'
                 title='검색어 지우기'
               >
