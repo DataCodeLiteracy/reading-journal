@@ -9,6 +9,8 @@ export type AladinBookFormSetters = {
   setPublishedDate: (v: string) => void
   setCategoryDepth1Id: (v: string) => void
   setCategoryDepth2Id: (v: string) => void
+  /** 대·중분류를 한 React 렌더 사이클에 반영 (있으면 우선) */
+  setCategories?: (depth1Id: string, depth2Id: string) => void
   setCoverUrl: (v: string) => void
   setIsbn13: (v: string) => void
   setNotes?: (v: string) => void
@@ -36,16 +38,19 @@ export function applyAladinBookMetadata(
     setters.setNotes(decodeHtmlEntities(metadata.description))
   }
 
-  const d1 = metadata.categoryDepth1Id
-  const d2 = metadata.categoryDepth2Id
-  if (d1) {
-    setters.setCategoryDepth1Id(d1)
-  }
-  if (d2) {
-    if (d1) {
-      queueMicrotask(() => setters.setCategoryDepth2Id(d2))
+  const d1 = metadata.categoryDepth1Id?.trim() ?? ""
+  const d2 = metadata.categoryDepth2Id?.trim() ?? ""
+
+  if (d1 && d2) {
+    if (setters.setCategories) {
+      setters.setCategories(d1, d2)
     } else {
+      setters.setCategoryDepth1Id(d1)
       setters.setCategoryDepth2Id(d2)
     }
+    return
   }
+
+  if (d1) setters.setCategoryDepth1Id(d1)
+  if (d2) setters.setCategoryDepth2Id(d2)
 }

@@ -2,18 +2,30 @@ import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { ApiClient } from "@/lib/apiClient"
 import type { Book } from "@/types/book"
 import type { ExploreTitleGroup } from "@/types/explore"
+import { normalizeBookDuplicateKey } from "@/utils/bookTitleKey"
 
 const READ_BATCH = 100
 const MAX_ROUNDS = 80
 
 function buildGroup(books: Book[]): ExploreTitleGroup {
   const title = books[0]?.title?.trim() || ""
+  const publisher = books[0]?.publisher?.trim() || ""
   const author = books[0]?.author || "저자 미상"
+  const groupKey = normalizeBookDuplicateKey(title, publisher)
   const userCount = new Set(books.map((b) => b.user_id)).size
   const avgRating =
     books.reduce((s, b) => s + (b.rating ?? 0), 0) / books.length
   const statuses = new Set(books.map((b) => b.status))
-  return { title, books, author, userCount, avgRating, statuses }
+  return {
+    groupKey,
+    title,
+    publisher,
+    books,
+    author,
+    userCount,
+    avgRating,
+    statuses,
+  }
 }
 
 export type ExploreTitleGroupsPageResult = {
@@ -87,7 +99,7 @@ export async function fetchExploreTitleGroupsPage(options: {
       const snap = batch.snapshots[i]!
       const raw = (book.title || "").trim()
       if (!raw) continue
-      const k = raw.toLowerCase()
+      const k = normalizeBookDuplicateKey(raw, book.publisher)
 
       if (openKey === null) {
         openKey = k

@@ -36,7 +36,10 @@ import {
 } from "@/components/skeletons"
 import Pagination from "@/components/Pagination"
 import Select, { type SelectOption } from "@/components/Select"
-import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import {
+  normalizeBookDuplicateKey,
+  normalizeBookTitleKey,
+} from "@/utils/bookTitleKey"
 import {
   formatBookCategoryLine,
   formatBookPublishedLabel,
@@ -97,8 +100,8 @@ function BooksPageContent() {
     removeBook,
   } = useData()
 
-  const userBookTitleKeys = useMemo(
-    () => allBooks.map((b) => normalizeBookTitleKey(b.title)),
+  const userBookDuplicateKeys = useMemo(
+    () => allBooks.map((b) => normalizeBookDuplicateKey(b.title, b.publisher)),
     [allBooks],
   )
 
@@ -134,6 +137,7 @@ function BooksPageContent() {
   const [isNavigating, setIsNavigating] = useState(false)
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
   const [duplicateModalTitle, setDuplicateModalTitle] = useState("")
+  const [duplicateModalPublisher, setDuplicateModalPublisher] = useState("")
 
   useBodyScrollLock(isNavigating)
 
@@ -371,6 +375,11 @@ function BooksPageContent() {
     return opts
   }, [activeTab])
 
+  useEffect(() => {
+    if (librarySortOptions.some((o) => o.value === sortOrder)) return
+    setSortOrder(getDefaultSortForTab(activeTab))
+  }, [librarySortOptions, sortOrder, activeTab])
+
   const levelSelectOptions = useMemo(
     (): SelectOption<string>[] => [
       { value: "", label: "전체" },
@@ -483,9 +492,14 @@ function BooksPageContent() {
   const handleAddBook = async (newBook: Omit<Book, "id" | "user_id">) => {
     if (!userUid) return
 
-    const key = normalizeBookTitleKey(newBook.title)
-    if (allBooks.some((b) => normalizeBookTitleKey(b.title) === key)) {
+    const key = normalizeBookDuplicateKey(newBook.title, newBook.publisher)
+    if (
+      allBooks.some((b) =>
+        normalizeBookDuplicateKey(b.title, b.publisher) === key,
+      )
+    ) {
       setDuplicateModalTitle(newBook.title.trim())
+      setDuplicateModalPublisher(newBook.publisher?.trim() || "")
       setDuplicateModalOpen(true)
       return
     }
@@ -506,10 +520,13 @@ function BooksPageContent() {
 
       if (newBook.status === "want-to-read") {
         setActiveTab("want-to-read")
+        setSortOrder(getDefaultSortForTab("want-to-read"))
       } else if (newBook.status === "reading") {
         setActiveTab("reading")
+        setSortOrder(getDefaultSortForTab("reading"))
       } else if (newBook.status === "completed") {
         setActiveTab("completed")
+        setSortOrder(getDefaultSortForTab("completed"))
       }
 
       addBook(createdBook)
@@ -966,13 +983,14 @@ function BooksPageContent() {
         isOpen={isAddBookModalOpen}
         onClose={() => setIsAddBookModalOpen(false)}
         onAddBook={handleAddBook}
-        userBookTitleKeys={userBookTitleKeys}
+        userBookDuplicateKeys={userBookDuplicateKeys}
       />
 
       <OwnBookDuplicateModal
         isOpen={duplicateModalOpen}
         onClose={() => setDuplicateModalOpen(false)}
         title={duplicateModalTitle}
+        publisher={duplicateModalPublisher}
       />
 
       {/* 책 삭제 확인 모달 */}

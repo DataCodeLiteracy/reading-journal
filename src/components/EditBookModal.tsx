@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { BookOpen, Star } from "lucide-react"
 import AladinBookLookup from "@/components/AladinBookLookup"
 import BookCoverInlineEditor from "@/components/BookCoverInlineEditor"
-import { applyAladinBookMetadata } from "@/utils/applyAladinBookMetadata"
-import { enrichAladinBookMetadata } from "@/utils/enrichAladinBookMetadata"
+import { applyAladinWithCategoryLog } from "@/utils/applyAladinWithCategoryLog"
+import { useAuth } from "@/contexts/AuthContext"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
@@ -28,6 +28,7 @@ export default function EditBookModal({
   onSave,
   book,
 }: EditBookModalProps) {
+  const { user } = useAuth()
   const { data: categoryTree } = useBookCategories()
   const [title, setTitle] = useState(book.title)
   const [author, setAuthor] = useState(book.author || "")
@@ -145,22 +146,30 @@ export default function EditBookModal({
             )
           }}
           onApply={(metadata) => {
-            applyAladinBookMetadata(
-              enrichAladinBookMetadata(metadata, categoryTree),
-              {
+            const enriched = applyAladinWithCategoryLog({
+              metadata,
+              categoryTree,
+              source: "edit-book-modal",
+              bookTitle: title,
+              userId: user?.uid,
+              setters: {
                 setTitle,
                 setAuthor,
                 setPublisher,
                 setPublishedDate,
                 setCategoryDepth1Id,
                 setCategoryDepth2Id,
+                setCategories: (depth1Id, depth2Id) => {
+                  setCategoryDepth1Id(depth1Id)
+                  setCategoryDepth2Id(depth2Id)
+                },
                 setCoverUrl,
                 setIsbn13,
                 setNotes,
                 getNotes: () => notes,
               },
-            )
-            if (metadata.coverUrl?.trim()) {
+            })
+            if (enriched.coverUrl?.trim()) {
               setCoverUploadHint(undefined)
             }
           }}

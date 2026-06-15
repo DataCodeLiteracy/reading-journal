@@ -6,15 +6,15 @@ import { BookOpen, AlertCircle, Star } from "lucide-react"
 import AladinBookLookup from "@/components/AladinBookLookup"
 import BookCoverUpload from "@/components/BookCoverUpload"
 import { coverPreviewCaption } from "@/utils/coverUrlSource"
-import { applyAladinBookMetadata } from "@/utils/applyAladinBookMetadata"
-import { enrichAladinBookMetadata } from "@/utils/enrichAladinBookMetadata"
+import { applyAladinWithCategoryLog } from "@/utils/applyAladinWithCategoryLog"
+import { useAuth } from "@/contexts/AuthContext"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
 import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
 import BookCategoryPicker from "@/components/BookCategoryPicker"
-import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import { normalizeBookDuplicateKey } from "@/utils/bookTitleKey"
 import { useBookCategories } from "@/hooks/useBookCategories"
 import { BookCategoryService } from "@/services/bookCategoryService"
 import { buildBookCategoryFields } from "@/utils/bookCategoryFields"
@@ -31,7 +31,7 @@ interface AddBookModalProps {
   initialLevel?: BookLevel
   initialCategoryDepth1Id?: string
   initialCategoryDepth2Id?: string
-  userBookTitleKeys: readonly string[]
+  userBookDuplicateKeys: readonly string[]
 }
 
 export default function AddBookModal({
@@ -46,8 +46,9 @@ export default function AddBookModal({
   initialLevel,
   initialCategoryDepth1Id = "",
   initialCategoryDepth2Id = "",
-  userBookTitleKeys,
+  userBookDuplicateKeys,
 }: AddBookModalProps) {
+  const { user } = useAuth()
   const { data: categoryTree } = useBookCategories()
   const [title, setTitle] = useState(initialTitle)
   const [author, setAuthor] = useState(initialAuthor)
@@ -67,16 +68,16 @@ export default function AddBookModal({
   const [promptCoverUpload, setPromptCoverUpload] = useState(false)
   const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
 
-  const titleKeySet = useMemo(
-    () => new Set(userBookTitleKeys),
-    [userBookTitleKeys],
+  const duplicateKeySet = useMemo(
+    () => new Set(userBookDuplicateKeys),
+    [userBookDuplicateKeys],
   )
 
-  const hasOwnDuplicateTitle = useMemo(() => {
+  const hasOwnDuplicateEdition = useMemo(() => {
     const t = title.trim()
     if (!t) return false
-    return titleKeySet.has(normalizeBookTitleKey(t))
-  }, [title, titleKeySet])
+    return duplicateKeySet.has(normalizeBookDuplicateKey(t, publisher))
+  }, [title, publisher, duplicateKeySet])
 
   useEffect(() => {
     if (isOpen && titleInputRef.current) {
@@ -138,7 +139,7 @@ export default function AddBookModal({
     e.preventDefault()
     if (!title.trim()) return
 
-    if (hasOwnDuplicateTitle) {
+    if (hasOwnDuplicateEdition) {
       setOwnDuplicateModalOpen(true)
       return
     }
@@ -214,17 +215,17 @@ export default function AddBookModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className={`form-control ${
-                hasOwnDuplicateTitle ? "!border-amber-500 ring-1 ring-amber-500/30" : ""
+                hasOwnDuplicateEdition ? "!border-amber-500 ring-1 ring-amber-500/30" : ""
               }`}
               placeholder="책 제목을 입력하세요"
               required
               ref={titleInputRef}
             />
-            {hasOwnDuplicateTitle && (
+            {hasOwnDuplicateEdition && (
               <p className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span>
-                  내 서재에 이미 같은 제목으로 등록된 책이 있습니다.
+                  내 서재에 이미 같은 제목·출판사로 등록된 책이 있습니다.
                 </span>
               </p>
             )}
@@ -245,22 +246,30 @@ export default function AddBookModal({
               )
             }}
             onApply={(metadata) => {
-              applyAladinBookMetadata(
-                enrichAladinBookMetadata(metadata, categoryTree),
-                {
+              const enriched = applyAladinWithCategoryLog({
+                metadata,
+                categoryTree,
+                source: "add-book-modal",
+                bookTitle: title,
+                userId: user?.uid,
+                setters: {
                   setTitle,
                   setAuthor,
                   setPublisher,
                   setPublishedDate,
                   setCategoryDepth1Id,
                   setCategoryDepth2Id,
+                  setCategories: (depth1Id, depth2Id) => {
+                    setCategoryDepth1Id(depth1Id)
+                    setCategoryDepth2Id(depth2Id)
+                  },
                   setCoverUrl,
                   setIsbn13,
                   setNotes,
                   getNotes: () => notes,
                 },
-              )
-              if (metadata.coverUrl?.trim()) {
+              })
+              if (enriched.coverUrl?.trim()) {
                 setPromptCoverUpload(false)
                 setCoverUploadHint(undefined)
               }

@@ -8,16 +8,22 @@ type OwnBookDuplicateModalProps = {
   onClose: () => void
   /** 표시용 원문 제목 (입력값) */
   title: string
+  publisher?: string
 }
 
-/** 내 서재에 이미 같은 제목이 있을 때 단일 확인 버튼 모달 */
+/** 내 서재에 이미 같은 제목·출판사가 있을 때 단일 확인 버튼 모달 */
 export default function OwnBookDuplicateModal({
   isOpen,
   onClose,
   title,
+  publisher,
 }: OwnBookDuplicateModalProps) {
   useBodyScrollLock(isOpen)
   if (!isOpen) return null
+
+  const editionLabel = publisher?.trim()
+    ? `「${title}」(${publisher.trim()})`
+    : `「${title}」`
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-hidden overscroll-none p-3 sm:p-4">
@@ -43,14 +49,14 @@ export default function OwnBookDuplicateModal({
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-lg font-semibold leading-snug text-theme-primary">
-                같은 제목의 책이 이미 있어요
+                같은 제목·출판사의 책이 이미 있어요
               </h3>
             </div>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-theme-secondary">
-            내 서재에 이미「{title}」과(와) 같은 책으로 취급되는 제목이 있습니다. (띄어쓰기
-            차이는 같은 제목으로 간주됩니다.) 구분이 필요하면 부제·권수 등 표기를 달리해
-            주세요.
+            내 서재에 이미 {editionLabel}과(와) 같은 판본으로 취급되는 책이
+            있습니다. (제목·출판사 띄어쓰기 차이는 같은 책으로 간주됩니다.)
+            다른 판(출판사·개정판 등)이라면 출판사를 다르게 입력해 주세요.
           </p>
         </div>
 

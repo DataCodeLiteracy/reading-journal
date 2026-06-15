@@ -42,7 +42,7 @@ import ConfirmModal from "@/components/ConfirmModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { ExploreListSkeleton, MinimalShellFallback } from "@/components/skeletons"
-import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import { normalizeBookDuplicateKey } from "@/utils/bookTitleKey"
 import ReadingExamUploadModal from "@/components/ReadingExamUploadModal"
 import ReadingExcerptUploadModal from "@/components/ReadingExcerptUploadModal"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
@@ -94,7 +94,7 @@ function ExplorePageContent() {
   const [sortBy, setSortBy] =
     useState<(typeof SORT_OPTIONS)[number]["value"]>("title-asc")
   const [currentPage, setCurrentPage] = useState(1)
-  const [expandedTitle, setExpandedTitle] = useState<string | null>(null)
+  const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [addModalInitial, setAddModalInitial] = useState<{
     title: string
@@ -229,21 +229,33 @@ function ExplorePageContent() {
   )
 
   const grouped = useMemo(() => {
-    const byTitle = new Map<string, Book[]>()
+    const byEdition = new Map<string, Book[]>()
     for (const book of catalogForGrouping) {
       const t = (book.title || "").trim()
       if (!t) continue
-      if (!byTitle.has(t)) byTitle.set(t, [])
-      byTitle.get(t)!.push(book)
+      const key = normalizeBookDuplicateKey(t, book.publisher)
+      if (!byEdition.has(key)) byEdition.set(key, [])
+      byEdition.get(key)!.push(book)
     }
     const list: ExploreTitleGroup[] = []
-    byTitle.forEach((books, title) => {
+    byEdition.forEach((books, groupKey) => {
+      const title = books[0]?.title?.trim() || ""
+      const publisher = books[0]?.publisher?.trim() || ""
       const author = books[0]?.author || "저자 미상"
       const userCount = new Set(books.map((b) => b.user_id)).size
       const avgRating =
         books.reduce((s, b) => s + (b.rating ?? 0), 0) / books.length
       const statuses = new Set(books.map((b) => b.status))
-      list.push({ title, books, author, userCount, avgRating, statuses })
+      list.push({
+        groupKey,
+        title,
+        publisher,
+        books,
+        author,
+        userCount,
+        avgRating,
+        statuses,
+      })
     })
     return list
   }, [catalogForGrouping])
@@ -352,10 +364,36 @@ function ExplorePageContent() {
     }
   }, [paginated, isLoggedIn])
 
-  const userBookTitleKeys = useMemo(
-    () => myBooksFromContext.map((b) => normalizeBookTitleKey(b.title)),
+  const myDuplicateKeySet = useMemo(
+    () =>
+      new Set(
+        myBooksFromContext.map((b) =>
+          normalizeBookDuplicateKey(b.title, b.publisher),
+        ),
+      ),
     [myBooksFromContext],
   )
+
+  const userBookDuplicateKeys = useMemo(
+    () =>
+      myBooksFromContext.map((b) =>
+        normalizeBookDuplicateKey(b.title, b.publisher),
+      ),
+    [myBooksFromContext],
+  )
+
+  const openAddFromBook = (book: Book) => {
+    setConfirmAddInitial({
+      title: book.title,
+      author: book.author || "",
+      publishedDate: book.publishedDate || "",
+      publisher: book.publisher,
+      level: book.level as BookLevel | undefined,
+      categoryDepth1Id: book.categoryDepth1Id,
+      categoryDepth2Id: book.categoryDepth2Id,
+    })
+    setConfirmAddOpen(true)
+  }
 
   if (!isLoggedIn) return null
 
@@ -373,11 +411,13 @@ function ExplorePageContent() {
     book: Omit<Book, "id" | "user_id">,
   ) => {
     if (!userUid) return
-    const key = normalizeBookTitleKey(book.title)
+    const key = normalizeBookDuplicateKey(book.title, book.publisher)
     if (
-      myBooksFromContext.some((b) => normalizeBookTitleKey(b.title) === key)
+      myBooksFromContext.some(
+        (b) => normalizeBookDuplicateKey(b.title, b.publisher) === key,
+      )
     ) {
-      setError("이미 같은 제목으로 등록된 책이 있습니다.")
+      setError("이미 같은 제목·출판사로 등록된 책이 있습니다.")
       return
     }
     try {
@@ -408,8 +448,8 @@ function ExplorePageContent() {
             📚 전체 책 탐색
           </h1>
           <p className='text-sm text-theme-secondary'>
-            같은 제목으로 등록된 책은 한 번만 표시되고, 등록한 유저를 볼 수
-            있습니다.
+            같은 제목·출판사로 등록된 책은 한 줄로 묶어 보여 줍니다. 출판사가
+            다르면 별도 항목으로 표시됩니다.
           </p>
         </header>
 
@@ -572,7 +612,7 @@ function ExplorePageContent() {
               </div>
               <p className='text-xs text-theme-tertiary'>
                 검색·상태·저자·평점·문해력 수준·분야·유저·정렬·내 책 제외는 모두 서버에서 적용된 뒤, 10권 단위로
-                불러옵니다. 같은 제목은 한 줄로 묶어 보여 줍니다. «등록 유저 많은/적은 순»은 등록 시각
+                불러옵니다. 같은 제목·출판사는 한 줄로 묶어 보여 줍니다. «등록 유저 많은/적은 순»은 등록 시각
                 기준으로 정렬합니다.
               </p>
             </div>
@@ -587,16 +627,18 @@ function ExplorePageContent() {
           </div>
         ) : (
           <div className='space-y-3'>
-            {paginated.map((g) => (
+            {paginated.map((g) => {
+              const iHaveThisEdition = myDuplicateKeySet.has(g.groupKey)
+              return (
               <div
-                key={g.title}
+                key={g.groupKey}
                 className='bg-theme-secondary rounded-lg shadow-sm border-card overflow-hidden'
               >
                 <div
                   className='p-4 cursor-pointer'
                   onClick={() =>
-                    setExpandedTitle((prev) =>
-                      prev === g.title ? null : g.title,
+                    setExpandedGroupKey((prev) =>
+                      prev === g.groupKey ? null : g.groupKey,
                     )
                   }
                 >
@@ -608,8 +650,11 @@ function ExplorePageContent() {
                       <h3 className='font-semibold text-theme-primary mb-0.5'>
                         {g.title}
                       </h3>
-                      <p className='text-sm text-theme-secondary mb-1'>
+                      <p className='text-sm text-theme-secondary mb-0.5'>
                         {g.author}
+                      </p>
+                      <p className='text-xs text-theme-tertiary mb-1'>
+                        {g.publisher ? `출판사: ${g.publisher}` : "출판사 미입력"}
                       </p>
                       <div className='flex flex-wrap items-center gap-2 text-xs'>
                         <span className='inline-flex items-center gap-1 text-theme-tertiary'>
@@ -642,24 +687,10 @@ function ExplorePageContent() {
                       className='flex items-center gap-2 shrink-0'
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {userUid &&
-                        !g.books.some((b) => b.user_id === userUid) && (
+                      {userUid && !iHaveThisEdition && (
                           <button
                             type='button'
-                            onClick={() => {
-                              setConfirmAddInitial({
-                                title: g.title,
-                                author: g.author,
-                                publishedDate: g.books[0]?.publishedDate || "",
-                                publisher: g.books[0]?.publisher,
-                                level: g.books[0]?.level as
-                                  | BookLevel
-                                  | undefined,
-                                categoryDepth1Id: g.books[0]?.categoryDepth1Id,
-                                categoryDepth2Id: g.books[0]?.categoryDepth2Id,
-                              })
-                              setConfirmAddOpen(true)
-                            }}
+                            onClick={() => openAddFromBook(g.books[0]!)}
                             className='inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-accent-theme text-white hover:bg-accent-theme-secondary transition-colors'
                           >
                             <Plus className='h-3.5 w-3.5' />내 책으로 추가
@@ -667,13 +698,13 @@ function ExplorePageContent() {
                         )}
                       <ChevronDown
                         className={`h-5 w-5 text-theme-tertiary transition-transform ${
-                          expandedTitle === g.title ? "rotate-180" : ""
+                          expandedGroupKey === g.groupKey ? "rotate-180" : ""
                         }`}
                       />
                     </div>
                   </div>
                 </div>
-                {expandedTitle === g.title && (
+                {expandedGroupKey === g.groupKey && (
                   <div className='border-t border-theme-tertiary bg-theme-tertiary/30 px-4 py-3'>
                     {userData?.isAdmin && userUid && (
                       <div className='flex flex-wrap gap-2 mb-3'>
@@ -702,7 +733,7 @@ function ExplorePageContent() {
                       </div>
                     )}
                     <p className='text-xs font-medium text-theme-secondary mb-2'>
-                      이 책을 등록한 유저
+                      이 판본을 등록한 유저
                     </p>
                     <ul className='space-y-1.5'>
                       {g.books.map((book) => (
@@ -725,7 +756,7 @@ function ExplorePageContent() {
                             <span className='text-xs text-theme-tertiary'>
                               {STATUS_LABELS[book.status]} · {book.rating}점
                             </span>
-                            {userUid === book.user_id && (
+                            {userUid === book.user_id ? (
                               <button
                                 type='button'
                                 onClick={(e) => {
@@ -738,6 +769,20 @@ function ExplorePageContent() {
                               >
                                 내 책 보기
                               </button>
+                            ) : (
+                              userUid &&
+                              !iHaveThisEdition && (
+                                <button
+                                  type='button'
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openAddFromBook(book)
+                                  }}
+                                  className='text-xs px-2 py-1 rounded border border-accent-theme text-accent-theme hover:bg-accent-theme/10'
+                                >
+                                  이 정보로 추가
+                                </button>
+                              )
                             )}
                           </div>
                         </li>
@@ -746,7 +791,7 @@ function ExplorePageContent() {
                   </div>
                 )}
               </div>
-            ))}
+            )})}
           </div>
         )}
 
@@ -778,7 +823,9 @@ function ExplorePageContent() {
         title='내 책으로 등록'
         message={
           confirmAddInitial
-            ? `"${confirmAddInitial.title}"(을)를 내 책으로 등록하시겠습니까?`
+            ? confirmAddInitial.publisher?.trim()
+              ? `"${confirmAddInitial.title}" (${confirmAddInitial.publisher.trim()})(을)를 내 책으로 등록하시겠습니까?`
+              : `"${confirmAddInitial.title}"(을)를 내 책으로 등록하시겠습니까?`
             : ""
         }
         confirmText='등록하기'
@@ -804,7 +851,7 @@ function ExplorePageContent() {
         initialPublisher={addModalInitial?.publisher}
         initialCategoryDepth1Id={addModalInitial?.categoryDepth1Id}
         initialCategoryDepth2Id={addModalInitial?.categoryDepth2Id}
-        userBookTitleKeys={userBookTitleKeys}
+        userBookDuplicateKeys={userBookDuplicateKeys}
       />
       {isAddingBook && (
         <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
