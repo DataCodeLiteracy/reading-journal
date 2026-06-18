@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react"
-import { READING_TIMER_AMBIENT_TRACKS } from "@/constants/readingTimerMedia"
+import {
+  getPlayableAmbientTracksInOrder,
+  READING_TIMER_AMBIENT_PLAYLIST_ID,
+  READING_TIMER_AMBIENT_TRACKS,
+} from "@/constants/readingTimerMedia"
 
 const DEFAULT_VOLUME = 0.32
 
@@ -18,14 +22,39 @@ function restartSecondForDuration(d: number): number {
   )
 }
 
+function seekSoftLoopRestartForElement(a: HTMLAudioElement) {
+  const d = a.duration
+  if (!Number.isFinite(d)) return
+  a.currentTime = restartSecondForDuration(d)
+}
+
+function resolveInitialAmbientSrc(trackId: string): string | null {
+  if (trackId === "off") return null
+  if (trackId === READING_TIMER_AMBIENT_PLAYLIST_ID) {
+    return getPlayableAmbientTracksInOrder()[0]?.src ?? null
+  }
+  return READING_TIMER_AMBIENT_TRACKS.find((t) => t.id === trackId)?.src ?? null
+}
+
 /**
- * 타이머가 켜져 있을 때만 선택된 트랙을 루프 재생합니다.
- * 긴 트랙은 끝 5초 전에 앞쪽(약 2초 지점)으로 점프해 끊김 없이 이어지게 합니다.
+ * 타이머가 켜져 있을 때만 선택된 트랙을 재생합니다.
+ * - 단일 트랙: 긴 트랙은 소프트 루프, 짧은 트랙은 loop
+ * - 전곡 순환: 재생 가능한 모든 트랙을 1→N 순서로 재생 후 처음부터 반복
  */
 export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  /** timeupdate / interval / ended 핸들러가 같은 값을 보도록 ref로 유지 */
   const useSoftLoopRef = useRef(false)
+  const isPlaylistModeRef = useRef(trackId === READING_TIMER_AMBIENT_PLAYLIST_ID)
+  const playlistIndexRef = useRef(0)
+  const isTimerRunningRef = useRef(isTimerRunning)
+
+  useEffect(() => {
+    isTimerRunningRef.current = isTimerRunning
+  }, [isTimerRunning])
+
+  useEffect(() => {
+    isPlaylistModeRef.current = trackId === READING_TIMER_AMBIENT_PLAYLIST_ID
+  }, [trackId])
 
   useEffect(() => {
     if (audioRef.current) {
@@ -34,15 +63,23 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
       audioRef.current = null
     }
     useSoftLoopRef.current = false
-    const track = READING_TIMER_AMBIENT_TRACKS.find((t) => t.id === trackId)
-    if (!track?.src) return
-    const a = new Audio(track.src)
+    playlistIndexRef.current = 0
+
+    const initialSrc = resolveInitialAmbientSrc(trackId)
+    if (!initialSrc) return
+
+    const a = new Audio(initialSrc)
     a.preload = "auto"
     a.volume = DEFAULT_VOLUME
     let disposed = false
 
     const applyLoopMode = () => {
       if (disposed) return
+      if (isPlaylistModeRef.current) {
+        useSoftLoopRef.current = false
+        a.loop = false
+        return
+      }
       const d = a.duration
       if (Number.isFinite(d) && d >= AMBIENT_SOFT_LOOP_MIN_DURATION_SEC) {
         useSoftLoopRef.current = true
@@ -59,6 +96,21 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
       a.currentTime = restartSecondForDuration(d)
     }
 
+    const advancePlaylistTrack = () => {
+      const playlist = getPlayableAmbientTracksInOrder()
+      if (playlist.length === 0) return
+      playlistIndexRef.current =
+        (playlistIndexRef.current + 1) % playlist.length
+      const next = playlist[playlistIndexRef.current]!
+      a.src = next.src!
+      a.load()
+      if (isTimerRunningRef.current) {
+        void a.play().catch(() => {
+          /* 재생 거부 등 */
+        })
+      }
+    }
+
     const onTimeUpdate = () => {
       if (!useSoftLoopRef.current || disposed) return
       const d = a.duration
@@ -68,7 +120,12 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
     }
 
     const onEnded = () => {
-      if (disposed || !useSoftLoopRef.current) return
+      if (disposed) return
+      if (isPlaylistModeRef.current) {
+        advancePlaylistTrack()
+        return
+      }
+      if (!useSoftLoopRef.current) return
       const d = a.duration
       if (!Number.isFinite(d) || d < AMBIENT_SOFT_LOOP_MIN_DURATION_SEC) return
       seekSoftLoopRestart()
@@ -106,10 +163,17 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
     } else {
       a.pause()
       a.currentTime = 0
+      if (trackId === READING_TIMER_AMBIENT_PLAYLIST_ID) {
+        playlistIndexRef.current = 0
+        const first = getPlayableAmbientTracksInOrder()[0]?.src
+        if (first && a.src !== first) {
+          a.src = first
+          a.load()
+        }
+      }
     }
   }, [isTimerRunning, trackId])
 
-  // timeupdate만으로는 끝 구간을 통째로 건너뛰는 경우가 있어, 재생 중 주기적으로 점프
   useEffect(() => {
     if (!isTimerRunning) return
     const a = audioRef.current
@@ -131,10 +195,6 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
     }
   }, [isTimerRunning, trackId])
 
-  /**
-   * 모바일(iOS/Safari) 자동재생 제한 대응:
-   * 사용자 제스처(클릭/탭) 콜스택 안에서 1회 재생-정지로 오디오를 언락합니다.
-   */
   const primeAmbientPlaybackFromGesture = async (): Promise<void> => {
     const a = audioRef.current
     if (!a) return
@@ -149,10 +209,4 @@ export function useReadingTimerAmbient(isTimerRunning: boolean, trackId: string)
   }
 
   return { primeAmbientPlaybackFromGesture }
-}
-
-function seekSoftLoopRestartForElement(a: HTMLAudioElement) {
-  const d = a.duration
-  if (!Number.isFinite(d)) return
-  a.currentTime = restartSecondForDuration(d)
 }
