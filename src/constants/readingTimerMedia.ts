@@ -3,6 +3,8 @@ export const READING_TIMER_BG_STORAGE_KEY = "readingJournal.timerBgId"
 export const READING_TIMER_DEFAULT_AMBIENT_ID = "staring"
 /** 1번~9번 트랙을 순서대로 재생한 뒤 처음부터 반복 */
 export const READING_TIMER_AMBIENT_PLAYLIST_ID = "playlist-loop"
+/** 재생 가능한 모든 트랙을 랜덤 순서로 재생한 뒤 다시 셔플·반복 */
+export const READING_TIMER_AMBIENT_PLAYLIST_RANDOM_ID = "playlist-random"
 const AMBIENT_UI_MAX_INDEX = 9
 
 export type ReadingTimerAmbientTrack = {
@@ -109,7 +111,7 @@ export function getAmbientTrackDisplayLabel(t: ReadingTimerAmbientTrack): string
 /**
  * 타이머 설정 UI 노출용 배경음 목록.
  * - `1.` ~ `9.` 번 트랙을 항상 순서대로 노출(정의와 동일 9개)
- * - «전곡 순환»은 재생 가능한 모든 트랙을 순서대로 이어 재생
+ * - «전곡 순환»·«전곡 랜덤»은 재생 가능한 모든 트랙을 이어 재생
  */
 function getNumberedAmbientTracksForUi(): ReadingTimerAmbientTrack[] {
   return READING_TIMER_AMBIENT_TRACKS.filter((t) => t.id !== "off")
@@ -131,9 +133,16 @@ export function getAmbientTracksForUi(): ReadingTimerAmbientTrack[] {
     label: "전곡 순환",
     src: null,
   }
+  const playlistRandom: ReadingTimerAmbientTrack = {
+    id: READING_TIMER_AMBIENT_PLAYLIST_RANDOM_ID,
+    label: "전곡 랜덤",
+    src: null,
+  }
 
   if (numbered.length === 0) return READING_TIMER_AMBIENT_TRACKS
-  return off ? [off, playlist, ...numbered] : [playlist, ...numbered]
+  return off
+    ? [off, playlist, playlistRandom, ...numbered]
+    : [playlist, playlistRandom, ...numbered]
 }
 
 export type ReadingTimerBgPreset = {
@@ -153,7 +162,12 @@ export const READING_TIMER_BG_PRESETS: ReadingTimerBgPreset[] = [
 export const READING_TIMER_DEFAULT_BG_ID = READING_TIMER_BG_PRESETS[0].id
 
 export function isValidAmbientTrackId(id: string): boolean {
-  if (id === READING_TIMER_AMBIENT_PLAYLIST_ID) return true
+  if (
+    id === READING_TIMER_AMBIENT_PLAYLIST_ID ||
+    id === READING_TIMER_AMBIENT_PLAYLIST_RANDOM_ID
+  ) {
+    return true
+  }
   return READING_TIMER_AMBIENT_TRACKS.some((t) => t.id === id)
 }
 
