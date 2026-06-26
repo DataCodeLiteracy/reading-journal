@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import type { Book } from "@/types/book"
 import { withReturnQuery } from "@/utils/navigateBack"
-import { formatBookPublishedLabel } from "@/utils/bookLibraryCardMeta"
+import { formatBookPublishedFullLabel } from "@/utils/bookLibraryCardMeta"
 import { scrollToElementId } from "@/utils/scrollToElement"
 
 const STATUS_META: Record<
@@ -102,7 +102,7 @@ function InfoRow({
 function BookInfoLabeled({ book }: { book: Book }) {
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const status = STATUS_META[book.status]
-  const pubLabel = formatBookPublishedLabel(book.publishedDate)
+  const pubLabel = formatBookPublishedFullLabel(book.publishedDate)
   const hasPublisher = !!book.publisher?.trim()
   const hasDate = !!pubLabel
   const d1 = book.categoryDepth1Label?.trim()
@@ -155,27 +155,25 @@ function BookInfoLabeled({ book }: { book: Book }) {
         </div>
       </InfoRow>
 
-      {(hasPublisher || hasDate) && (
-        <InfoRow label='출판'>
-          <p className='flex flex-wrap items-center gap-x-1 gap-y-0.5 leading-4'>
-            {hasPublisher && (
-              <span className='font-medium text-sky-700 dark:text-sky-300'>
-                {book.publisher!.trim()}
-              </span>
-            )}
-            {hasPublisher && hasDate && (
-              <span className='text-theme-tertiary/60' aria-hidden>
-                ·
-              </span>
-            )}
-            {hasDate && (
-              <span className='font-medium text-amber-700/70 dark:text-amber-300/70'>
-                {pubLabel}
-              </span>
-            )}
+      <InfoRow label='출판사'>
+        {hasPublisher ? (
+          <p className='break-words font-medium leading-4 text-sky-700 dark:text-sky-300'>
+            {book.publisher!.trim()}
           </p>
-        </InfoRow>
-      )}
+        ) : (
+          <p className='leading-4 text-theme-tertiary'>미입력</p>
+        )}
+      </InfoRow>
+
+      <InfoRow label='출판일'>
+        {hasDate ? (
+          <span className='inline-block break-words font-medium leading-4 text-amber-700/70 dark:text-amber-300/70'>
+            {pubLabel}
+          </span>
+        ) : (
+          <p className='leading-4 text-theme-tertiary'>미입력</p>
+        )}
+      </InfoRow>
 
       {hasCategory && (
         <InfoRow label='분야'>

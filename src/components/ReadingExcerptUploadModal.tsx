@@ -11,6 +11,8 @@ interface ReadingExcerptUploadModalProps {
   onClose: () => void
   bookTitle: string
   userId: string
+  canonicalBookId?: string
+  publisher?: string
   onSuccess: () => void
 }
 
@@ -19,6 +21,8 @@ export default function ReadingExcerptUploadModal({
   onClose,
   bookTitle,
   userId,
+  canonicalBookId,
+  publisher,
   onSuccess,
 }: ReadingExcerptUploadModalProps) {
   const [jsonText, setJsonText] = useState("")
@@ -51,7 +55,8 @@ export default function ReadingExcerptUploadModal({
       await ReadingContentPackService.upsertExcerptJson(
         bookTitle,
         parsed as ReadingExcerptSummaryJson,
-        userId
+        userId,
+        { canonicalBookId, publisher },
       )
       onSuccess()
       onClose()

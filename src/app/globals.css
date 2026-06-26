@@ -512,6 +512,15 @@ select {
   animation: recordLoadingCardIn 0.25s ease-out forwards;
 }
 
+@keyframes explore-add-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
 /**
  * focus-level 스타일: 1·2·3 depth 중첩 박스, 3depth에서 세로 바가 좌→우로 이동.
  */

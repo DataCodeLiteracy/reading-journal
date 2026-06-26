@@ -1,8 +1,11 @@
 import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { ApiClient, ApiError } from "@/lib/apiClient"
 import { Book } from "@/types/book"
+import { CanonicalBookService } from "@/services/canonicalBookService"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import { sortBooksByLastReadFromSessions } from "@/utils/booksSortByLastRead"
+import { normalizeBookDuplicateKey } from "@/utils/bookTitleKey"
+import { editionKeyFromBook } from "@/utils/editionKeyDocId"
 
 export class BookService {
   /**
@@ -26,14 +29,76 @@ export class BookService {
   }
 
   static async getBook(bookId: string): Promise<Book | null> {
-    return await ApiClient.getDocument<Book>("books", bookId)
+    const book = await ApiClient.getDocument<Book>("books", bookId)
+    if (!book?.canonicalBookId) return book
+
+    const canonical = await CanonicalBookService.getById(book.canonicalBookId)
+    if (!canonical) return book
+
+    return {
+      ...book,
+      ...(canonical.tocOutline?.length
+        ? { tocOutline: canonical.tocOutline }
+        : {}),
+      ...(canonical.coverUrl && !book.coverUrl
+        ? { coverUrl: canonical.coverUrl }
+        : {}),
+      ...(canonical.isbn13 && !book.isbn13 ? { isbn13: canonical.isbn13 } : {}),
+    }
   }
 
   static async updateBook(
     bookId: string,
     bookData: Partial<Book>
   ): Promise<void> {
+    if (bookData.tocOutline !== undefined) {
+      const raw = await ApiClient.getDocument<Book>("books", bookId)
+      if (raw?.canonicalBookId) {
+        await CanonicalBookService.updateTocOutline(
+          raw.canonicalBookId,
+          bookData.tocOutline,
+        )
+        const { tocOutline: _toc, ...rest } = bookData
+        if (Object.keys(rest).length > 0) {
+          await ApiClient.updateDocument("books", bookId, rest)
+        }
+        return
+      }
+    }
     await ApiClient.updateDocument("books", bookId, bookData)
+  }
+
+  /** 같은 판본(제목+출판사) books 조회 — editionKey 필드 또는 제목 접두 검색 */
+  static async findBooksByEditionKey(
+    title: string,
+    publisher?: string,
+    limit = 200,
+  ): Promise<Book[]> {
+    const key = editionKeyFromBook(title, publisher)
+    const byEditionKey = await ApiClient.queryDocuments<Book>(
+      "books",
+      [["editionKey", "==", key]],
+      undefined,
+      "asc",
+      limit,
+    )
+    if (byEditionKey.length > 0) return byEditionKey
+
+    const trimmed = title.trim()
+    if (!trimmed) return []
+    const candidates = await ApiClient.queryDocuments<Book>(
+      "books",
+      [
+        ["title", ">=", trimmed],
+        ["title", "<=", `${trimmed}\uf8ff`],
+      ],
+      undefined,
+      "asc",
+      limit,
+    )
+    return candidates.filter(
+      (b) => normalizeBookDuplicateKey(b.title, b.publisher) === key,
+    )
   }
 
   static async updateBookStatus(

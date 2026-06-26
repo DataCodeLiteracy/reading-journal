@@ -1,4 +1,5 @@
 import { ApiClient } from "@/lib/apiClient"
+import type { Book } from "@/types/book"
 import {
   GoldenBellQuiz,
   GoldenBellJsonData,
@@ -13,8 +14,30 @@ export class GoldenBellService {
   private static readonly COLLECTION = "goldenBellQuizzes"
 
   /**
-   * 책 제목으로 골든벨 퀴즈 목록 조회
-   * 같은 제목의 책들은 모두 동일한 퀴즈를 공유
+   * canonicalBookId 우선, 없으면 제목(레거시)
+   */
+  static async getQuizzesForBook(
+    book: Pick<Book, "title" | "canonicalBookId">,
+  ): Promise<GoldenBellQuiz[]> {
+    if (book.canonicalBookId) {
+      const byCanon = await ApiClient.queryDocuments<GoldenBellQuiz>(
+        this.COLLECTION,
+        [["canonicalBookId", "==", book.canonicalBookId]],
+      )
+      if (byCanon.length > 0) return byCanon
+    }
+    return this.getQuizzesByBookTitle(book.title)
+  }
+
+  static async getQuizSummariesForBook(
+    book: Pick<Book, "title" | "canonicalBookId">,
+  ): Promise<GoldenBellQuizSummary[]> {
+    const quizzes = await this.getQuizzesForBook(book)
+    return quizzes.map((quiz) => this.toSummary(quiz))
+  }
+
+  /**
+   * 책 제목으로 골든벨 퀴즈 목록 조회 (레거시)
    */
   static async getQuizzesByBookTitle(
     bookTitle: string
@@ -49,7 +72,8 @@ export class GoldenBellService {
     bookTitle: string,
     jsonData: GoldenBellJsonData,
     userId: string,
-    difficulty: GoldenBellDifficulty
+    difficulty: GoldenBellDifficulty,
+    canonicalBookId?: string,
   ): Promise<string> {
     const normalizedTitle = bookTitle.trim()
     const difficultyLabel = difficulty === "easy" ? "쉬운 버전" : "어려운 버전"
@@ -57,6 +81,7 @@ export class GoldenBellService {
 
     const quizData: Omit<GoldenBellQuiz, "id"> = {
       bookTitle: normalizedTitle,
+      ...(canonicalBookId ? { canonicalBookId } : {}),
       version: difficultyLabel,
       difficulty,
       questions: normalizedData.questions,
@@ -95,8 +120,20 @@ export class GoldenBellService {
    */
   static async findExistingQuiz(
     bookTitle: string,
-    difficulty: GoldenBellDifficulty
+    difficulty: GoldenBellDifficulty,
+    canonicalBookId?: string,
   ): Promise<GoldenBellQuiz | null> {
+    if (canonicalBookId) {
+      const byCanon = await ApiClient.queryDocuments<GoldenBellQuiz>(
+        this.COLLECTION,
+        [
+          ["canonicalBookId", "==", canonicalBookId],
+          ["difficulty", "==", difficulty],
+        ],
+      )
+      if (byCanon.length > 0) return byCanon[0]
+    }
+
     const normalizedTitle = bookTitle.trim()
     const quizzes = await ApiClient.queryDocuments<GoldenBellQuiz>(this.COLLECTION, [
       ["bookTitle", "==", normalizedTitle],

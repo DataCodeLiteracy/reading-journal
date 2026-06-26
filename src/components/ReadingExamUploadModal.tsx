@@ -11,6 +11,8 @@ interface ReadingExamUploadModalProps {
   onClose: () => void
   bookTitle: string
   userId: string
+  canonicalBookId?: string
+  publisher?: string
   onSuccess: () => void
 }
 
@@ -19,6 +21,8 @@ export default function ReadingExamUploadModal({
   onClose,
   bookTitle,
   userId,
+  canonicalBookId,
+  publisher,
   onSuccess,
 }: ReadingExamUploadModalProps) {
   const [jsonText, setJsonText] = useState("")
@@ -51,7 +55,8 @@ export default function ReadingExamUploadModal({
       await ReadingContentPackService.upsertExamJson(
         bookTitle,
         parsed as ReadingExamAssessmentJson,
-        userId
+        userId,
+        { canonicalBookId, publisher },
       )
       onSuccess()
       onClose()

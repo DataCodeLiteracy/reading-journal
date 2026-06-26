@@ -46,11 +46,14 @@ export interface ReadingExcerptSummaryJson {
   chapter_summaries: ReadingExcerptChapterJson[]
 }
 
-/** Firestore: readingContentPacks/{packDocId} */
+/** Firestore: readingContentPacks/{packDocId} — packDocId는 canonicalBookId 또는 titleKey 기반 */
 export interface ReadingContentPack {
   id: string
   titleKey: string
   bookTitleDisplay: string
+  /** 판본(canonicalBooks) ID — 있으면 같은 판본 유저가 공유 */
+  canonicalBookId?: string
+  editionKey?: string
   examAssessmentData?: ReadingExamRangeBlock[]
   excerptBookMetadata?: ReadingExcerptBookMetadataJson
   excerptChapterSummaries?: ReadingExcerptChapterJson[]

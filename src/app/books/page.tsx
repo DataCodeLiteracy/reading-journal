@@ -23,10 +23,17 @@ import { useBookCategories } from "@/hooks/useBookCategories"
 import { buildCategoryFilterOptions } from "@/utils/bookCategoryFilterOptions"
 import AddBookModal from "@/components/AddBookModal"
 import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
+import SameEditionLinkModal from "@/components/SameEditionLinkModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { BookService } from "@/services/bookService"
+import {
+  checkBookRegistration,
+  registerUserBook,
+  type RegisterUserBookOptions,
+} from "@/services/bookRegistrationService"
+import type { CanonicalBook } from "@/types/canonicalBook"
 import { ApiError } from "@/lib/apiClient"
 import { queryKeys } from "@/lib/queryKeys"
 import {
@@ -138,6 +145,13 @@ function BooksPageContent() {
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
   const [duplicateModalTitle, setDuplicateModalTitle] = useState("")
   const [duplicateModalPublisher, setDuplicateModalPublisher] = useState("")
+  const [sameEditionModalOpen, setSameEditionModalOpen] = useState(false)
+  const [pendingNewBook, setPendingNewBook] = useState<
+    Omit<Book, "id" | "user_id"> | null
+  >(null)
+  const [pendingCanonical, setPendingCanonical] =
+    useState<CanonicalBook | null>(null)
+  const [isRegisteringBook, setIsRegisteringBook] = useState(false)
 
   useBodyScrollLock(isNavigating)
 
@@ -489,34 +503,16 @@ function BooksPageContent() {
     router.push(withReturnQuery(detailPath, libraryReturnPath))
   }
 
-  const handleAddBook = async (newBook: Omit<Book, "id" | "user_id">) => {
+  const finishRegisterBook = async (
+    newBook: Omit<Book, "id" | "user_id">,
+    options?: RegisterUserBookOptions,
+  ) => {
     if (!userUid) return
 
-    const key = normalizeBookDuplicateKey(newBook.title, newBook.publisher)
-    if (
-      allBooks.some((b) =>
-        normalizeBookDuplicateKey(b.title, b.publisher) === key,
-      )
-    ) {
-      setDuplicateModalTitle(newBook.title.trim())
-      setDuplicateModalPublisher(newBook.publisher?.trim() || "")
-      setDuplicateModalOpen(true)
-      return
-    }
-
+    setIsRegisteringBook(true)
     try {
       setError(null)
-      console.log("handleAddBook called with newBook:", newBook)
-      console.log("userUid:", userUid)
-
-      const bookData = {
-        ...newBook,
-        user_id: userUid,
-      }
-      console.log("bookData to be created:", bookData)
-
-      const createdBook = await BookService.createBook(bookData)
-      console.log("Book created:", createdBook)
+      const createdBook = await registerUserBook(userUid, newBook, options)
 
       if (newBook.status === "want-to-read") {
         setActiveTab("want-to-read")
@@ -536,6 +532,43 @@ function BooksPageContent() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.user.libraryCounts(userUid),
       })
+      setIsAddBookModalOpen(false)
+    } catch (error) {
+      console.error("finishRegisterBook error:", error)
+      if (error instanceof ApiError) {
+        setError(error.message)
+      } else {
+        setError("책을 추가하는 중 오류가 발생했습니다.")
+      }
+      throw error
+    } finally {
+      setIsRegisteringBook(false)
+    }
+  }
+
+  const handleAddBook = async (newBook: Omit<Book, "id" | "user_id">) => {
+    if (!userUid) return
+
+    try {
+      setError(null)
+      const check = await checkBookRegistration(userUid, allBooks, newBook)
+
+      if (check.status === "own_duplicate") {
+        setDuplicateModalTitle(newBook.title.trim())
+        setDuplicateModalPublisher(newBook.publisher?.trim() || "")
+        setDuplicateModalOpen(true)
+        return
+      }
+
+      if (check.status === "needs_edition_confirm") {
+        setPendingNewBook(newBook)
+        setPendingCanonical(check.canonical)
+        setSameEditionModalOpen(true)
+        setIsAddBookModalOpen(false)
+        return
+      }
+
+      await finishRegisterBook(newBook)
     } catch (error) {
       console.error("handleAddBook error:", error)
       if (error instanceof ApiError) {
@@ -543,6 +576,32 @@ function BooksPageContent() {
       } else {
         setError("책을 추가하는 중 오류가 발생했습니다.")
       }
+    }
+  }
+
+  const handleSameEditionConfirm = async () => {
+    if (!pendingNewBook || !pendingCanonical) return
+    try {
+      await finishRegisterBook(pendingNewBook, {
+        linkToCanonicalId: pendingCanonical.id,
+      })
+      setSameEditionModalOpen(false)
+      setPendingNewBook(null)
+      setPendingCanonical(null)
+    } catch {
+      // finishRegisterBook already sets error
+    }
+  }
+
+  const handleDifferentEditionConfirm = async () => {
+    if (!pendingNewBook) return
+    try {
+      await finishRegisterBook(pendingNewBook, { forceSeparateCanonical: true })
+      setSameEditionModalOpen(false)
+      setPendingNewBook(null)
+      setPendingCanonical(null)
+    } catch {
+      // finishRegisterBook already sets error
     }
   }
 
@@ -991,6 +1050,24 @@ function BooksPageContent() {
         onClose={() => setDuplicateModalOpen(false)}
         title={duplicateModalTitle}
         publisher={duplicateModalPublisher}
+      />
+
+      <SameEditionLinkModal
+        isOpen={sameEditionModalOpen}
+        title={pendingNewBook?.title ?? pendingCanonical?.title ?? ""}
+        publisher={
+          pendingNewBook?.publisher ?? pendingCanonical?.publisher ?? ""
+        }
+        registrantCount={pendingCanonical?.user_ids.length}
+        onConfirmSame={handleSameEditionConfirm}
+        onConfirmDifferent={handleDifferentEditionConfirm}
+        onClose={() => {
+          if (isRegisteringBook) return
+          setSameEditionModalOpen(false)
+          setPendingNewBook(null)
+          setPendingCanonical(null)
+        }}
+        busy={isRegisteringBook}
       />
 
       {/* 책 삭제 확인 모달 */}

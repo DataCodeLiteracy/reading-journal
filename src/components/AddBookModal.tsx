@@ -1,20 +1,25 @@
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { BookOpen, AlertCircle, Star } from "lucide-react"
 import AladinBookLookup from "@/components/AladinBookLookup"
 import BookCoverUpload from "@/components/BookCoverUpload"
 import { coverPreviewCaption } from "@/utils/coverUrlSource"
-import { applyAladinWithCategoryLog } from "@/utils/applyAladinWithCategoryLog"
 import { useAuth } from "@/contexts/AuthContext"
+import AladinFormApplyOverlay from "@/components/AladinFormApplyOverlay"
+import { useAladinFormApply } from "@/hooks/useAladinFormApply"
+import type { AladinBookFormSetters } from "@/utils/applyAladinBookMetadata"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
 import OwnBookDuplicateModal from "@/components/OwnBookDuplicateModal"
+import ExploreEditionSuggestModal from "@/components/ExploreEditionSuggestModal"
 import BookCategoryPicker from "@/components/BookCategoryPicker"
 import { normalizeBookDuplicateKey } from "@/utils/bookTitleKey"
+import { findExploreEditionRegisteredByOthers } from "@/services/bookRegistrationService"
 import { useBookCategories } from "@/hooks/useBookCategories"
 import { BookCategoryService } from "@/services/bookCategoryService"
 import { buildBookCategoryFields } from "@/utils/bookCategoryFields"
@@ -32,6 +37,8 @@ interface AddBookModalProps {
   initialCategoryDepth1Id?: string
   initialCategoryDepth2Id?: string
   userBookDuplicateKeys: readonly string[]
+  /** 알라딘 적용 후 탐색 등록 안내 (탐색 페이지에서는 false) */
+  enableExploreEditionSuggest?: boolean
 }
 
 export default function AddBookModal({
@@ -47,9 +54,12 @@ export default function AddBookModal({
   initialCategoryDepth1Id = "",
   initialCategoryDepth2Id = "",
   userBookDuplicateKeys,
+  enableExploreEditionSuggest = true,
 }: AddBookModalProps) {
+  const router = useRouter()
   const { user } = useAuth()
-  const { data: categoryTree } = useBookCategories()
+  const { data: categoryTree, isLoading: categoryTreeLoading } =
+    useBookCategories()
   const [title, setTitle] = useState(initialTitle)
   const [author, setAuthor] = useState(initialAuthor)
   const [publisher, setPublisher] = useState(initialPublisher)
@@ -67,6 +77,13 @@ export default function AddBookModal({
   const [ownDuplicateModalOpen, setOwnDuplicateModalOpen] = useState(false)
   const [promptCoverUpload, setPromptCoverUpload] = useState(false)
   const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
+  const [exploreSuggestOpen, setExploreSuggestOpen] = useState(false)
+  const [exploreSuggestEdition, setExploreSuggestEdition] = useState<{
+    title: string
+    publisher?: string
+    userCount: number
+  } | null>(null)
+  const exploreSuggestDismissedKeyRef = useRef<string | null>(null)
 
   const duplicateKeySet = useMemo(
     () => new Set(userBookDuplicateKeys),
@@ -78,6 +95,46 @@ export default function AddBookModal({
     if (!t) return false
     return duplicateKeySet.has(normalizeBookDuplicateKey(t, publisher))
   }, [title, publisher, duplicateKeySet])
+
+  const aladinSetters = useMemo(
+    (): AladinBookFormSetters => ({
+      setTitle,
+      setAuthor,
+      setPublisher,
+      setPublishedDate,
+      setCategoryDepth1Id,
+      setCategoryDepth2Id,
+      setCategories: (depth1Id, depth2Id) => {
+        setCategoryDepth1Id(depth1Id)
+        setCategoryDepth2Id(depth2Id)
+      },
+      setCoverUrl,
+      setIsbn13,
+      setNotes,
+      getNotes: () => notes,
+    }),
+    [notes],
+  )
+
+  const { isAladinApplying, applyAladinMetadata } = useAladinFormApply({
+    source: "add-book-modal",
+    bookTitle: title,
+    userId: user?.uid,
+    categoryTree,
+    categoryTreePending: categoryTreeLoading,
+    formState: {
+      title,
+      author,
+      publisher,
+      publishedDate,
+      categoryDepth1Id,
+      categoryDepth2Id,
+      coverUrl,
+      isbn13,
+      notes,
+    },
+    setters: aladinSetters,
+  })
 
   useEffect(() => {
     if (isOpen && titleInputRef.current) {
@@ -103,6 +160,9 @@ export default function AddBookModal({
       setIsbn13("")
       setPromptCoverUpload(false)
       setCoverUploadHint(undefined)
+      setExploreSuggestOpen(false)
+      setExploreSuggestEdition(null)
+      exploreSuggestDismissedKeyRef.current = null
     }
   }, [
     isOpen,
@@ -133,11 +193,61 @@ export default function AddBookModal({
     setOwnDuplicateModalOpen(false)
     setPromptCoverUpload(false)
     setCoverUploadHint(undefined)
+    setExploreSuggestOpen(false)
+    setExploreSuggestEdition(null)
+    exploreSuggestDismissedKeyRef.current = null
+  }
+
+  const maybeSuggestExploreEdition = useCallback(
+    async (appliedTitle: string, appliedPublisher?: string) => {
+      if (!enableExploreEditionSuggest || !user?.uid) return
+
+      const t = appliedTitle.trim()
+      if (!t) return
+
+      const editionKey = normalizeBookDuplicateKey(t, appliedPublisher)
+      if (duplicateKeySet.has(editionKey)) return
+      if (exploreSuggestDismissedKeyRef.current === editionKey) return
+
+      const match = await findExploreEditionRegisteredByOthers(
+        user.uid,
+        t,
+        appliedPublisher,
+      )
+      if (!match.match) return
+
+      setExploreSuggestEdition({
+        title: match.title,
+        publisher: match.publisher,
+        userCount: match.userCount,
+      })
+      setExploreSuggestOpen(true)
+    },
+    [duplicateKeySet, enableExploreEditionSuggest, user?.uid],
+  )
+
+  const handleGoToExplore = () => {
+    const t = exploreSuggestEdition?.title?.trim() || title.trim()
+    if (!t) return
+    setExploreSuggestOpen(false)
+    resetForm()
+    onClose()
+    router.push(`/explore?search=${encodeURIComponent(t)}`)
+  }
+
+  const handleContinueRegisterHere = () => {
+    if (exploreSuggestEdition) {
+      exploreSuggestDismissedKeyRef.current = normalizeBookDuplicateKey(
+        exploreSuggestEdition.title,
+        exploreSuggestEdition.publisher,
+      )
+    }
+    setExploreSuggestOpen(false)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || isAladinApplying) return
 
     if (hasOwnDuplicateEdition) {
       setOwnDuplicateModalOpen(true)
@@ -203,8 +313,13 @@ export default function AddBookModal({
       >
         <form
           onSubmit={handleSubmit}
-          className="form-modal-fieldset max-h-[min(70vh,32rem)] space-y-3 overflow-y-auto sm:space-y-4"
+          className="form-modal-fieldset relative max-h-[min(70vh,32rem)] overflow-y-auto"
         >
+          <AladinFormApplyOverlay active={isAladinApplying} />
+          <fieldset
+            disabled={isAladinApplying}
+            className="m-0 min-w-0 space-y-4 border-0 p-0 sm:space-y-5"
+          >
           <div>
             <p className="mb-1 text-xs font-semibold text-theme-secondary">필수</p>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
@@ -231,75 +346,62 @@ export default function AddBookModal({
             )}
           </div>
 
-          <AladinBookLookup
-            title={title}
-            onLookupStart={() => {
-              setPromptCoverUpload(false)
-              setCoverUploadHint(undefined)
-            }}
-            onNeedsManualCover={(reason) => {
-              setPromptCoverUpload(true)
-              setCoverUploadHint(
-                reason === "not_found"
-                  ? "알라딘에서 책을 찾지 못했습니다. 표지를 직접 올려 주세요."
-                  : "알라딘에 표지가 없습니다. 표지를 직접 올려 주세요.",
-              )
-            }}
-            onApply={(metadata) => {
-              const enriched = applyAladinWithCategoryLog({
-                metadata,
-                categoryTree,
-                source: "add-book-modal",
-                bookTitle: title,
-                userId: user?.uid,
-                setters: {
-                  setTitle,
-                  setAuthor,
-                  setPublisher,
-                  setPublishedDate,
-                  setCategoryDepth1Id,
-                  setCategoryDepth2Id,
-                  setCategories: (depth1Id, depth2Id) => {
-                    setCategoryDepth1Id(depth1Id)
-                    setCategoryDepth2Id(depth2Id)
-                  },
-                  setCoverUrl,
-                  setIsbn13,
-                  setNotes,
-                  getNotes: () => notes,
-                },
-              })
-              if (enriched.coverUrl?.trim()) {
+          <div className="space-y-3 sm:space-y-4">
+            <AladinBookLookup
+              title={title}
+              disabled={isAladinApplying}
+              onLookupStart={() => {
                 setPromptCoverUpload(false)
                 setCoverUploadHint(undefined)
-              }
-            }}
-          />
+              }}
+              onNeedsManualCover={(reason) => {
+                setPromptCoverUpload(true)
+                setCoverUploadHint(
+                  reason === "not_found"
+                    ? "알라딘에서 책을 찾지 못했습니다. 표지를 직접 올려 주세요."
+                    : "알라딘에 표지가 없습니다. 표지를 직접 올려 주세요.",
+                )
+              }}
+              onApply={async (metadata) => {
+                const enriched = await applyAladinMetadata(metadata)
+                if (enriched.coverUrl?.trim()) {
+                  setPromptCoverUpload(false)
+                  setCoverUploadHint(undefined)
+                }
+                void maybeSuggestExploreEdition(
+                  enriched.title?.trim() || metadata.title?.trim() || title,
+                  enriched.publisher?.trim() ||
+                    metadata.publisher?.trim() ||
+                    publisher,
+                )
+              }}
+            />
 
-          <BookCoverUpload
-            visible={!coverUrl && promptCoverUpload}
-            coverUrl={coverUrl}
-            onCoverUrlChange={setCoverUrl}
-            hint={coverUploadHint}
-          />
+            <BookCoverUpload
+              visible={!coverUrl && promptCoverUpload}
+              coverUrl={coverUrl}
+              onCoverUrlChange={setCoverUrl}
+              hint={coverUploadHint}
+            />
 
-          {coverUrl && (
-            <div className="flex items-start gap-3">
-              <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
-                <Image
-                  src={coverUrl}
-                  alt="표지 미리보기"
-                  fill
-                  className="object-cover"
-                  sizes="64px"
-                  unoptimized
-                />
+            {coverUrl && (
+              <div className="flex items-start gap-3">
+                <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
+                  <Image
+                    src={coverUrl}
+                    alt="표지 미리보기"
+                    fill
+                    className="object-cover"
+                    sizes="64px"
+                    unoptimized
+                  />
+                </div>
+                <p className="text-xs text-theme-tertiary pt-1">
+                  {coverPreviewCaption(coverUrl)} (저장 시 URL이 함께 기록됩니다)
+                </p>
               </div>
-              <p className="text-xs text-theme-tertiary pt-1">
-                {coverPreviewCaption(coverUrl)} (저장 시 URL이 함께 기록됩니다)
-              </p>
-            </div>
-          )}
+            )}
+          </div>
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
@@ -418,22 +520,24 @@ export default function AddBookModal({
             </div>
           </div>
 
-          <div className="sticky bottom-0 flex justify-end gap-2 border-t border-theme-tertiary bg-theme-secondary pt-3">
+          <div className="sticky bottom-0 mt-2 flex justify-end gap-2 border-t border-theme-tertiary bg-theme-secondary pt-4">
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-md bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary"
+              disabled={isAladinApplying}
+              className="rounded-md bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary disabled:opacity-50"
             >
               취소
             </button>
             <button
               type="submit"
-              disabled={!title.trim()}
+              disabled={!title.trim() || isAladinApplying}
               className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               추가하기
             </button>
           </div>
+          </fieldset>
         </form>
       </FormModalFrame>
 
@@ -441,6 +545,16 @@ export default function AddBookModal({
         isOpen={ownDuplicateModalOpen}
         onClose={() => setOwnDuplicateModalOpen(false)}
         title={title.trim()}
+      />
+
+      <ExploreEditionSuggestModal
+        isOpen={exploreSuggestOpen}
+        title={exploreSuggestEdition?.title ?? title}
+        publisher={exploreSuggestEdition?.publisher ?? publisher}
+        registrantCount={exploreSuggestEdition?.userCount}
+        onGoToExplore={handleGoToExplore}
+        onContinueHere={handleContinueRegisterHere}
+        onClose={handleContinueRegisterHere}
       />
     </>
   )

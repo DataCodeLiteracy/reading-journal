@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, Home, ArrowLeft, Cpu, Download, Upload, Tags, ScrollText } from "lucide-react"
+import { BookOpen, Home, ArrowLeft, Cpu, Download, Upload, Tags, ScrollText, Database } from "lucide-react"
 import { adminService } from "@/services/adminService"
 import { useAuth } from "@/contexts/AuthContext"
 import { AdminHubPageSkeleton } from "@/components/skeletons"
@@ -175,6 +175,22 @@ export default function AdminPage() {
             </h3>
             <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
               노션 CSV로 서재 일괄 등록·업데이트
+            </p>
+          </button>
+          <button
+            onClick={() => router.push("/admin/canonical-hub")}
+            className='bg-gradient-to-r from-cyan-600 to-blue-800 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
+          >
+            <div className='flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3'>
+              <div className='p-1.5 sm:p-2 bg-white/20 rounded-lg'>
+                <Database className='h-4 w-4 sm:h-5 sm:w-5' />
+              </div>
+            </div>
+            <h3 className='font-semibold text-base sm:text-lg mb-1 sm:mb-2'>
+              공유 판본 · 콘텐츠 백필
+            </h3>
+            <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
+              canonicalBooks·목차·이해도·발췌·골든벨 판본 연동 (독서 질문 제외)
             </p>
           </button>
           <button

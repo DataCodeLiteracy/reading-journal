@@ -1,11 +1,37 @@
 import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { ApiClient } from "@/lib/apiClient"
+import { CanonicalBookService } from "@/services/canonicalBookService"
 import type { Book } from "@/types/book"
 import type { ExploreTitleGroup } from "@/types/explore"
 import { normalizeBookDuplicateKey } from "@/utils/bookTitleKey"
 
 const READ_BATCH = 100
 const MAX_ROUNDS = 80
+
+/** 탐색 목록 — book·canonical에 저장된 표지 URL 보강 */
+export async function enrichExploreBooksCoverUrls(
+  books: Book[],
+): Promise<Book[]> {
+  const missing = books.filter((b) => !b.coverUrl?.trim() && b.canonicalBookId)
+  if (missing.length === 0) return books
+
+  const ids = [...new Set(missing.map((b) => b.canonicalBookId!))]
+  const coverById = new Map<string, string>()
+  await Promise.all(
+    ids.map(async (id) => {
+      const canonical = await CanonicalBookService.getById(id)
+      const url = canonical?.coverUrl?.trim()
+      if (url) coverById.set(id, url)
+    }),
+  )
+  if (coverById.size === 0) return books
+
+  return books.map((b) => {
+    if (b.coverUrl?.trim() || !b.canonicalBookId) return b
+    const cover = coverById.get(b.canonicalBookId)
+    return cover ? { ...b, coverUrl: cover } : b
+  })
+}
 
 function buildGroup(books: Book[]): ExploreTitleGroup {
   const title = books[0]?.title?.trim() || ""
@@ -176,6 +202,8 @@ export function exploreBooksFlatSortParams(
 ): { field: string; dir: "asc" | "desc" } {
   if (searchHasPrefix) return { field: "title", dir: "asc" }
   switch (sortBy) {
+    case "recent-title":
+      return { field: "created_at", dir: "desc" }
     case "title-asc":
       return { field: "title", dir: "asc" }
     case "title-desc":
@@ -255,6 +283,12 @@ export function getExploreBooksOrderByChain(params: {
   firestoreExcludeMine: boolean
 }): ReadonlyArray<{ field: string; direction: "asc" | "desc" }> {
   if (!params.firestoreExcludeMine) {
+    if (params.sortBy === "recent-title" && !params.hasSearchPrefix) {
+      return [
+        { field: "created_at", direction: "desc" },
+        { field: "title", direction: "asc" },
+      ]
+    }
     const { field, dir } = exploreBooksFlatSortParams(
       params.sortBy,
       params.hasSearchPrefix,
@@ -268,6 +302,12 @@ export function getExploreBooksOrderByChain(params: {
     ]
   }
   switch (params.sortBy) {
+    case "recent-title":
+      return [
+        { field: "user_id", direction: "asc" },
+        { field: "created_at", direction: "desc" },
+        { field: "title", direction: "asc" },
+      ]
     case "title-desc":
       return [
         { field: "user_id", direction: "asc" },
@@ -324,6 +364,11 @@ async function fetchExploreBooksPageSoftMineExclude(options: {
 }> {
   const sp = options.searchPrefix?.trim()
   const hasSearch = Boolean(sp)
+  const orderByChain = getExploreBooksOrderByChain({
+    sortBy: options.sortBy,
+    hasSearchPrefix: hasSearch,
+    firestoreExcludeMine: false,
+  })
   const { field, dir } = exploreBooksFlatSortParams(options.sortBy, hasSearch)
   const collected: Book[] = []
   const snaps: QueryDocumentSnapshot<DocumentData>[] = []
@@ -337,6 +382,7 @@ async function fetchExploreBooksPageSoftMineExclude(options: {
     const batch = await ApiClient.queryCollectionPage<Book>({
       collectionName: "books",
       conditions: options.conditions,
+      orderByChain,
       orderByField: field,
       orderDirection: dir,
       pageSize: SOFT_PAGE_READ,

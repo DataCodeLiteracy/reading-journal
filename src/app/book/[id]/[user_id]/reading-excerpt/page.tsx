@@ -112,7 +112,7 @@ function ReadingExcerptHubContent({
         const b = await BookService.getBook(resolved.id)
         if (!b) return
         setBook(b)
-        const p = await ReadingContentPackService.getByBookTitle(b.title)
+        const p = await ReadingContentPackService.getForBook(b)
         setPack(p)
         const pr = await ReadingExcerptProgressService.get(userUid, resolved.id)
         setProgress(pr)

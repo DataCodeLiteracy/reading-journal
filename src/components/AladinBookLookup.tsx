@@ -14,7 +14,7 @@ export type AladinFormApplyPayload = AladinBookMetadata
 interface AladinBookLookupProps {
   title: string
   disabled?: boolean
-  onApply: (metadata: AladinFormApplyPayload) => void
+  onApply: (metadata: AladinFormApplyPayload) => void | Promise<void>
   /** 검색 시작 시 (표지 업로드 안내 초기화) */
   onLookupStart?: () => void
   /**
@@ -42,7 +42,7 @@ export default function AladinBookLookup({
     setError(null)
     try {
       const metadata = await lookupAladinBookMetadata(hit)
-      onApply(metadata)
+      await onApply(metadata)
       if (!metadata.coverUrl?.trim()) {
         onNeedsManualCover?.("no_cover")
       }

@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { BookOpen, Star } from "lucide-react"
 import AladinBookLookup from "@/components/AladinBookLookup"
 import BookCoverInlineEditor from "@/components/BookCoverInlineEditor"
-import { applyAladinWithCategoryLog } from "@/utils/applyAladinWithCategoryLog"
+import AladinFormApplyOverlay from "@/components/AladinFormApplyOverlay"
+import { useAladinFormApply } from "@/hooks/useAladinFormApply"
+import type { AladinBookFormSetters } from "@/utils/applyAladinBookMetadata"
 import { useAuth } from "@/contexts/AuthContext"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
@@ -29,7 +31,8 @@ export default function EditBookModal({
   book,
 }: EditBookModalProps) {
   const { user } = useAuth()
-  const { data: categoryTree } = useBookCategories()
+  const { data: categoryTree, isLoading: categoryTreeLoading } =
+    useBookCategories()
   const [title, setTitle] = useState(book.title)
   const [author, setAuthor] = useState(book.author || "")
   const [publisher, setPublisher] = useState(book.publisher || "")
@@ -49,6 +52,46 @@ export default function EditBookModal({
   const [coverUrl, setCoverUrl] = useState(book.coverUrl || "")
   const [isbn13, setIsbn13] = useState(book.isbn13 || "")
   const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
+
+  const aladinSetters = useMemo(
+    (): AladinBookFormSetters => ({
+      setTitle,
+      setAuthor,
+      setPublisher,
+      setPublishedDate,
+      setCategoryDepth1Id,
+      setCategoryDepth2Id,
+      setCategories: (depth1Id, depth2Id) => {
+        setCategoryDepth1Id(depth1Id)
+        setCategoryDepth2Id(depth2Id)
+      },
+      setCoverUrl,
+      setIsbn13,
+      setNotes,
+      getNotes: () => notes,
+    }),
+    [notes],
+  )
+
+  const { isAladinApplying, applyAladinMetadata } = useAladinFormApply({
+    source: "edit-book-modal",
+    bookTitle: title,
+    userId: user?.uid,
+    categoryTree,
+    categoryTreePending: categoryTreeLoading,
+    formState: {
+      title,
+      author,
+      publisher,
+      publishedDate,
+      categoryDepth1Id,
+      categoryDepth2Id,
+      coverUrl,
+      isbn13,
+      notes,
+    },
+    setters: aladinSetters,
+  })
 
   useEffect(() => {
     if (isOpen) {
@@ -70,7 +113,7 @@ export default function EditBookModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || isAladinApplying) return
 
     const d1 = categoryTree
       ? BookCategoryService.findDepth1(categoryTree, categoryDepth1Id)
@@ -117,8 +160,13 @@ export default function EditBookModal({
     >
       <form
         onSubmit={handleSubmit}
-        className="form-modal-fieldset max-h-[min(70vh,32rem)] space-y-3 overflow-y-auto sm:space-y-4"
+        className="form-modal-fieldset relative max-h-[min(70vh,32rem)] overflow-y-auto"
       >
+        <AladinFormApplyOverlay active={isAladinApplying} />
+        <fieldset
+          disabled={isAladinApplying}
+          className="m-0 min-w-0 space-y-4 border-0 p-0 sm:space-y-5"
+        >
         <div>
           <p className="mb-1 text-xs font-semibold text-theme-secondary">필수</p>
           <label className="mb-0.5 block text-sm font-medium text-theme-primary">
@@ -133,57 +181,38 @@ export default function EditBookModal({
           />
         </div>
 
-        <AladinBookLookup
-          title={title}
-          onLookupStart={() => {
-            setCoverUploadHint(undefined)
-          }}
-          onNeedsManualCover={(reason) => {
-            setCoverUploadHint(
-              reason === "not_found"
-                ? "알라딘에서 책을 찾지 못했습니다."
-                : "알라딘에 표지가 없습니다.",
-            )
-          }}
-          onApply={(metadata) => {
-            const enriched = applyAladinWithCategoryLog({
-              metadata,
-              categoryTree,
-              source: "edit-book-modal",
-              bookTitle: title,
-              userId: user?.uid,
-              setters: {
-                setTitle,
-                setAuthor,
-                setPublisher,
-                setPublishedDate,
-                setCategoryDepth1Id,
-                setCategoryDepth2Id,
-                setCategories: (depth1Id, depth2Id) => {
-                  setCategoryDepth1Id(depth1Id)
-                  setCategoryDepth2Id(depth2Id)
-                },
-                setCoverUrl,
-                setIsbn13,
-                setNotes,
-                getNotes: () => notes,
-              },
-            })
-            if (enriched.coverUrl?.trim()) {
+        <div className="space-y-3 sm:space-y-4">
+          <AladinBookLookup
+            title={title}
+            disabled={isAladinApplying}
+            onLookupStart={() => {
               setCoverUploadHint(undefined)
-            }
-          }}
-        />
+            }}
+            onNeedsManualCover={(reason) => {
+              setCoverUploadHint(
+                reason === "not_found"
+                  ? "알라딘에서 책을 찾지 못했습니다."
+                  : "알라딘에 표지가 없습니다.",
+              )
+            }}
+            onApply={async (metadata) => {
+              const enriched = await applyAladinMetadata(metadata)
+              if (enriched.coverUrl?.trim()) {
+                setCoverUploadHint(undefined)
+              }
+            }}
+          />
 
-        <BookCoverInlineEditor
-          bookId={book.id}
-          coverUrl={coverUrl}
-          onCoverUrlChange={(url) => {
-            setCoverUrl(url)
-            if (url.trim()) setCoverUploadHint(undefined)
-          }}
-          hint={coverUploadHint}
-        />
+          <BookCoverInlineEditor
+            bookId={book.id}
+            coverUrl={coverUrl}
+            onCoverUrlChange={(url) => {
+              setCoverUrl(url)
+              if (url.trim()) setCoverUploadHint(undefined)
+            }}
+            hint={coverUploadHint}
+          />
+        </div>
 
         <div>
           <p className="mb-1 text-xs font-semibold text-theme-secondary">선택 (권장 순)</p>
@@ -286,22 +315,24 @@ export default function EditBookModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 border-t border-theme-tertiary pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium"
+            disabled={isAladinApplying}
+            className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             취소
           </button>
           <button
             type="submit"
-            disabled={!title.trim()}
+            disabled={!title.trim() || isAladinApplying}
             className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             저장하기
           </button>
         </div>
+        </fieldset>
       </form>
     </FormModalFrame>
   )

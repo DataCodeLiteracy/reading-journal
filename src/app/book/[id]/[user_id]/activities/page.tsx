@@ -122,7 +122,7 @@ export default function BookActivitiesHubPage({
 
         try {
           const quizSummaries =
-            await GoldenBellService.getQuizSummariesByBookTitle(bookData.title)
+            await GoldenBellService.getQuizSummariesForBook(bookData)
           setGoldenBellQuizzes(quizSummaries)
           if (userUid) {
             const results = await GoldenBellService.getUserResultsByBook(
@@ -138,9 +138,7 @@ export default function BookActivitiesHubPage({
         }
 
         try {
-          const rp = await ReadingContentPackService.getByBookTitle(
-            bookData.title,
-          )
+          const rp = await ReadingContentPackService.getForBook(bookData)
           setReadingPack(rp)
           if (userUid) {
             const [exP, exX] = await Promise.all([
@@ -189,7 +187,7 @@ export default function BookActivitiesHubPage({
     if (!book) return
     setDeletingExam(true)
     try {
-      await ReadingContentPackService.clearExamData(book.title)
+      await ReadingContentPackService.clearExamDataForBook(book)
       setReadingPack((prev) =>
         prev ? { ...prev, examAssessmentData: undefined } : prev,
       )
@@ -205,7 +203,7 @@ export default function BookActivitiesHubPage({
     if (!book) return
     setDeletingExcerpt(true)
     try {
-      await ReadingContentPackService.clearExcerptData(book.title)
+      await ReadingContentPackService.clearExcerptDataForBook(book)
       setReadingPack((prev) =>
         prev
           ? {
@@ -666,6 +664,7 @@ export default function BookActivitiesHubPage({
             setGoldenBellReregisterQuiz(null)
           }}
           bookTitle={book.title}
+          canonicalBookId={book.canonicalBookId}
           userId={userUid || ""}
           reregisterQuizId={goldenBellReregisterQuiz?.id ?? null}
           reregisterDifficulty={goldenBellReregisterQuiz?.difficulty ?? null}
@@ -673,7 +672,7 @@ export default function BookActivitiesHubPage({
             setGoldenBellReregisterQuiz(null)
             try {
               const updatedQuizzes =
-                await GoldenBellService.getQuizSummariesByBookTitle(book.title)
+                await GoldenBellService.getQuizSummariesForBook(book)
               setGoldenBellQuizzes(updatedQuizzes)
             } catch (e) {
               console.error(e)
@@ -685,12 +684,12 @@ export default function BookActivitiesHubPage({
           isOpen={readingExamUploadOpen}
           onClose={() => setReadingExamUploadOpen(false)}
           bookTitle={book.title}
+          canonicalBookId={book.canonicalBookId}
+          publisher={book.publisher}
           userId={userUid || ""}
           onSuccess={async () => {
             try {
-              const rp = await ReadingContentPackService.getByBookTitle(
-                book.title,
-              )
+              const rp = await ReadingContentPackService.getForBook(book)
               setReadingPack(rp)
               if (userUid) {
                 const [exP, exX] = await Promise.all([
@@ -709,12 +708,12 @@ export default function BookActivitiesHubPage({
           isOpen={readingExcerptUploadOpen}
           onClose={() => setReadingExcerptUploadOpen(false)}
           bookTitle={book.title}
+          canonicalBookId={book.canonicalBookId}
+          publisher={book.publisher}
           userId={userUid || ""}
           onSuccess={async () => {
             try {
-              const rp = await ReadingContentPackService.getByBookTitle(
-                book.title,
-              )
+              const rp = await ReadingContentPackService.getForBook(book)
               setReadingPack(rp)
               if (userUid) {
                 const [exP, exX] = await Promise.all([

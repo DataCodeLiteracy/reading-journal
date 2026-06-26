@@ -41,8 +41,10 @@ export interface GoldenBellJsonData {
 /** Firestore에 저장되는 골든벨 퀴즈 */
 export interface GoldenBellQuiz {
   id: string
-  /** 책 제목 (같은 제목의 책들이 공유) */
+  /** 책 제목 (같은 제목의 책들이 공유 — 레거시) */
   bookTitle: string
+  /** 판본(canonicalBooks) ID — 있으면 같은 판본 유저가 공유 */
+  canonicalBookId?: string
   /** 버전 (예: "1.0" 등) */
   version: string
   /** 난이도 */

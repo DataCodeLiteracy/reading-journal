@@ -55,7 +55,7 @@ export default function BookTakeawaysPage({
           return
         }
         setBook(b)
-        const p = await ReadingContentPackService.getByBookTitle(b.title)
+        const p = await ReadingContentPackService.getForBook(b)
         if (cancelled) return
         setPack(p)
         if (userUid) {

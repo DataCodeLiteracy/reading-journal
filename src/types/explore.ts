@@ -11,4 +11,5 @@ export type ExploreTitleGroup = {
   userCount: number
   avgRating: number
   statuses: Set<Book["status"]>
+  coverUrl?: string
 }

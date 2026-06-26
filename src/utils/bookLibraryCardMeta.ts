@@ -12,6 +12,38 @@ export function formatBookPublishedLabel(
   return raw.length > 12 ? `${raw.slice(0, 12)}…` : raw
 }
 
+/** `2007-12-15` → `2007년 12월 15일` (연·월·일 표시) */
+export function formatBookPublishedFullLabel(
+  publishedDate?: string,
+): string | null {
+  const raw = publishedDate?.trim()
+  if (!raw) return null
+
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) {
+    const [, y, m, d] = iso
+    return `${y}년 ${Number(m)}월 ${Number(d)}일`
+  }
+
+  const compact = raw.match(/^(\d{4})(\d{2})(\d{2})$/)
+  if (compact) {
+    const [, y, m, d] = compact
+    return `${y}년 ${Number(m)}월 ${Number(d)}일`
+  }
+
+  const yearMonth = raw.match(/^(\d{4})-(\d{2})$/)
+  if (yearMonth) {
+    return `${yearMonth[1]}년 ${Number(yearMonth[2])}월`
+  }
+
+  const yearOnly = raw.match(/^(\d{4})$/)
+  if (yearOnly) return `${yearOnly[1]}년`
+
+  const year = raw.match(/^(\d{4})/)?.[1]
+  if (year) return year
+  return raw.length > 16 ? `${raw.slice(0, 16)}…` : raw
+}
+
 export function formatBookCategoryLine(
   depth1Label?: string,
   depth2Label?: string,

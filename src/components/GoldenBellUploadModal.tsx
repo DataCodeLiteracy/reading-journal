@@ -16,6 +16,7 @@ interface GoldenBellUploadModalProps {
   onClose: () => void
   bookTitle: string
   userId: string
+  canonicalBookId?: string
   onUploadSuccess: () => void
   /** 재등록 모드: 지정 시 해당 버전을 새 JSON으로 교체 (난이도 고정) */
   reregisterQuizId?: string | null
@@ -27,6 +28,7 @@ export default function GoldenBellUploadModal({
   onClose,
   bookTitle,
   userId,
+  canonicalBookId,
   onUploadSuccess,
   reregisterQuizId = null,
   reregisterDifficulty = null,
@@ -115,7 +117,11 @@ export default function GoldenBellUploadModal({
         return
       }
 
-      const existingQuiz = await GoldenBellService.findExistingQuiz(bookTitle, difficulty)
+      const existingQuiz = await GoldenBellService.findExistingQuiz(
+        bookTitle,
+        difficulty,
+        canonicalBookId,
+      )
 
       if (existingQuiz) {
         setExistingQuizId(existingQuiz.id)
@@ -144,7 +150,13 @@ export default function GoldenBellUploadModal({
       if (isUpdate && targetQuizId) {
         await GoldenBellService.updateQuiz(targetQuizId, parsed, difficulty)
       } else {
-        await GoldenBellService.createQuizFromJson(bookTitle, parsed, userId, difficulty)
+        await GoldenBellService.createQuizFromJson(
+          bookTitle,
+          parsed,
+          userId,
+          difficulty,
+          canonicalBookId,
+        )
       }
 
       onUploadSuccess()

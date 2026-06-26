@@ -7,7 +7,7 @@ import {
 
 export class QuestionService {
   /**
-   * 질문 생성
+   * 질문 생성 (독서 질문은 유저·책별 개인 자료 — canonical 공유 없음)
    */
   static async createQuestion(
     questionData: Omit<BookQuestion, "id" | "created_at" | "updated_at">
@@ -71,17 +71,14 @@ export class QuestionService {
   }
 
   /**
-   * 책의 모든 질문 조회
-   * Firestore 인덱스 오류를 방지하기 위해 클라이언트 측에서 정렬
+   * 책의 모든 질문 조회 (해당 bookId만 — 다른 유저 질문은 포함하지 않음)
    */
   static async getBookQuestions(bookId: string): Promise<BookQuestion[]> {
     try {
       const questions = await ApiClient.queryDocuments<BookQuestion>(
         "bookQuestions",
-        [["bookId", "==", bookId]]
-        // order 필드로 정렬은 클라이언트 측에서 수행
+        [["bookId", "==", bookId]],
       )
-      // 클라이언트 측에서 order 필드로 정렬
       return questions.sort((a, b) => (a.order || 0) - (b.order || 0))
     } catch (error) {
       console.error("Error getting book questions:", error)

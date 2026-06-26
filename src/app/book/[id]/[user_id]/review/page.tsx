@@ -90,7 +90,7 @@ export default function ReviewPage({
         setReadingSessions(sessionsData)
 
         try {
-          const pack = await ReadingContentPackService.getByBookTitle(bookData.title)
+          const pack = await ReadingContentPackService.getForBook(bookData)
           setOverallSummaryRef(pack?.excerptBookMetadata?.overall_summary ?? null)
         } catch {
           setOverallSummaryRef(null)

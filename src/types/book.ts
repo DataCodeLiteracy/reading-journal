@@ -86,4 +86,8 @@ export interface Book {
   preReadInterestConnection?: string
   /** 목차(최대 4 depth, path는 `1.1.1.1` 형식). 발췌 JSON 등과 동일 스키마로 연동 */
   tocOutline?: BookTocEntry[]
+  /** 공유 판본(canonicalBooks) 문서 ID — 목차·공통 메타 연동 */
+  canonicalBookId?: string
+  /** normalizeBookDuplicateKey(title, publisher) — 판본 조회·백필용 */
+  editionKey?: string
 }

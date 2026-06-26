@@ -1,13 +1,53 @@
 import { ApiClient } from "@/lib/apiClient"
+import type { Book } from "@/types/book"
 import {
   ReadingContentPack,
   ReadingExamAssessmentJson,
   ReadingExcerptSummaryJson,
 } from "@/types/readingContent"
 import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
+import { editionKeyFromBook } from "@/utils/editionKeyDocId"
 import { packDocIdFromBookTitle, titleKeyToPackDocId } from "@/utils/titleKeyDocId"
 
 const COLLECTION = "readingContentPacks"
+
+export type ReadingContentBookRef = Pick<
+  Book,
+  "title" | "publisher" | "canonicalBookId" | "editionKey"
+>
+
+export type ReadingContentPackWriteOptions = {
+  canonicalBookId?: string
+  editionKey?: string
+  publisher?: string
+}
+
+function resolvePackDocId(
+  bookTitle: string,
+  options?: ReadingContentPackWriteOptions,
+): string {
+  if (options?.canonicalBookId) return options.canonicalBookId
+  return titleKeyToPackDocId(normalizeBookTitleKey(bookTitle))
+}
+
+function buildPackMeta(
+  bookTitle: string,
+  options?: ReadingContentPackWriteOptions,
+): Pick<ReadingContentPack, "titleKey" | "bookTitleDisplay" | "editionKey" | "canonicalBookId"> {
+  const titleKey = normalizeBookTitleKey(bookTitle)
+  return {
+    titleKey,
+    bookTitleDisplay: bookTitle.trim(),
+    ...(options?.canonicalBookId
+      ? { canonicalBookId: options.canonicalBookId }
+      : {}),
+    ...(options?.editionKey
+      ? { editionKey: options.editionKey }
+      : options?.publisher || options?.canonicalBookId
+        ? { editionKey: editionKeyFromBook(bookTitle, options.publisher) }
+        : {}),
+  }
+}
 
 export class ReadingContentPackService {
   static validateExamJson(data: unknown): data is ReadingExamAssessmentJson {
@@ -49,6 +89,31 @@ export class ReadingContentPackService {
     return true
   }
 
+  /** canonicalBookId 우선, 없으면 제목 키(레거시) */
+  static async getForBook(
+    book: ReadingContentBookRef,
+  ): Promise<ReadingContentPack | null> {
+    if (book.canonicalBookId) {
+      const byCanon = await ApiClient.getDocument<ReadingContentPack>(
+        COLLECTION,
+        book.canonicalBookId,
+      )
+      if (byCanon) return { ...byCanon, id: book.canonicalBookId }
+    }
+    return this.getByBookTitle(book.title)
+  }
+
+  static async getByCanonicalBookId(
+    canonicalBookId: string,
+  ): Promise<ReadingContentPack | null> {
+    const doc = await ApiClient.getDocument<ReadingContentPack>(
+      COLLECTION,
+      canonicalBookId,
+    )
+    if (!doc) return null
+    return { ...doc, id: canonicalBookId }
+  }
+
   static async getByBookTitle(bookTitle: string): Promise<ReadingContentPack | null> {
     const titleKey = normalizeBookTitleKey(bookTitle)
     const id = titleKeyToPackDocId(titleKey)
@@ -60,61 +125,93 @@ export class ReadingContentPackService {
   static async upsertExamJson(
     bookTitle: string,
     json: ReadingExamAssessmentJson,
-    userId: string
+    userId: string,
+    options?: ReadingContentPackWriteOptions,
   ): Promise<void> {
-    const titleKey = normalizeBookTitleKey(bookTitle)
-    const id = titleKeyToPackDocId(titleKey)
+    const id = resolvePackDocId(bookTitle, options)
     await ApiClient.createDocument(
       COLLECTION,
       id,
       {
-        titleKey,
-        bookTitleDisplay: bookTitle.trim(),
+        ...buildPackMeta(bookTitle, options),
         examAssessmentData: json.assessment_data,
         createdBy: userId,
         updated_at: ApiClient.getServerTimestamp(),
       } as Record<string, unknown>,
-      { merge: true }
+      { merge: true },
     )
   }
 
   static async upsertExcerptJson(
     bookTitle: string,
     json: ReadingExcerptSummaryJson,
-    userId: string
+    userId: string,
+    options?: ReadingContentPackWriteOptions,
   ): Promise<void> {
-    const titleKey = normalizeBookTitleKey(bookTitle)
-    const id = titleKeyToPackDocId(titleKey)
+    const id = resolvePackDocId(bookTitle, options)
     await ApiClient.createDocument(
       COLLECTION,
       id,
       {
-        titleKey,
-        bookTitleDisplay: bookTitle.trim(),
+        ...buildPackMeta(bookTitle, options),
         excerptBookMetadata: json.book_metadata,
         excerptChapterSummaries: json.chapter_summaries,
         createdBy: userId,
         updated_at: ApiClient.getServerTimestamp(),
       } as Record<string, unknown>,
-      { merge: true }
+      { merge: true },
     )
   }
 
-  static async clearExamData(bookTitle: string): Promise<void> {
-    const id = titleKeyToPackDocId(normalizeBookTitleKey(bookTitle))
+  static async clearExamData(
+    bookTitle: string,
+    options?: ReadingContentPackWriteOptions,
+  ): Promise<void> {
+    const id = resolvePackDocId(bookTitle, options)
     await ApiClient.updateDocument<Record<string, unknown>>(COLLECTION, id, {
       examAssessmentData: undefined,
       updated_at: ApiClient.getServerTimestamp(),
     })
   }
 
-  static async clearExcerptData(bookTitle: string): Promise<void> {
-    const id = titleKeyToPackDocId(normalizeBookTitleKey(bookTitle))
+  static async clearExcerptData(
+    bookTitle: string,
+    options?: ReadingContentPackWriteOptions,
+  ): Promise<void> {
+    const id = resolvePackDocId(bookTitle, options)
     await ApiClient.updateDocument<Record<string, unknown>>(COLLECTION, id, {
       excerptBookMetadata: undefined,
       excerptChapterSummaries: undefined,
       updated_at: ApiClient.getServerTimestamp(),
     })
+  }
+
+  static async clearExamDataForBook(book: ReadingContentBookRef): Promise<void> {
+    await this.clearExamData(book.title, {
+      canonicalBookId: book.canonicalBookId,
+      editionKey: book.editionKey,
+      publisher: book.publisher,
+    })
+  }
+
+  static async clearExcerptDataForBook(
+    book: ReadingContentBookRef,
+  ): Promise<void> {
+    await this.clearExcerptData(book.title, {
+      canonicalBookId: book.canonicalBookId,
+      editionKey: book.editionKey,
+      publisher: book.publisher,
+    })
+  }
+
+  static packWriteOptionsFromBook(
+    book: ReadingContentBookRef,
+  ): ReadingContentPackWriteOptions {
+    return {
+      canonicalBookId: book.canonicalBookId,
+      editionKey: book.editionKey,
+      publisher: book.publisher,
+    }
   }
 
   /** 탐색 등 제목만 있을 때 */

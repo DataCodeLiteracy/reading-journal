@@ -9,6 +9,10 @@ export const queryKeys = {
       ["explore", "booksFlatCount", filtersKey] as const,
     booksFlatPage: (filtersKey: string, page: number) =>
       ["explore", "booksFlatPage", filtersKey, page] as const,
+    highlights: (groupKeys: string) =>
+      ["explore", "highlights", groupKeys] as const,
+    registrants: (bookIdsKey: string) =>
+      ["explore", "registrants", bookIdsKey] as const,
     full: (filtersKey: string) => ["explore", "full", filtersKey] as const,
     filterMeta: ["explore", "filter-meta"] as const,
   },
