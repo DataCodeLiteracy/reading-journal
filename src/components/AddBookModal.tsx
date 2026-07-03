@@ -84,6 +84,7 @@ export default function AddBookModal({
     userCount: number
   } | null>(null)
   const exploreSuggestDismissedKeyRef = useRef<string | null>(null)
+  const [aladinFetchBusy, setAladinFetchBusy] = useState(false)
 
   const duplicateKeySet = useMemo(
     () => new Set(userBookDuplicateKeys),
@@ -136,6 +137,8 @@ export default function AddBookModal({
     setters: aladinSetters,
   })
 
+  const aladinBusy = isAladinApplying || aladinFetchBusy
+
   useEffect(() => {
     if (isOpen && titleInputRef.current) {
       titleInputRef.current.focus()
@@ -163,6 +166,7 @@ export default function AddBookModal({
       setExploreSuggestOpen(false)
       setExploreSuggestEdition(null)
       exploreSuggestDismissedKeyRef.current = null
+      setAladinFetchBusy(false)
     }
   }, [
     isOpen,
@@ -247,7 +251,7 @@ export default function AddBookModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || isAladinApplying) return
+    if (!title.trim() || aladinBusy) return
 
     if (hasOwnDuplicateEdition) {
       setOwnDuplicateModalOpen(true)
@@ -284,6 +288,7 @@ export default function AddBookModal({
   }
 
   const handleClose = () => {
+    if (aladinBusy) return
     resetForm()
     onClose()
   }
@@ -305,6 +310,13 @@ export default function AddBookModal({
         isOpen={isOpen}
         onClose={handleClose}
         title="새 책 추가"
+        interactionLocked={aladinBusy}
+        lockOverlay={
+          <AladinFormApplyOverlay
+            active={aladinBusy}
+            phase={isAladinApplying ? "apply" : "search"}
+          />
+        }
         headerStart={
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-theme-tertiary">
             <BookOpen className="h-5 w-5 accent-theme-primary" aria-hidden />
@@ -315,9 +327,8 @@ export default function AddBookModal({
           onSubmit={handleSubmit}
           className="form-modal-fieldset relative max-h-[min(70vh,32rem)] overflow-y-auto"
         >
-          <AladinFormApplyOverlay active={isAladinApplying} />
           <fieldset
-            disabled={isAladinApplying}
+            disabled={aladinBusy}
             className="m-0 min-w-0 space-y-4 border-0 p-0 sm:space-y-5"
           >
           <div>
@@ -349,7 +360,8 @@ export default function AddBookModal({
           <div className="space-y-3 sm:space-y-4">
             <AladinBookLookup
               title={title}
-              disabled={isAladinApplying}
+              disabled={aladinBusy}
+              onBusyChange={setAladinFetchBusy}
               onLookupStart={() => {
                 setPromptCoverUpload(false)
                 setCoverUploadHint(undefined)
@@ -524,14 +536,14 @@ export default function AddBookModal({
             <button
               type="button"
               onClick={handleClose}
-              disabled={isAladinApplying}
+              disabled={aladinBusy}
               className="rounded-md bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary disabled:opacity-50"
             >
               취소
             </button>
             <button
               type="submit"
-              disabled={!title.trim() || isAladinApplying}
+              disabled={!title.trim() || aladinBusy}
               className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               추가하기

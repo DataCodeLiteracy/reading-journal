@@ -52,6 +52,7 @@ export default function EditBookModal({
   const [coverUrl, setCoverUrl] = useState(book.coverUrl || "")
   const [isbn13, setIsbn13] = useState(book.isbn13 || "")
   const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
+  const [aladinFetchBusy, setAladinFetchBusy] = useState(false)
 
   const aladinSetters = useMemo(
     (): AladinBookFormSetters => ({
@@ -93,6 +94,8 @@ export default function EditBookModal({
     setters: aladinSetters,
   })
 
+  const aladinBusy = isAladinApplying || aladinFetchBusy
+
   useEffect(() => {
     if (isOpen) {
       setTitle(book.title)
@@ -108,12 +111,13 @@ export default function EditBookModal({
       setCoverUrl(book.coverUrl || "")
       setIsbn13(book.isbn13 || "")
       setCoverUploadHint(undefined)
+      setAladinFetchBusy(false)
     }
   }, [isOpen, book])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || isAladinApplying) return
+    if (!title.trim() || aladinBusy) return
 
     const d1 = categoryTree
       ? BookCategoryService.findDepth1(categoryTree, categoryDepth1Id)
@@ -142,6 +146,11 @@ export default function EditBookModal({
     onClose()
   }
 
+  const handleClose = () => {
+    if (aladinBusy) return
+    onClose()
+  }
+
   const levelOptions: SelectOption<BookLevel | "">[] = [
     { value: "", label: "선택 안 함" },
     ...BOOK_LEVELS.map((l) => ({ value: l, label: l })),
@@ -150,8 +159,15 @@ export default function EditBookModal({
   return (
     <FormModalFrame
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="책 정보 편집"
+      interactionLocked={aladinBusy}
+      lockOverlay={
+        <AladinFormApplyOverlay
+          active={aladinBusy}
+          phase={isAladinApplying ? "apply" : "search"}
+        />
+      }
       headerStart={
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-theme-tertiary">
           <BookOpen className="h-5 w-5 accent-theme-primary" aria-hidden />
@@ -162,9 +178,8 @@ export default function EditBookModal({
         onSubmit={handleSubmit}
         className="form-modal-fieldset relative max-h-[min(70vh,32rem)] overflow-y-auto"
       >
-        <AladinFormApplyOverlay active={isAladinApplying} />
         <fieldset
-          disabled={isAladinApplying}
+          disabled={aladinBusy}
           className="m-0 min-w-0 space-y-4 border-0 p-0 sm:space-y-5"
         >
         <div>
@@ -184,7 +199,8 @@ export default function EditBookModal({
         <div className="space-y-3 sm:space-y-4">
           <AladinBookLookup
             title={title}
-            disabled={isAladinApplying}
+            disabled={aladinBusy}
+            onBusyChange={setAladinFetchBusy}
             onLookupStart={() => {
               setCoverUploadHint(undefined)
             }}
@@ -318,15 +334,15 @@ export default function EditBookModal({
         <div className="flex justify-end gap-2 border-t border-theme-tertiary pt-4">
           <button
             type="button"
-            onClick={onClose}
-            disabled={isAladinApplying}
+            onClick={handleClose}
+            disabled={aladinBusy}
             className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             취소
           </button>
           <button
             type="submit"
-            disabled={!title.trim() || isAladinApplying}
+            disabled={!title.trim() || aladinBusy}
             className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             저장하기

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Loader2, Search, BookOpen } from "lucide-react"
 import {
@@ -22,6 +22,8 @@ interface AladinBookLookupProps {
    * (검색 결과 없음 · 메타는 채웠으나 표지 URL 없음)
    */
   onNeedsManualCover?: (reason: "not_found" | "no_cover") => void
+  /** 검색·상세 조회 중 true (폼 잠금용) */
+  onBusyChange?: (busy: boolean) => void
 }
 
 export default function AladinBookLookup({
@@ -30,10 +32,15 @@ export default function AladinBookLookup({
   onApply,
   onLookupStart,
   onNeedsManualCover,
+  onBusyChange,
 }: AladinBookLookupProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<AladinSearchHit[] | null>(null)
+
+  useEffect(() => {
+    onBusyChange?.(loading)
+  }, [loading, onBusyChange])
 
   const clearCandidates = () => setCandidates(null)
 

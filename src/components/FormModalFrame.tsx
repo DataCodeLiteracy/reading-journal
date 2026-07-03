@@ -13,6 +13,9 @@ type FormModalFrameProps = {
   children: ReactNode
   /** 헤더 왼쪽 (아이콘 배지 등) */
   headerStart?: ReactNode
+  /** true면 닫기·배경 클릭 차단 + lockOverlay 표시 */
+  interactionLocked?: boolean
+  lockOverlay?: ReactNode
 }
 
 /**
@@ -25,6 +28,8 @@ export default function FormModalFrame({
   size = "default",
   children,
   headerStart,
+  interactionLocked = false,
+  lockOverlay,
 }: FormModalFrameProps) {
   useBodyScrollLock(isOpen)
   if (!isOpen) return null
@@ -37,13 +42,16 @@ export default function FormModalFrame({
       <div
         className="absolute inset-0 bg-theme-backdrop"
         aria-hidden
-        onClick={onClose}
+        onClick={interactionLocked ? undefined : onClose}
       />
       <div
-        className={`${shellClass} modal-dialog-surface relative z-10 min-w-0 max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6`}
+        className={`${shellClass} modal-dialog-surface relative z-10 min-w-0 max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 ${
+          interactionLocked ? "overflow-hidden" : ""
+        }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"
+        aria-busy={interactionLocked || undefined}
       >
         <div className="mb-3 flex items-center justify-between gap-2 sm:mb-4">
           <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -58,13 +66,15 @@ export default function FormModalFrame({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-md p-1 text-theme-secondary transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
+            disabled={interactionLocked}
+            className="shrink-0 rounded-md p-1 text-theme-secondary transition-colors hover:bg-theme-tertiary hover:text-theme-primary disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="닫기"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         {children}
+        {interactionLocked && lockOverlay}
       </div>
     </div>
   )

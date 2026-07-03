@@ -24,6 +24,46 @@ type Params = {
   setters: AladinBookFormSetters
 }
 
+function waitForPaintFrames(count = 2): Promise<void> {
+  return new Promise((resolve) => {
+    let remaining = count
+    const step = () => {
+      remaining -= 1
+      if (remaining <= 0) resolve()
+      else requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  })
+}
+
+async function waitForFormSync(
+  readForm: () => AladinFormFieldSnapshot,
+  expected: Partial<AladinFormFieldSnapshot>,
+): Promise<void> {
+  await waitForPaintFrames(2)
+
+  let matched = await waitUntil(
+    () => formMatchesAladinExpectations(readForm(), expected),
+    { intervalMs: 16, timeoutMs: 15000 },
+  )
+
+  if (matched) return
+
+  await waitForPaintFrames(3)
+  matched = await waitUntil(
+    () => formMatchesAladinExpectations(readForm(), expected),
+    { intervalMs: 32, timeoutMs: 5000 },
+  )
+
+  if (!matched) {
+    console.warn(
+      "[useAladinFormApply] 폼 필드 동기화 대기 시간 초과",
+      expected,
+      readForm(),
+    )
+  }
+}
+
 export function useAladinFormApply({
   source,
   bookTitle,
@@ -70,18 +110,15 @@ export function useAladinFormApply({
           })
         })
 
+        const notesBeforeApply = formStateRef.current.notes
         const expected = buildExpectedFormAfterAladin(
           metadata,
           enriched,
-          formStateRef.current.notes,
+          notesBeforeApply,
           categoryTreeRef.current,
         )
 
-        await waitUntil(
-          () =>
-            formMatchesAladinExpectations(formStateRef.current, expected),
-          { timeoutMs: 8000 },
-        )
+        await waitForFormSync(() => formStateRef.current, expected)
 
         return enriched
       } finally {
