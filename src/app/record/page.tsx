@@ -17,7 +17,8 @@ import FormModalFrame from "@/components/FormModalFrame"
 import { useAuth } from "@/contexts/AuthContext"
 import { queryKeys } from "@/lib/queryKeys"
 import { ReadingGroupService } from "@/services/readingGroupService"
-import type { ReadingGroup } from "@/types/readingGroup"
+import type { GroupMemberKind, ReadingGroup } from "@/types/readingGroup"
+import { GROUP_MEMBER_KIND_LABELS } from "@/utils/groupMemberLabels"
 
 const RECORD_LINKS = [
   {
@@ -88,6 +89,8 @@ function ActivityHub() {
   const { isLoggedIn, loading, user, userData, userUid } = useAuth()
   const [isJoinOpen, setIsJoinOpen] = useState(false)
   const [inviteCode, setInviteCode] = useState("")
+  const [joinMemberKind, setJoinMemberKind] =
+    useState<GroupMemberKind>("participant")
   const view = searchParams.get("view") === "groups" ? "groups" : "records"
 
   useEffect(() => {
@@ -117,6 +120,7 @@ function ActivityHub() {
           user?.displayName?.trim() ||
           user?.email?.split("@")[0] ||
           "모임원",
+        joinMemberKind,
       ),
     onSuccess: async (group) => {
       await queryClient.invalidateQueries({
@@ -127,6 +131,7 @@ function ActivityHub() {
       })
       setIsJoinOpen(false)
       setInviteCode("")
+      setJoinMemberKind("participant")
       router.push(`/groups/${group.id}`)
     },
   })
@@ -431,6 +436,49 @@ function ActivityHub() {
               placeholder="8자리 초대코드"
               className="form-control"
             />
+
+            <fieldset className="mt-4 space-y-2">
+              <legend className="mb-2 text-sm font-medium text-theme-primary">
+                참여 유형
+              </legend>
+              <label className="flex cursor-pointer gap-3 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3">
+                <input
+                  type="radio"
+                  name="join-member-kind"
+                  value="participant"
+                  checked={joinMemberKind === "participant"}
+                  onChange={() => setJoinMemberKind("participant")}
+                  className="mt-1"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-theme-primary">
+                    {GROUP_MEMBER_KIND_LABELS.participant}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-theme-secondary">
+                    직접 책을 읽고 회차 독서에 참여합니다.
+                  </span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer gap-3 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3">
+                <input
+                  type="radio"
+                  name="join-member-kind"
+                  value="guardian"
+                  checked={joinMemberKind === "guardian"}
+                  onChange={() => setJoinMemberKind("guardian")}
+                  className="mt-1"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-theme-primary">
+                    {GROUP_MEMBER_KIND_LABELS.guardian}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-theme-secondary">
+                    학부모 등 함께 보지만, 직접 읽지는 않는 역할입니다.
+                  </span>
+                </span>
+              </label>
+            </fieldset>
+
             {joinMutation.isError && (
               <p className="mt-2 text-sm text-red-600" role="alert">
                 {getErrorMessage(joinMutation.error)}
@@ -439,7 +487,10 @@ function ActivityHub() {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setIsJoinOpen(false)}
+                onClick={() => {
+                  setIsJoinOpen(false)
+                  setJoinMemberKind("participant")
+                }}
                 disabled={joinMutation.isPending}
                 className="rounded-lg bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary disabled:opacity-50"
               >

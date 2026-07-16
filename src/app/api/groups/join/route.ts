@@ -9,6 +9,7 @@ export async function POST(request: Request) {
       idToken?: string
       inviteCode?: string
       displayName?: string
+      memberKind?: string
     }
     const verified = await verifyFirebaseIdToken(body.idToken ?? "")
     if (!verified) {
@@ -17,6 +18,8 @@ export async function POST(request: Request) {
 
     const inviteCode = body.inviteCode?.trim().toUpperCase()
     const displayName = body.displayName?.trim()
+    const memberKind =
+      body.memberKind === "guardian" ? "guardian" : "participant"
     if (!inviteCode || !displayName) {
       return NextResponse.json(
         { error: "초대 코드와 표시 이름을 입력해주세요." },
@@ -52,6 +55,7 @@ export async function POST(request: Request) {
           user_id: verified.uid,
           display_name: displayName,
           role: "member",
+          member_kind: memberKind,
           status: "active",
           joined_at: now,
           updated_at: FieldValue.serverTimestamp(),

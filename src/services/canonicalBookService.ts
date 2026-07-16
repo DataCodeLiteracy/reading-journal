@@ -3,12 +3,24 @@ import { ApiClient } from "@/lib/apiClient"
 import type { Book } from "@/types/book"
 import type { CanonicalBook } from "@/types/canonicalBook"
 import type { BookTocEntry } from "@/types/bookToc"
+import { normalizeBookTitleKey } from "@/utils/bookTitleKey"
 import {
   editionKeyFromBook,
   primaryCanonicalDocId,
 } from "@/utils/editionKeyDocId"
 
 const COLLECTION = "canonicalBooks"
+const CATALOG_CACHE_TTL_MS = 60_000
+
+let catalogCache: CanonicalBook[] | null = null
+let catalogCacheAt = 0
+
+function matchScore(titleKey: string, authorKey: string, queryKey: string) {
+  if (titleKey.startsWith(queryKey)) return 0
+  if (titleKey.includes(queryKey)) return 1
+  if (authorKey.includes(queryKey)) return 2
+  return 99
+}
 
 function pickSharedBibliographic(
   source: Pick<
@@ -92,27 +104,51 @@ export class CanonicalBookService {
   }
 
   /**
-   * 로그인 사용자용 공유 판본 제목 접두 검색입니다.
-   * 빈 검색어로 컬렉션을 훑지 않으며, 호출자가 큰 값을 넘겨도 최대 20건만 읽습니다.
+   * 공유 판본 제목·저자 부분 일치 검색입니다.
+   * 제목 앞부분뿐 아니라 중간 키워드(예: "몽몽")도 찾을 수 있습니다.
+   * 빈 검색어로 컬렉션을 훑지 않으며, 최대 20건만 반환합니다.
    */
   static async searchByTitlePrefix(
     query: string,
     limit = 20,
   ): Promise<CanonicalBook[]> {
-    const titlePrefix = query.trim()
-    if (!titlePrefix) return []
+    const queryKey = normalizeBookTitleKey(query)
+    if (!queryKey) return []
 
     const safeLimit = Math.min(20, Math.max(1, Math.floor(limit)))
-    return ApiClient.queryDocuments<CanonicalBook>(
-      COLLECTION,
-      [
-        ["title", ">=", titlePrefix],
-        ["title", "<=", `${titlePrefix}\uf8ff`],
-      ],
-      "title",
-      "asc",
-      safeLimit,
-    )
+    const now = Date.now()
+    if (!catalogCache || now - catalogCacheAt > CATALOG_CACHE_TTL_MS) {
+      catalogCache = await ApiClient.queryDocuments<CanonicalBook>(
+        COLLECTION,
+        [],
+        "title",
+        "asc",
+      )
+      catalogCacheAt = now
+    }
+
+    return catalogCache
+      .map((book) => {
+        const titleKey = normalizeBookTitleKey(book.title)
+        const authorKey = normalizeBookTitleKey(book.author ?? "")
+        const score = matchScore(titleKey, authorKey, queryKey)
+        if (score >= 99) return null
+        return { book, score, titleKey }
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort(
+        (left, right) =>
+          left.score - right.score ||
+          left.titleKey.localeCompare(right.titleKey, "ko"),
+      )
+      .slice(0, safeLimit)
+      .map((item) => item.book)
+  }
+
+  /** 새 공유 판본이 생긴 뒤 검색 캐시를 비웁니다. */
+  static invalidateSearchCache() {
+    catalogCache = null
+    catalogCacheAt = 0
   }
 
   static async findPrimaryByEdition(
@@ -135,6 +171,7 @@ export class CanonicalBookService {
       user_ids: [userId],
     }
     await ApiClient.createDocument(COLLECTION, id, payload)
+    this.invalidateSearchCache()
     const created = await this.getById(id)
     if (!created) throw new Error("공유 도서를 만들지 못했습니다.")
     return created
@@ -174,6 +211,7 @@ export class CanonicalBookService {
       ),
     )
 
+    this.invalidateSearchCache()
     const created = await this.getById(id)
     if (!created) throw new Error("공유 도서를 만들지 못했습니다.")
     return created
@@ -190,6 +228,7 @@ export class CanonicalBookService {
       user_ids: [userId],
     }
     const id = await ApiClient.createDocumentWithAutoId(COLLECTION, payload)
+    this.invalidateSearchCache()
     const created = await this.getById(id)
     if (!created) throw new Error("공유 도서를 만들지 못했습니다.")
     return created

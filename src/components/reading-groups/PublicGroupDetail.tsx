@@ -84,9 +84,13 @@ export default function PublicGroupDetail({
     return () => window.clearInterval(timer)
   }, [])
   const booksById = new Map(books.map((book) => [book.id, book]))
-  const assignmentsByMeeting = new Map(
-    assignments.map((assignment) => [assignment.meeting_id, assignment]),
-  )
+  const assignmentsByMeeting = new Map<string, (typeof assignments)[number][]>()
+  assignments.forEach((assignment) => {
+    assignmentsByMeeting.set(assignment.meeting_id, [
+      ...(assignmentsByMeeting.get(assignment.meeting_id) ?? []),
+      assignment,
+    ])
+  })
   const meetingsById = new Map(meetings.map((meeting) => [meeting.id, meeting]))
   const assignmentsByBook = new Map(
     assignments.map((assignment) => [assignment.group_book_id, assignment]),
@@ -112,15 +116,13 @@ export default function PublicGroupDetail({
     return (
       <ul className="space-y-3">
         {items.map((meeting) => {
-          const assignment = assignmentsByMeeting.get(meeting.id)
-          const book = assignment
-            ? booksById.get(assignment.group_book_id)
-            : undefined
+          const meetingAssignments = assignmentsByMeeting.get(meeting.id) ?? []
+          const periodAssignment = meetingAssignments[0]
           const phase = effectiveGroupMeetingPhase({
             status: meeting.status,
             scheduledAt: meeting.scheduled_at,
-            readingStartAt: assignment?.reading_start_at,
-            readingEndAt: assignment?.reading_end_at,
+            readingStartAt: periodAssignment?.reading_start_at,
+            readingEndAt: periodAssignment?.reading_end_at,
             now: phaseNow,
           })
           return (
@@ -148,28 +150,35 @@ export default function PublicGroupDetail({
                   {meeting.agenda}
                 </p>
               )}
-              {assignment && (
-                <div className="mt-3 rounded-md bg-theme-secondary p-3 text-sm text-theme-secondary">
-                  <p className="font-medium text-theme-primary">
-                    『{assignment.book_title_snapshot ?? book?.title ?? "책 정보 없음"}』
-                  </p>
-                  {assignment.reading_start_at && assignment.reading_end_at && (
-                    <p className="mt-1 text-xs">
-                      {(() => {
-                        const range = inclusiveReadingDateRange(
-                          assignment.reading_start_at,
-                          assignment.reading_end_at,
-                          group.time_zone,
-                        )
-                        const stoppedDate = assignment.stopped_at
-                          ? groupDateKey(assignment.stopped_at, group.time_zone)
-                          : undefined
-                        return stoppedDate
-                          ? `중단 ${range.startDate} ~ ${stoppedDate} · 원래 예정 ${range.startDate} ~ ${range.endDate}`
-                          : `${range.startDate} ~ ${range.endDate}`
-                      })()}
-                    </p>
-                  )}
+              {meetingAssignments.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {meetingAssignments.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="rounded-md bg-theme-secondary p-3 text-sm text-theme-secondary"
+                    >
+                      <p className="font-medium text-theme-primary">
+                        『{assignment.book_title_snapshot ?? booksById.get(assignment.group_book_id)?.title ?? "책 정보 없음"}』
+                      </p>
+                      {assignment.reading_start_at && assignment.reading_end_at && (
+                        <p className="mt-1 text-xs">
+                          {(() => {
+                            const range = inclusiveReadingDateRange(
+                              assignment.reading_start_at,
+                              assignment.reading_end_at,
+                              group.time_zone,
+                            )
+                            const stoppedDate = assignment.stopped_at
+                              ? groupDateKey(assignment.stopped_at, group.time_zone)
+                              : undefined
+                            return stoppedDate
+                              ? `중단 ${range.startDate} ~ ${stoppedDate} · 원래 예정 ${range.startDate} ~ ${range.endDate}`
+                              : `${range.startDate} ~ ${range.endDate}`
+                          })()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </li>

@@ -100,10 +100,16 @@ export default function GroupMeetingRecordsPanel({
     () => new Map((recordsQuery.data ?? []).map((record) => [record.meeting_id, record])),
     [recordsQuery.data],
   )
-  const assignmentsByMeeting = useMemo(
-    () => new Map(assignments.map((assignment) => [assignment.meeting_id, assignment])),
-    [assignments],
-  )
+  const assignmentsByMeeting = useMemo(() => {
+    const map = new Map<string, MeetingBookAssignment[]>()
+    assignments.forEach((assignment) => {
+      map.set(assignment.meeting_id, [
+        ...(map.get(assignment.meeting_id) ?? []),
+        assignment,
+      ])
+    })
+    return map
+  }, [assignments])
   const booksById = useMemo(() => new Map(books.map((book) => [book.id, book])), [books])
   const membersById = useMemo(
     () => new Map(members.map((member) => [member.id, member])),
@@ -194,13 +200,13 @@ export default function GroupMeetingRecordsPanel({
       <ol className="space-y-4">
         {timeline.map((meeting) => {
           const record = recordsByMeeting.get(meeting.id)
-          const assignment = assignmentsByMeeting.get(meeting.id)
-          const book = assignment ? booksById.get(assignment.group_book_id) : undefined
+          const meetingAssignments = assignmentsByMeeting.get(meeting.id) ?? []
+          const periodAssignment = meetingAssignments[0]
           const phase = effectiveGroupMeetingPhase({
             status: meeting.status,
             scheduledAt: meeting.scheduled_at,
-            readingStartAt: assignment?.reading_start_at,
-            readingEndAt: assignment?.reading_end_at,
+            readingStartAt: periodAssignment?.reading_start_at,
+            readingEndAt: periodAssignment?.reading_end_at,
             now: phaseNow,
           })
           return (
@@ -226,10 +232,14 @@ export default function GroupMeetingRecordsPanel({
                       {meeting.location}
                     </p>
                   )}
-                  {assignment && (
-                    <p className="mt-2 text-sm text-theme-primary">
-                      『{assignment.book_title_snapshot ?? book?.title ?? "책 정보 없음"}』
-                    </p>
+                  {meetingAssignments.length > 0 && (
+                    <div className="mt-2 space-y-0.5">
+                      {meetingAssignments.map((assignment) => (
+                        <p key={assignment.id} className="text-sm text-theme-primary">
+                          『{assignment.book_title_snapshot ?? booksById.get(assignment.group_book_id)?.title ?? "책 정보 없음"}』
+                        </p>
+                      ))}
+                    </div>
                   )}
                 </div>
                 {isOwner && (

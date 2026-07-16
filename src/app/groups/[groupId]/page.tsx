@@ -97,43 +97,60 @@ function MeetingList({
   now: Date
 }) {
   if (!meetings.length) return <EmptyState>등록된 모임 일정이 없습니다.</EmptyState>
-  const assignmentsByMeeting = new Map(
-    assignments.map((assignment) => [assignment.meeting_id, assignment]),
-  )
+  const assignmentsByMeeting = new Map<string, MeetingBookAssignment[]>()
+  assignments.forEach((assignment) => {
+    assignmentsByMeeting.set(assignment.meeting_id, [
+      ...(assignmentsByMeeting.get(assignment.meeting_id) ?? []),
+      assignment,
+    ])
+  })
   const booksById = new Map(books.map((book) => [book.id, book]))
   return (
     <ul className="space-y-3">
       {meetings.map((meeting) => {
-        const assignment = assignmentsByMeeting.get(meeting.id)
-        const book = assignment ? booksById.get(assignment.group_book_id) : undefined
+        const meetingAssignments = assignmentsByMeeting.get(meeting.id) ?? []
+        const periodAssignment = meetingAssignments[0]
         const phase = effectiveGroupMeetingPhase({
           status: meeting.status,
           scheduledAt: meeting.scheduled_at,
-          readingStartAt: assignment?.reading_start_at,
-          readingEndAt: assignment?.reading_end_at,
+          readingStartAt: periodAssignment?.reading_start_at,
+          readingEndAt: periodAssignment?.reading_end_at,
           now,
         })
-        return <li key={meeting.id} className="rounded-lg bg-theme-tertiary p-4">
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-semibold text-theme-primary">
-              {meeting.sequence}회 · {meeting.title}
-            </h3>
-            <span className="text-xs text-theme-secondary">
-              {GROUP_MEETING_PHASE_LABELS[phase]}
-            </span>
-          </div>
-          <p className="text-sm text-theme-secondary">
-            {formatDate(meeting.scheduled_at, timeZone)}
-          </p>
-          {meeting.location && (
-            <p className="mt-1 text-sm text-theme-secondary">{meeting.location}</p>
-          )}
-          {assignment && (
-            <p className="mt-2 text-sm text-theme-secondary">
-              『{assignment.book_title_snapshot ?? book?.title ?? "책 정보 없음"}』
+        return (
+          <li key={meeting.id} className="rounded-xl bg-theme-tertiary p-4">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-semibold text-theme-primary">
+                {meeting.sequence}회 · {meeting.title}
+              </h3>
+              <span className="rounded-full bg-theme-secondary px-2.5 py-0.5 text-xs text-theme-secondary">
+                {GROUP_MEETING_PHASE_LABELS[phase]}
+              </span>
+            </div>
+            <p className="text-sm text-theme-secondary">
+              {formatDate(meeting.scheduled_at, timeZone)}
             </p>
-          )}
-        </li>
+            {meeting.location && (
+              <p className="mt-1 text-sm text-theme-secondary">{meeting.location}</p>
+            )}
+            {meetingAssignments.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {meetingAssignments.map((assignment) => (
+                  <li
+                    key={assignment.id}
+                    className="text-sm text-theme-primary"
+                  >
+                    『
+                    {assignment.book_title_snapshot ??
+                      booksById.get(assignment.group_book_id)?.title ??
+                      "책 정보 없음"}
+                    』
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        )
       })}
     </ul>
   )
@@ -362,18 +379,43 @@ export default function ReadingGroupDetailPage() {
         >
           {activeTab === "home" && (
             <div>
-              <h2 className="mb-4 text-lg font-semibold text-theme-primary">모임 한눈에 보기</h2>
+              <h2 className="mb-4 text-lg font-semibold text-theme-primary">
+                모임 한눈에 보기
+              </h2>
               <div className="mb-6 grid grid-cols-3 gap-3">
                 {[
-                  ["멤버", `${members.filter((item) => item.status === "active").length}명`],
-                  ["책", `${books.length}권`],
-                  ["예정 일정", `${upcomingMeetings.length}개`],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-lg bg-theme-tertiary p-3 text-center">
-                    <p className="text-xs text-theme-secondary">{label}</p>
-                    <p className="mt-1 text-lg font-bold text-theme-primary">{value}</p>
-                  </div>
-                ))}
+                  {
+                    label: "멤버",
+                    value: `${members.filter((item) => item.status === "active").length}명`,
+                    icon: Users,
+                  },
+                  {
+                    label: "책",
+                    value: `${books.length}권`,
+                    icon: BookOpen,
+                  },
+                  {
+                    label: "예정 일정",
+                    value: `${upcomingMeetings.length}개`,
+                    icon: CalendarDays,
+                  },
+                ].map((stat) => {
+                  const Icon = stat.icon
+                  return (
+                    <div
+                      key={stat.label}
+                      className="rounded-xl bg-theme-tertiary px-3 py-3.5 text-center"
+                    >
+                      <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-theme-secondary text-accent-theme">
+                        <Icon className="h-4 w-4" aria-hidden />
+                      </div>
+                      <p className="mt-2 text-xs text-theme-secondary">{stat.label}</p>
+                      <p className="mt-0.5 text-lg font-bold text-theme-primary">
+                        {stat.value}
+                      </p>
+                    </div>
+                  )
+                })}
               </div>
               <div className="mb-6">
                 <GroupReadingProgress

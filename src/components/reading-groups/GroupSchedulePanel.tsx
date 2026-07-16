@@ -15,7 +15,6 @@ import {
   FormTimePicker,
 } from "@/components/FormDateTimePicker"
 import FormModalFrame from "@/components/FormModalFrame"
-import Select, { type SelectOption } from "@/components/Select"
 import { ReadingGroupService } from "@/services/readingGroupService"
 import type {
   GroupBook,
@@ -52,7 +51,7 @@ type Draft = {
   meetingTime: string
   location: string
   agenda: string
-  groupBookId: string
+  groupBookIds: string[]
 }
 
 type DurationPreset = "week1" | "week2" | "week3" | "month1"
@@ -119,7 +118,7 @@ function matchingPreset(
   )
 }
 
-function makeCreateDraft(group: ReadingGroup, meetings: GroupMeeting[], books: GroupBook[]) {
+function makeCreateDraft(group: ReadingGroup, meetings: GroupMeeting[]): Draft {
   const sequence = Math.max(0, ...meetings.map((meeting) => meeting.sequence)) + 1
   const startDate = readingStartDate(group, meetings, sequence)
   const scheduledDate = presetMeetingDate(startDate, "week1")
@@ -131,27 +130,28 @@ function makeCreateDraft(group: ReadingGroup, meetings: GroupMeeting[], books: G
     meetingTime: group.default_time || "19:00",
     location: group.default_location ?? "",
     agenda: "",
-    groupBookId: books.find((book) => book.canonical_book_id)?.id ?? "",
+    groupBookIds: [],
   }
 }
 
 function makeEditDraft(
   meeting: GroupMeeting,
-  assignment: MeetingBookAssignment | undefined,
+  meetingAssignments: MeetingBookAssignment[],
   timeZone: string,
 ): Draft {
   const scheduledAt = timeZoneDateTimeInput(meeting.scheduled_at, timeZone)
+  const readingStartAt = meetingAssignments[0]?.reading_start_at
   return {
     sequence: String(meeting.sequence),
     title: meeting.title,
-    readingStartDate: assignment?.reading_start_at
-      ? groupDateKey(assignment.reading_start_at, timeZone)
+    readingStartDate: readingStartAt
+      ? groupDateKey(readingStartAt, timeZone)
       : "",
     meetingDate: scheduledAt.slice(0, 10),
     meetingTime: scheduledAt.slice(11, 16),
     location: meeting.location ?? "",
     agenda: meeting.agenda ?? "",
-    groupBookId: assignment?.group_book_id ?? "",
+    groupBookIds: meetingAssignments.map((assignment) => assignment.group_book_id),
   }
 }
 
@@ -167,7 +167,7 @@ export default function GroupSchedulePanel({
   const [month, setMonth] = useState({ year: initialMonth.getFullYear(), month: initialMonth.getMonth() })
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<GroupMeeting | null>(null)
-  const [draft, setDraft] = useState<Draft>(() => makeCreateDraft(group, meetings, books))
+  const [draft, setDraft] = useState<Draft>(() => makeCreateDraft(group, meetings))
   const [selectedPreset, setSelectedPreset] = useState<DurationPreset | null>("week1")
   const [phaseNow, setPhaseNow] = useState(() => new Date())
   const [busy, setBusy] = useState(false)
@@ -183,24 +183,17 @@ export default function GroupSchedulePanel({
       Boolean(book.canonical_book_id) &&
       ["planned", "on_hold"].includes(book.status),
   )
-  const canonicalBooks = books.filter(
-    (book) =>
-      Boolean(book.canonical_book_id) &&
-      (editing?.id === assignments.find((item) => item.group_book_id === book.id)?.meeting_id ||
-        ["planned", "on_hold"].includes(book.status)),
-  )
-  const bookOptions: SelectOption[] = [
-    { value: "", label: "선택해 주세요" },
-    ...canonicalBooks.map((book) => ({
-      value: book.id,
-      label: book.title,
-    })),
-  ]
   const booksById = useMemo(() => new Map(books.map((book) => [book.id, book])), [books])
-  const assignmentsByMeeting = useMemo(
-    () => new Map(assignments.map((assignment) => [assignment.meeting_id, assignment])),
-    [assignments],
-  )
+  const assignmentsByMeeting = useMemo(() => {
+    const map = new Map<string, MeetingBookAssignment[]>()
+    assignments.forEach((assignment) => {
+      map.set(assignment.meeting_id, [
+        ...(map.get(assignment.meeting_id) ?? []),
+        assignment,
+      ])
+    })
+    return map
+  }, [assignments])
   const meetingsByDate = useMemo(() => {
     const result = new Map<string, GroupMeeting[]>()
     meetings.forEach((meeting) => {
@@ -220,23 +213,32 @@ export default function GroupSchedulePanel({
 
   const openCreate = () => {
     setEditing(null)
-    setDraft(makeCreateDraft(group, meetings, availableBooks))
+    setDraft(makeCreateDraft(group, meetings))
     setSelectedPreset("week1")
     setError("")
     setModalOpen(true)
   }
 
   const openEdit = (meeting: GroupMeeting) => {
-    const assignment = assignmentsByMeeting.get(meeting.id)
-    const nextDraft = makeEditDraft(meeting, assignment, group.time_zone)
-    const startDate = assignment?.reading_start_at
-      ? groupDateKey(assignment.reading_start_at, group.time_zone)
+    const meetingAssignments = assignmentsByMeeting.get(meeting.id) ?? []
+    const nextDraft = makeEditDraft(meeting, meetingAssignments, group.time_zone)
+    const startDate = meetingAssignments[0]?.reading_start_at
+      ? groupDateKey(meetingAssignments[0].reading_start_at, group.time_zone)
       : readingStartDate(group, meetings, meeting.sequence, meeting.id)
     setEditing(meeting)
     setDraft(nextDraft)
     setSelectedPreset(matchingPreset(startDate, nextDraft.meetingDate))
     setError("")
     setModalOpen(true)
+  }
+
+  const toggleBook = (bookId: string) => {
+    setDraft((current) => ({
+      ...current,
+      groupBookIds: current.groupBookIds.includes(bookId)
+        ? current.groupBookIds.filter((id) => id !== bookId)
+        : [...current.groupBookIds, bookId],
+    }))
   }
 
   const applyPreset = (preset: DurationPreset) => {
@@ -252,9 +254,7 @@ export default function GroupSchedulePanel({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     const sequence = Number(draft.sequence)
-    const book = booksById.get(draft.groupBookId)
     if (!Number.isInteger(sequence) || sequence < 1) return setError("회차는 1 이상의 정수여야 합니다.")
-    if (!book?.canonical_book_id) return setError("공유 판본이 연결된 책을 선택해 주세요.")
     if (!draft.title.trim()) return setError("회차 제목을 입력해 주세요.")
     if (!draft.readingStartDate) return setError("독서 시작일을 입력해 주세요.")
     if (!draft.meetingDate) return setError("종료 날짜를 입력해 주세요.")
@@ -279,30 +279,38 @@ export default function GroupSchedulePanel({
       location: draft.location.trim() || undefined,
       agenda: draft.agenda.trim() || undefined,
     }
-    const assignmentInput = {
-      group_book_id: book.id,
-      canonical_book_id: book.canonical_book_id,
-      reading_start_at: readingStartAt,
-      reading_end_at: readingEndAt,
-      reading_range: "완독",
-    }
 
     setBusy(true)
     setError("")
     try {
       if (editing) {
         await ReadingGroupService.updateMeeting(editing.id, meetingInput)
-        const assignment = assignmentsByMeeting.get(editing.id)
-        if (assignment) {
-          await ReadingGroupService.updateMeetingBookAssignment(assignment.id, assignmentInput)
-        } else {
-          await ReadingGroupService.createMeetingBookAssignment(group.id, editing.id, assignmentInput)
+        const meetingAssignments = assignmentsByMeeting.get(editing.id) ?? []
+        for (const assignment of meetingAssignments) {
+          await ReadingGroupService.updateMeetingBookAssignment(assignment.id, {
+            reading_start_at: readingStartAt,
+            reading_end_at: readingEndAt,
+          })
         }
       } else {
-        await ReadingGroupService.createMeetingWithBookAssignment(
+        const selectedBooks = draft.groupBookIds
+          .map((id) => booksById.get(id))
+          .filter((book): book is GroupBook => Boolean(book?.canonical_book_id))
+        if (selectedBooks.length === 0) {
+          setBusy(false)
+          return setError("공유 판본이 연결된 책을 한 권 이상 선택해 주세요.")
+        }
+        const assignmentInputs = selectedBooks.map((book) => ({
+          group_book_id: book.id,
+          canonical_book_id: book.canonical_book_id as string,
+          reading_start_at: readingStartAt,
+          reading_end_at: readingEndAt,
+          reading_range: "완독",
+        }))
+        await ReadingGroupService.createMeetingWithBookAssignments(
           group.id,
           { ...meetingInput, status: "scheduled" },
-          assignmentInput,
+          assignmentInputs,
         )
       }
       await onChangedAction()
@@ -500,13 +508,13 @@ export default function GroupSchedulePanel({
         ) : (
           <ul className="space-y-3">
             {meetings.map((meeting) => {
-              const assignment = assignmentsByMeeting.get(meeting.id)
-              const book = assignment ? booksById.get(assignment.group_book_id) : undefined
+              const meetingAssignments = assignmentsByMeeting.get(meeting.id) ?? []
+              const periodAssignment = meetingAssignments[0]
               const phase = effectiveGroupMeetingPhase({
                 status: meeting.status,
                 scheduledAt: meeting.scheduled_at,
-                readingStartAt: assignment?.reading_start_at,
-                readingEndAt: assignment?.reading_end_at,
+                readingStartAt: periodAssignment?.reading_start_at,
+                readingEndAt: periodAssignment?.reading_end_at,
                 now: phaseNow,
               })
               return (
@@ -555,20 +563,27 @@ export default function GroupSchedulePanel({
                     </div>
                   )}
                   {meeting.agenda && <p className="mt-3 whitespace-pre-wrap text-sm text-theme-primary">{meeting.agenda}</p>}
-                  {assignment ? (
-                    <div className="mt-3 rounded-lg bg-theme-secondary p-3 text-sm">
-                      <p className="font-medium text-theme-primary">『{assignment.book_title_snapshot ?? book?.title ?? "책 정보 없음"}』</p>
-                      <p className="mt-1 text-xs text-theme-secondary">
-                        {(() => {
-                          const range = inclusiveReadingDateRange(assignment.reading_start_at, assignment.reading_end_at, group.time_zone)
-                          const stoppedDate = assignment.stopped_at
-                            ? groupDateKey(assignment.stopped_at, group.time_zone)
-                            : undefined
-                          return stoppedDate
-                            ? `중단 기간 ${range.startDate} ~ ${stoppedDate} · 원래 예정 ${range.startDate} ~ ${range.endDate}`
-                            : `읽기 기간 ${range.startDate} ~ ${range.endDate}`
-                        })()}
-                      </p>
+                  {meetingAssignments.length ? (
+                    <div className="mt-3 space-y-2">
+                      {meetingAssignments.map((assignment) => {
+                        const book = booksById.get(assignment.group_book_id)
+                        return (
+                          <div key={assignment.id} className="rounded-lg bg-theme-secondary p-3 text-sm">
+                            <p className="font-medium text-theme-primary">『{assignment.book_title_snapshot ?? book?.title ?? "책 정보 없음"}』</p>
+                            <p className="mt-1 text-xs text-theme-secondary">
+                              {(() => {
+                                const range = inclusiveReadingDateRange(assignment.reading_start_at, assignment.reading_end_at, group.time_zone)
+                                const stoppedDate = assignment.stopped_at
+                                  ? groupDateKey(assignment.stopped_at, group.time_zone)
+                                  : undefined
+                                return stoppedDate
+                                  ? `중단 기간 ${range.startDate} ~ ${stoppedDate} · 원래 예정 ${range.startDate} ~ ${range.endDate}`
+                                  : `읽기 기간 ${range.startDate} ~ ${range.endDate}`
+                              })()}
+                            </p>
+                          </div>
+                        )
+                      })}
                     </div>
                   ) : (
                     <p className="mt-3 text-sm text-theme-secondary">연결된 책 과제가 없습니다.</p>
@@ -702,23 +717,58 @@ export default function GroupSchedulePanel({
           </label>
           <fieldset className="space-y-3 rounded-lg border border-theme-tertiary p-3">
             <legend className="px-1 text-sm font-semibold text-theme-primary">회차 책과 읽기 기간</legend>
-            <label className="block text-sm font-medium text-theme-primary">
-              책
-              <Select
-                value={draft.groupBookId}
-                onChangeAction={(groupBookId) =>
-                  setDraft({ ...draft, groupBookId })
-                }
-                options={bookOptions}
-                emptyValue=""
-                disabled={Boolean(editing)}
-                className="mt-1"
-                aria-label="회차 책"
-                truncate={false}
-              />
-            </label>
+            {editing ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-theme-primary">배정된 책</p>
+                {draft.groupBookIds.length ? (
+                  <ul className="space-y-1.5">
+                    {draft.groupBookIds.map((bookId) => (
+                      <li
+                        key={bookId}
+                        className="rounded-md bg-theme-tertiary px-3 py-2 text-sm text-theme-primary"
+                      >
+                        『{booksById.get(bookId)?.title ?? "책 정보 없음"}』
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-theme-secondary">연결된 책이 없습니다.</p>
+                )}
+                <p className="text-xs text-theme-secondary">
+                  배정된 책은 수정 화면에서 변경할 수 없으며, 읽기 기간만 조정됩니다.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-theme-primary">책 (여러 권 선택 가능)</p>
+                {availableBooks.length ? (
+                  <ul className="space-y-1.5">
+                    {availableBooks.map((book) => {
+                      const checked = draft.groupBookIds.includes(book.id)
+                      return (
+                        <li key={book.id}>
+                          <label className="flex cursor-pointer items-start gap-2 rounded-md bg-theme-secondary px-3 py-2 text-sm text-theme-primary">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleBook(book.id)}
+                              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent-theme)]"
+                            />
+                            <span className="min-w-0 break-words">{book.title}</span>
+                          </label>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-theme-secondary">
+                    배정할 수 있는 예정 또는 선정 보류 책이 없습니다.
+                  </p>
+                )}
+              </div>
+            )}
             <p className="text-xs text-theme-secondary">
-              책 전체 완독을 목표로 하며, 선택한 독서 시작일부터 이번 모임 전날까지 읽습니다.
+              선택한 책 전체 완독을 목표로 하며, 독서 시작일부터 이번 모임 전날까지 읽습니다.
             </p>
           </fieldset>
           {error && <p className="text-sm text-red-600" role="alert">{error}</p>}

@@ -1,6 +1,8 @@
 import type { BookLevel } from "@/types/book"
 
 export type GroupMemberRole = "owner" | "member"
+/** 권한(role)과 별개로, 직접 읽는 참여자인지 보호자인지 구분합니다. */
+export type GroupMemberKind = "participant" | "guardian"
 export type GroupMemberStatus = "active" | "invited"
 export type ReadingGroupStatus = "active" | "paused" | "archived"
 export type GroupBookStatus =
@@ -58,6 +60,12 @@ export interface GroupMember extends ReadingGroupDocument {
   user_id: string | null
   display_name: string
   role: GroupMemberRole
+  /**
+   * 참여자: 직접 읽는 모임원.
+   * 보호자: 학부모 등 함께 보지만 직접 읽지 않는 역할.
+   * 없으면 참여자로 취급합니다.
+   */
+  member_kind?: GroupMemberKind
   status: GroupMemberStatus
   joined_at?: string
   invited_at?: string
@@ -284,7 +292,10 @@ export type CreateGroupMemberInput = Omit<
   "id" | "group_id" | "created_at" | "updated_at"
 >
 export type UpdateGroupMemberInput = Partial<
-  Pick<GroupMember, "display_name" | "role" | "status" | "joined_at" | "invited_at">
+  Pick<
+    GroupMember,
+    "display_name" | "role" | "member_kind" | "status" | "joined_at" | "invited_at"
+  >
 >
 
 export type CreateGroupBookInput = Omit<

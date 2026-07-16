@@ -7,16 +7,23 @@ import { Pencil, Trash2, UserMinus, UserPlus } from "lucide-react"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
+import GroupMemberName from "@/components/reading-groups/GroupMemberName"
 import { queryKeys } from "@/lib/queryKeys"
 import { ReadingGroupService } from "@/services/readingGroupService"
 import { UserService } from "@/services/userService"
 import { BOOK_LEVELS, type BookLevel } from "@/types/book"
 import type {
   GroupMember,
+  GroupMemberKind,
   ReadingGroup,
   ReadingGroupStatus,
   UpdateReadingGroupInput,
 } from "@/types/readingGroup"
+import {
+  GROUP_MEMBER_KIND_LABELS,
+  memberKindLabel,
+  resolveMemberKind,
+} from "@/utils/groupMemberLabels"
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 const STATUS_OPTIONS: SelectOption<ReadingGroupStatus>[] = [
@@ -30,6 +37,10 @@ const WEEKDAY_OPTIONS: SelectOption[] = [
     value: String(index),
     label: `${day}요일`,
   })),
+]
+const MEMBER_KIND_OPTIONS: SelectOption<GroupMemberKind>[] = [
+  { value: "participant", label: GROUP_MEMBER_KIND_LABELS.participant },
+  { value: "guardian", label: GROUP_MEMBER_KIND_LABELS.guardian },
 ]
 
 type GroupInfoPanelProps = {
@@ -81,9 +92,13 @@ export default function GroupInfoPanel({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [groupForm, setGroupForm] = useState<GroupFormState>(() => groupToForm(group))
   const [offlineName, setOfflineName] = useState("")
+  const [offlineMemberKind, setOfflineMemberKind] =
+    useState<GroupMemberKind>("participant")
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [validationError, setValidationError] = useState("")
   const [userDisplayNames, setUserDisplayNames] = useState<Record<string, string>>({})
+  const [memberActionError, setMemberActionError] = useState("")
+  const [busyMemberId, setBusyMemberId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!settingsOpen) setGroupForm(groupToForm(group))
@@ -155,16 +170,24 @@ export default function GroupInfoPanel({
   })
 
   const addMemberMutation = useMutation({
-    mutationFn: (displayName: string) =>
+    mutationFn: ({
+      displayName,
+      memberKind,
+    }: {
+      displayName: string
+      memberKind: GroupMemberKind
+    }) =>
       ReadingGroupService.addMember(group.id, {
         user_id: null,
         display_name: displayName,
         role: "member",
+        member_kind: memberKind,
         status: "active",
         joined_at: new Date().toISOString(),
       }),
     onSuccess: async () => {
       setOfflineName("")
+      setOfflineMemberKind("participant")
       setMemberOpen(false)
       setValidationError("")
       await refreshGroupQueries()
@@ -175,6 +198,50 @@ export default function GroupInfoPanel({
     mutationFn: (memberId: string) => ReadingGroupService.deleteMember(memberId),
     onSuccess: refreshGroupQueries,
   })
+
+  const changeMemberKind = async (
+    member: GroupMember,
+    memberKind: GroupMemberKind,
+  ) => {
+    if (resolveMemberKind(member) === memberKind) return
+    setBusyMemberId(member.id)
+    setMemberActionError("")
+    try {
+      await ReadingGroupService.updateMember(member.id, {
+        member_kind: memberKind,
+      })
+      await refreshGroupQueries()
+    } catch (error) {
+      setMemberActionError(
+        errorMessage(error, "참여 유형을 변경하지 못했습니다."),
+      )
+    } finally {
+      setBusyMemberId(null)
+    }
+  }
+
+  const transferOwnership = async (member: GroupMember) => {
+    if (!member.user_id || member.user_id === group.owner_user_id) return
+    if (
+      !window.confirm(
+        `${memberLabel(member)}님에게 모임장 역할을 넘길까요?\n넘기면 지금부터 그분이 모임장을 맡게 됩니다.`,
+      )
+    ) {
+      return
+    }
+    setBusyMemberId(member.id)
+    setMemberActionError("")
+    try {
+      await ReadingGroupService.transferOwnership(group.id, member.user_id)
+      await refreshGroupQueries()
+    } catch (error) {
+      setMemberActionError(
+        errorMessage(error, "모임장 역할을 넘기지 못했습니다."),
+      )
+    } finally {
+      setBusyMemberId(null)
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: () => ReadingGroupService.deleteGroup(group.id),
@@ -226,7 +293,10 @@ export default function GroupInfoPanel({
       return
     }
     setValidationError("")
-    addMemberMutation.mutate(displayName)
+    addMemberMutation.mutate({
+      displayName,
+      memberKind: offlineMemberKind,
+    })
   }
 
   const removeMember = (member: GroupMember) => {
@@ -340,6 +410,7 @@ export default function GroupInfoPanel({
               type="button"
               onClick={() => {
                 setValidationError("")
+                setOfflineMemberKind("participant")
                 setMemberOpen(true)
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-accent-theme px-3 py-2 text-sm font-semibold text-white"
@@ -351,37 +422,76 @@ export default function GroupInfoPanel({
         </div>
         <ul className="divide-y divide-theme-tertiary overflow-hidden rounded-lg border border-theme-tertiary">
           {activeMembers.map((member) => {
-            const isOwnerSelf = member.user_id === group.owner_user_id
+            const isOwnerSelf =
+              member.user_id === group.owner_user_id || member.role === "owner"
+            const kind = resolveMemberKind(member)
             return (
-              <li key={member.id} className="flex items-center justify-between gap-3 p-3">
+              <li
+                key={member.id}
+                className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-theme-primary">
-                    {memberLabel(member)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-theme-secondary">
-                    {member.role === "owner" ? "모임장" : "멤버"} ·{" "}
+                  <GroupMemberName
+                    name={memberLabel(member)}
+                    isOwner={isOwnerSelf}
+                  />
+                  <p className="mt-1 text-xs text-theme-secondary">
+                    {isOwnerSelf ? "모임장" : memberKindLabel(member)} ·{" "}
                     {member.user_id ? "계정 연결" : "오프라인"}
                   </p>
                 </div>
-                {isOwner && !isOwnerSelf && (
-                  <button
-                    type="button"
-                    onClick={() => removeMember(member)}
-                    disabled={removeMemberMutation.isPending}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/20"
-                    aria-label={`${memberLabel(member)} 멤버 제거`}
-                  >
-                    <UserMinus className="h-4 w-4" aria-hidden />
-                    제거
-                  </button>
+                {isOwner && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="w-[6.5rem]">
+                      <Select
+                        value={kind}
+                        onChangeAction={(nextKind) =>
+                          void changeMemberKind(member, nextKind)
+                        }
+                        options={MEMBER_KIND_OPTIONS}
+                        variant="compact"
+                        disabled={busyMemberId === member.id}
+                        aria-label={`${memberLabel(member)} 참여 유형`}
+                      />
+                    </div>
+                    {!isOwnerSelf && member.user_id && (
+                      <button
+                        type="button"
+                        onClick={() => void transferOwnership(member)}
+                        disabled={busyMemberId === member.id}
+                        className="inline-flex shrink-0 items-center rounded-md bg-theme-tertiary px-2 py-1.5 text-xs font-medium text-theme-primary disabled:opacity-50"
+                      >
+                        모임장 넘기기
+                      </button>
+                    )}
+                    {!isOwnerSelf && (
+                      <button
+                        type="button"
+                        onClick={() => removeMember(member)}
+                        disabled={
+                          removeMemberMutation.isPending ||
+                          busyMemberId === member.id
+                        }
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/20"
+                        aria-label={`${memberLabel(member)} 멤버 제거`}
+                      >
+                        <UserMinus className="h-4 w-4" aria-hidden />
+                        제거
+                      </button>
+                    )}
+                  </div>
                 )}
               </li>
             )
           })}
         </ul>
-        {removeMemberMutation.isError && (
+        {(removeMemberMutation.isError || memberActionError) && (
           <p className="mt-2 text-sm text-red-600" role="alert">
-            {errorMessage(removeMemberMutation.error, "멤버를 제거하지 못했습니다.")}
+            {memberActionError ||
+              errorMessage(
+                removeMemberMutation.error,
+                "멤버를 제거하지 못했습니다.",
+              )}
           </p>
         )}
       </section>
@@ -586,6 +696,21 @@ export default function GroupInfoPanel({
             <p className="mt-2 text-xs text-theme-secondary">
               계정 없이 출석과 모임 기록에 사용할 멤버를 추가합니다.
             </p>
+          </div>
+          <div>
+            <label
+              htmlFor="offline-member-kind"
+              className="mb-1.5 block text-sm font-semibold text-theme-primary"
+            >
+              참여 유형
+            </label>
+            <Select
+              id="offline-member-kind"
+              value={offlineMemberKind}
+              onChangeAction={setOfflineMemberKind}
+              options={MEMBER_KIND_OPTIONS}
+              aria-label="오프라인 멤버 참여 유형"
+            />
           </div>
           {memberError && <p className="text-sm text-red-600" role="alert">{memberError}</p>}
           <div className="flex justify-end gap-2">

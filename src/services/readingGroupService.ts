@@ -132,6 +132,7 @@ export class ReadingGroupService {
       user_id: ownerUserId,
       display_name: ownerDisplayName.trim(),
       role: "owner",
+      member_kind: "participant",
       status: "active",
       joined_at: nowIso,
       created_at: serverTimestamp(),
@@ -211,13 +212,19 @@ export class ReadingGroupService {
     inviteCode: string,
     userId: string,
     displayName: string,
+    memberKind: "participant" | "guardian" = "participant",
   ): Promise<ReadingGroup> {
     if (!userId) throw new ApiError("로그인이 필요합니다.", "AUTH_REQUIRED")
     const idToken = await getClientIdToken()
     const response = await fetch("/api/groups/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, inviteCode, displayName }),
+      body: JSON.stringify({
+        idToken,
+        inviteCode,
+        displayName,
+        memberKind,
+      }),
     })
     const result = (await response.json()) as {
       groupId?: string
@@ -235,6 +242,26 @@ export class ReadingGroupService {
       throw new ApiError("가입한 모임을 불러오지 못했습니다.", "GROUP_FETCH_ERROR")
     }
     return group
+  }
+
+  static async transferOwnership(
+    groupId: string,
+    newOwnerUserId: string,
+  ): Promise<void> {
+    const idToken = await getClientIdToken()
+    const response = await fetch("/api/groups/transfer-ownership", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, groupId, newOwnerUserId }),
+    })
+    const result = (await response.json()) as { error?: string }
+    if (!response.ok) {
+      throw new ApiError(
+        result.error ?? "모임장 역할을 넘기지 못했습니다.",
+        "GROUP_TRANSFER_OWNERSHIP_ERROR",
+        response.status,
+      )
+    }
   }
 
   /**
@@ -291,7 +318,12 @@ export class ReadingGroupService {
     groupId: string,
     input: CreateGroupMemberInput,
   ): Promise<string> {
-    const data = { ...input, display_name: input.display_name.trim(), group_id: groupId }
+    const data = {
+      ...input,
+      display_name: input.display_name.trim(),
+      group_id: groupId,
+      member_kind: input.member_kind ?? "participant",
+    }
     if (input.user_id) {
       const id = `${groupId}__${input.user_id}`
       const existing = await ApiClient.queryDocuments<GroupMember>(
@@ -523,41 +555,54 @@ export class ReadingGroupService {
     )
   }
 
-  static async createMeetingWithBookAssignment(
+  static async createMeetingWithBookAssignments(
     groupId: string,
     meetingInput: CreateGroupMeetingInput,
-    assignmentInput: CreateMeetingBookAssignmentInput,
+    assignmentInputs: CreateMeetingBookAssignmentInput[],
   ): Promise<string> {
-    const [groupBook, meetings] = await Promise.all([
-      this.requireDocument<GroupBook>(
-        COLLECTIONS.books,
-        assignmentInput.group_book_id,
-        "그룹 책",
+    if (assignmentInputs.length === 0) {
+      throw new ApiError("회차에 배정할 책을 한 권 이상 선택해 주세요.", "NO_ASSIGNMENT")
+    }
+    const uniqueBookIds = new Set(assignmentInputs.map((input) => input.group_book_id))
+    if (uniqueBookIds.size !== assignmentInputs.length) {
+      throw new ApiError("같은 책을 중복으로 배정할 수 없습니다.", "DUPLICATE_ASSIGNMENT")
+    }
+    const [groupBooks, meetings] = await Promise.all([
+      Promise.all(
+        assignmentInputs.map((input) =>
+          this.requireDocument<GroupBook>(
+            COLLECTIONS.books,
+            input.group_book_id,
+            "그룹 책",
+          ),
+        ),
       ),
       this.getGroupMeetings(groupId),
     ])
-    if (
-      groupBook.group_id !== groupId ||
-      groupBook.canonical_book_id !== assignmentInput.canonical_book_id
-    ) {
-      throw new ApiError("회차 책 연결 정보가 올바르지 않습니다.", "INVALID_GROUP_BOOK")
-    }
-    if (!["planned", "on_hold"].includes(groupBook.status)) {
-      throw new ApiError("예정 또는 선정 보류 책만 새 회차에 배정할 수 있습니다.", "BOOK_NOT_AVAILABLE")
-    }
+    const readingEndAt = meetingInput.scheduled_at
+    groupBooks.forEach((groupBook, index) => {
+      const assignmentInput = assignmentInputs[index]
+      if (
+        groupBook.group_id !== groupId ||
+        groupBook.canonical_book_id !== assignmentInput.canonical_book_id
+      ) {
+        throw new ApiError("회차 책 연결 정보가 올바르지 않습니다.", "INVALID_GROUP_BOOK")
+      }
+      if (!["planned", "on_hold"].includes(groupBook.status)) {
+        throw new ApiError("예정 또는 선정 보류 책만 새 회차에 배정할 수 있습니다.", "BOOK_NOT_AVAILABLE")
+      }
+      if (assignmentInput.reading_start_at >= readingEndAt) {
+        throw new ApiError(
+          "독서 시작일은 모임 예정일보다 빨라야 합니다.",
+          "INVALID_READING_PERIOD",
+        )
+      }
+    })
     if (meetings.some((meeting) => meeting.status !== "completed")) {
       throw new ApiError("기존 회차를 모두 완료한 뒤 새 회차를 만들 수 있습니다.", "MEETING_IN_PROGRESS")
     }
-    const readingEndAt = meetingInput.scheduled_at
-    if (assignmentInput.reading_start_at >= readingEndAt) {
-      throw new ApiError(
-        "독서 시작일은 모임 예정일보다 빨라야 합니다.",
-        "INVALID_READING_PERIOD",
-      )
-    }
 
     const meetingRef = doc(collection(db, COLLECTIONS.meetings))
-    const assignmentRef = doc(collection(db, COLLECTIONS.assignments))
     const batch = writeBatch(db)
     const clean = (value: Record<string, unknown>) =>
       Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined))
@@ -568,23 +613,27 @@ export class ReadingGroupService {
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     })
-    batch.set(assignmentRef, {
-      ...clean(assignmentInput as unknown as Record<string, unknown>),
-      reading_end_at: readingEndAt,
-      book_title_snapshot: groupBook.title,
-      ...(groupBook.author ? { book_author_snapshot: groupBook.author } : {}),
-      ...(groupBook.cover_url ? { book_cover_url_snapshot: groupBook.cover_url } : {}),
-      group_id: groupId,
-      meeting_id: meetingRef.id,
-      created_at: serverTimestamp(),
-      updated_at: serverTimestamp(),
-    })
-    if (groupBook.status === "on_hold") {
-      batch.update(doc(db, COLLECTIONS.books, groupBook.id), {
-        status: "planned",
+    groupBooks.forEach((groupBook, index) => {
+      const assignmentInput = assignmentInputs[index]
+      const assignmentRef = doc(collection(db, COLLECTIONS.assignments))
+      batch.set(assignmentRef, {
+        ...clean(assignmentInput as unknown as Record<string, unknown>),
+        reading_end_at: readingEndAt,
+        book_title_snapshot: groupBook.title,
+        ...(groupBook.author ? { book_author_snapshot: groupBook.author } : {}),
+        ...(groupBook.cover_url ? { book_cover_url_snapshot: groupBook.cover_url } : {}),
+        group_id: groupId,
+        meeting_id: meetingRef.id,
+        created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
       })
-    }
+      if (groupBook.status === "on_hold") {
+        batch.update(doc(db, COLLECTIONS.books, groupBook.id), {
+          status: "planned",
+          updated_at: serverTimestamp(),
+        })
+      }
+    })
     await batch.commit()
     return meetingRef.id
   }
@@ -670,8 +719,12 @@ export class ReadingGroupService {
     ) {
       throw new ApiError("회차 책 연결 정보가 올바르지 않습니다.", "INVALID_GROUP_BOOK")
     }
-    if (existingAssignments.length > 0) {
-      throw new ApiError("회차에는 한 권의 책만 배정할 수 있습니다.", "ASSIGNMENT_ALREADY_EXISTS")
+    if (
+      existingAssignments.some(
+        (assignment) => assignment.group_book_id === groupBook.id,
+      )
+    ) {
+      throw new ApiError("이미 회차에 배정된 책입니다.", "ASSIGNMENT_ALREADY_EXISTS")
     }
     if (!["planned", "on_hold"].includes(groupBook.status)) {
       throw new ApiError("예정 또는 선정 보류 책만 배정할 수 있습니다.", "BOOK_NOT_AVAILABLE")
@@ -816,8 +869,7 @@ export class ReadingGroupService {
     expectedGroupId?: string,
   ): Promise<{
     meeting: GroupMeeting
-    assignment: MeetingBookAssignment
-    groupBook: GroupBook
+    entries: { assignment: MeetingBookAssignment; groupBook: GroupBook }[]
   }> {
     const meeting = await this.requireDocument<GroupMeeting>(
       COLLECTIONS.meetings,
@@ -834,36 +886,40 @@ export class ReadingGroupService {
       meeting.group_id,
       meetingId,
     )
-    if (assignments.length !== 1) {
+    if (assignments.length === 0) {
       throw new ApiError(
-        "회차에는 정확히 한 권의 책이 배정되어야 합니다.",
+        "회차에는 한 권 이상의 책이 배정되어야 합니다.",
         "INVALID_ASSIGNMENT_COUNT",
       )
     }
-    const assignment = assignments[0]
-    const groupBook = await this.requireDocument<GroupBook>(
-      COLLECTIONS.books,
-      assignment.group_book_id,
-      "그룹 책",
+    const entries = await Promise.all(
+      assignments.map(async (assignment) => {
+        const groupBook = await this.requireDocument<GroupBook>(
+          COLLECTIONS.books,
+          assignment.group_book_id,
+          "그룹 책",
+        )
+        if (
+          assignment.group_id !== meeting.group_id ||
+          groupBook.group_id !== meeting.group_id ||
+          groupBook.canonical_book_id !== assignment.canonical_book_id
+        ) {
+          throw new ApiError(
+            "회차 책 연결 정보가 올바르지 않습니다.",
+            "INVALID_GROUP_BOOK",
+          )
+        }
+        return { assignment, groupBook }
+      }),
     )
-    if (
-      assignment.group_id !== meeting.group_id ||
-      groupBook.group_id !== meeting.group_id ||
-      groupBook.canonical_book_id !== assignment.canonical_book_id
-    ) {
-      throw new ApiError(
-        "회차 책 연결 정보가 올바르지 않습니다.",
-        "INVALID_GROUP_BOOK",
-      )
-    }
-    return { meeting, assignment, groupBook }
+    return { meeting, entries }
   }
 
   static async completeMeeting(
     meetingId: string,
     completedAt?: string,
   ): Promise<void> {
-    const { meeting, assignment, groupBook } =
+    const { meeting, entries } =
       await this.getMeetingCompletionData(meetingId)
     if (meeting.status === "completed") return
     if (meeting.status === "cancelled") {
@@ -877,23 +933,25 @@ export class ReadingGroupService {
       status: "completed",
       updated_at: serverTimestamp(),
     })
-    batch.update(doc(db, COLLECTIONS.assignments, assignment.id), {
-      completed_at: completedAtIso,
-      book_title_snapshot: assignment.book_title_snapshot ?? groupBook.title,
-      ...(assignment.book_author_snapshot || !groupBook.author
-        ? {}
-        : { book_author_snapshot: groupBook.author }),
-      ...(assignment.book_cover_url_snapshot || !groupBook.cover_url
-        ? {}
-        : { book_cover_url_snapshot: groupBook.cover_url }),
-      updated_at: serverTimestamp(),
-    })
-    if (groupBook.status !== "paused") {
-      batch.update(doc(db, COLLECTIONS.books, groupBook.id), {
-        status: "completed",
+    entries.forEach(({ assignment, groupBook }) => {
+      batch.update(doc(db, COLLECTIONS.assignments, assignment.id), {
+        completed_at: completedAtIso,
+        book_title_snapshot: assignment.book_title_snapshot ?? groupBook.title,
+        ...(assignment.book_author_snapshot || !groupBook.author
+          ? {}
+          : { book_author_snapshot: groupBook.author }),
+        ...(assignment.book_cover_url_snapshot || !groupBook.cover_url
+          ? {}
+          : { book_cover_url_snapshot: groupBook.cover_url }),
         updated_at: serverTimestamp(),
       })
-    }
+      if (groupBook.status !== "paused") {
+        batch.update(doc(db, COLLECTIONS.books, groupBook.id), {
+          status: "completed",
+          updated_at: serverTimestamp(),
+        })
+      }
+    })
     await batch.commit()
   }
 
@@ -929,30 +987,32 @@ export class ReadingGroupService {
       if (meeting.status === "cancelled") {
         throw new ApiError("취소된 회차는 완료할 수 없습니다.", "CANCELLED_MEETING")
       }
-      const { assignment, groupBook } =
+      const { entries } =
         await this.getMeetingCompletionData(meetingId, groupId)
       const completedAt = input.completed_at ?? new Date().toISOString()
       batch.update(doc(db, COLLECTIONS.meetings, meetingId), {
         status: "completed",
         updated_at: serverTimestamp(),
       })
-      batch.update(doc(db, COLLECTIONS.assignments, assignment.id), {
-        completed_at: completedAt,
-        book_title_snapshot: assignment.book_title_snapshot ?? groupBook.title,
-        ...(assignment.book_author_snapshot || !groupBook.author
-          ? {}
-          : { book_author_snapshot: groupBook.author }),
-        ...(assignment.book_cover_url_snapshot || !groupBook.cover_url
-          ? {}
-          : { book_cover_url_snapshot: groupBook.cover_url }),
-        updated_at: serverTimestamp(),
-      })
-      if (groupBook.status !== "paused") {
-        batch.update(doc(db, COLLECTIONS.books, groupBook.id), {
-          status: "completed",
+      entries.forEach(({ assignment, groupBook }) => {
+        batch.update(doc(db, COLLECTIONS.assignments, assignment.id), {
+          completed_at: completedAt,
+          book_title_snapshot: assignment.book_title_snapshot ?? groupBook.title,
+          ...(assignment.book_author_snapshot || !groupBook.author
+            ? {}
+            : { book_author_snapshot: groupBook.author }),
+          ...(assignment.book_cover_url_snapshot || !groupBook.cover_url
+            ? {}
+            : { book_cover_url_snapshot: groupBook.cover_url }),
           updated_at: serverTimestamp(),
         })
-      }
+        if (groupBook.status !== "paused") {
+          batch.update(doc(db, COLLECTIONS.books, groupBook.id), {
+            status: "completed",
+            updated_at: serverTimestamp(),
+          })
+        }
+      })
     }
     await batch.commit()
   }

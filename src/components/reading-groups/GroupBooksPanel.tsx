@@ -118,6 +118,9 @@ export default function GroupBooksPanel({
   const [searchResults, setSearchResults] = useState<CanonicalBook[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [draft, setDraft] = useState<GroupBookDraft>(EMPTY_DRAFT)
+  const [selectedCanonicals, setSelectedCanonicals] = useState<CanonicalBook[]>(
+    [],
+  )
   const [editing, setEditing] = useState<GroupBook | null>(null)
   const [editDraft, setEditDraft] = useState<GroupBookDraft>(EMPTY_DRAFT)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -168,6 +171,7 @@ export default function GroupBooksPanel({
   const createGroupBook = async (
     canonical: CanonicalBook,
     groupDraft: GroupBookDraft,
+    options?: { refreshAfter?: boolean },
   ) => {
     if (existingCanonicalIds.has(canonical.id)) {
       throw new Error("이미 모임 책장에 등록된 판본입니다.")
@@ -179,7 +183,9 @@ export default function GroupBooksPanel({
       cover_url: canonical.coverUrl,
       selected_reason: groupDraft.selected_reason.trim() || undefined,
     })
-    await refresh()
+    if (options?.refreshAfter !== false) {
+      await refresh()
+    }
   }
 
   const handleSearch = async (event: React.FormEvent) => {
@@ -200,17 +206,38 @@ export default function GroupBooksPanel({
     }
   }
 
-  const addCanonical = async (canonical: CanonicalBook) => {
-    setBusyId(canonical.id)
+  const toggleCanonical = (canonical: CanonicalBook) => {
+    setSelectedCanonicals((current) =>
+      current.some((item) => item.id === canonical.id)
+        ? current.filter((item) => item.id !== canonical.id)
+        : [...current, canonical],
+    )
+  }
+
+  const addSelectedCanonicals = async () => {
+    const toAdd = selectedCanonicals.filter(
+      (canonical) => !existingCanonicalIds.has(canonical.id),
+    )
+    if (toAdd.length === 0) {
+      setPanelError("추가할 책을 한 권 이상 선택해 주세요.")
+      return
+    }
+
+    setBusyId("batch-add")
     setPanelError(null)
     try {
-      await createGroupBook(canonical, draft)
+      for (const canonical of toAdd) {
+        await createGroupBook(canonical, draft, { refreshAfter: false })
+      }
+      await refresh()
       setAddOpen(false)
+      setSelectedCanonicals([])
       setDraft(EMPTY_DRAFT)
       setSearchText("")
       setSearchResults([])
       setHasSearched(false)
     } catch (error) {
+      await refresh()
       setPanelError(errorMessage(error, "모임 책을 추가하지 못했습니다."))
     } finally {
       setBusyId(null)
@@ -447,6 +474,7 @@ export default function GroupBooksPanel({
             type="button"
             onClick={() => {
               setAddOpen(true)
+              setSelectedCanonicals([])
               setPanelError(null)
             }}
             className="inline-flex items-center gap-1.5 rounded-lg bg-accent-theme px-3 py-2 text-sm font-semibold text-white"
@@ -651,7 +679,7 @@ export default function GroupBooksPanel({
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               className="form-control min-w-0 flex-1"
-              placeholder="책 제목으로 검색"
+              placeholder="제목·저자 키워드로 검색"
             />
             <button
               type="submit"
@@ -665,6 +693,40 @@ export default function GroupBooksPanel({
 
           <GroupFields value={draft} onChange={setDraft} idPrefix="add-group-book" />
 
+          {selectedCanonicals.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-semibold text-theme-primary">
+                선택한 책 {selectedCanonicals.length}권
+              </h3>
+              <ul className="max-h-36 space-y-2 overflow-y-auto">
+                {selectedCanonicals.map((canonical) => (
+                  <li key={canonical.id}>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-accent-theme/40 bg-theme-secondary p-3">
+                      <input
+                        type="checkbox"
+                        checked
+                        disabled={busyId === "batch-add"}
+                        onChange={() => toggleCanonical(canonical)}
+                        className="h-4 w-4 shrink-0 accent-[var(--accent-theme)]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-theme-primary">
+                          {canonical.title}
+                        </p>
+                        <p className="truncate text-xs text-theme-secondary">
+                          {canonical.author || "저자 미상"}
+                          {canonical.publisher
+                            ? ` · ${canonical.publisher}`
+                            : ""}
+                        </p>
+                      </div>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {hasSearched && (
             <div>
               <h3 className="mb-2 text-sm font-semibold text-theme-primary">
@@ -674,30 +736,42 @@ export default function GroupBooksPanel({
                 <ul className="max-h-52 space-y-2 overflow-y-auto">
                   {searchResults.map((canonical) => {
                     const duplicate = existingCanonicalIds.has(canonical.id)
+                    const checked =
+                      duplicate ||
+                      selectedCanonicals.some((item) => item.id === canonical.id)
                     return (
-                      <li
-                        key={canonical.id}
-                        className="flex items-center justify-between gap-3 rounded-lg bg-theme-tertiary p-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-theme-primary">
-                            {canonical.title}
-                          </p>
-                          <p className="truncate text-xs text-theme-secondary">
-                            {canonical.author || "저자 미상"}
-                            {canonical.publisher
-                              ? ` · ${canonical.publisher}`
-                              : ""}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void addCanonical(canonical)}
-                          disabled={duplicate || busyId === canonical.id}
-                          className="shrink-0 rounded-md bg-accent-theme px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      <li key={canonical.id}>
+                        <label
+                          className={`flex items-center gap-3 rounded-lg bg-theme-tertiary p-3 ${
+                            duplicate
+                              ? "cursor-not-allowed opacity-60"
+                              : "cursor-pointer"
+                          }`}
                         >
-                          {duplicate ? "추가됨" : "선택"}
-                        </button>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={duplicate || busyId === "batch-add"}
+                            onChange={() => toggleCanonical(canonical)}
+                            className="h-4 w-4 shrink-0 accent-[var(--accent-theme)]"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-theme-primary">
+                              {canonical.title}
+                            </p>
+                            <p className="truncate text-xs text-theme-secondary">
+                              {canonical.author || "저자 미상"}
+                              {canonical.publisher
+                                ? ` · ${canonical.publisher}`
+                                : ""}
+                            </p>
+                          </div>
+                          {duplicate && (
+                            <span className="shrink-0 text-xs font-medium text-theme-secondary">
+                              추가됨
+                            </span>
+                          )}
+                        </label>
                       </li>
                     )
                   })}
@@ -708,6 +782,19 @@ export default function GroupBooksPanel({
                 </p>
               )}
             </div>
+          )}
+
+          {selectedCanonicals.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void addSelectedCanonicals()}
+              disabled={busyId === "batch-add"}
+              className="w-full rounded-lg bg-accent-theme px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {busyId === "batch-add"
+                ? "추가 중…"
+                : `선택한 책 ${selectedCanonicals.length}권 추가`}
+            </button>
           )}
 
           <button
