@@ -26,7 +26,7 @@ const variantClass: Record<SelectVariant, string> = {
 
 type SelectProps<T extends string> = {
   value: T
-  onChange: (value: T) => void
+  onChangeAction: (value: T) => void
   options: SelectOption<T>[]
   placeholder?: string
   disabled?: boolean
@@ -37,12 +37,17 @@ type SelectProps<T extends string> = {
   triggerClassName?: string
   emptyValue?: string
   menuPlacement?: "top" | "bottom"
+  /**
+   * 기본값은 `truncate`(한 줄 줄임표)입니다.
+   * 모달 등에서 긴 라벨이 박스를 넘치지 않게 하려면 `false`로 두세요.
+   */
+  truncate?: boolean
   "aria-label"?: string
 }
 
 export default function Select<T extends string>({
   value,
-  onChange,
+  onChangeAction,
   options,
   placeholder = "선택",
   disabled = false,
@@ -53,6 +58,7 @@ export default function Select<T extends string>({
   triggerClassName = "",
   emptyValue,
   menuPlacement = "bottom",
+  truncate = true,
   "aria-label": ariaLabel,
 }: SelectProps<T>) {
   const reactId = useId()
@@ -97,11 +103,15 @@ export default function Select<T extends string>({
 
   const base = variantClass[variant]
   const widthCls = fullWidth ? "w-full" : "w-auto min-w-0"
+  const alignmentCls = truncate ? "items-center" : "items-start"
+  const multilineBtnCls = truncate
+    ? ""
+    : "h-auto min-h-[2.75rem] py-2 leading-normal"
 
   return (
     <div
       ref={rootRef}
-      className={`relative ${widthCls} ${className}`}
+      className={`relative ${widthCls} min-w-0 max-w-full ${className}`}
       onKeyDown={handleKeyDown}
     >
       <button
@@ -113,11 +123,15 @@ export default function Select<T extends string>({
         aria-controls={listboxId}
         aria-label={ariaLabel}
         onClick={() => !disabled && setOpen((o) => !o)}
-        className={`flex items-center justify-between gap-2 border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-primary)] focus-visible:ring-offset-0 ${base} ${widthCls} ${
+        className={`flex ${alignmentCls} justify-between gap-2 border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-primary)] focus-visible:ring-offset-0 ${base} ${widthCls} ${
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-        } ${triggerClassName}`}
+        } ${multilineBtnCls} ${triggerClassName}`}
       >
-        <span className={`min-w-0 truncate ${muted ? "text-theme-secondary" : ""}`}>
+        <span
+          className={`min-w-0 ${truncate ? "truncate" : "whitespace-normal break-words"} ${
+            muted ? "text-theme-secondary" : ""
+          }`}
+        >
           {display}
         </span>
         <ChevronDown
@@ -160,7 +174,7 @@ export default function Select<T extends string>({
                   }`}
                   onClick={() => {
                     if (opt.disabled) return
-                    onChange(opt.value)
+                    onChangeAction(opt.value)
                     setOpen(false)
                   }}
                 >

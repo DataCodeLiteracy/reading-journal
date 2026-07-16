@@ -497,7 +497,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={statusFilter}
-                    onChange={(v) =>
+                    onChangeAction={(v) =>
                       setStatusFilter((v || "") as Book["status"] | "")
                     }
                     options={exploreStatusOptions}
@@ -511,7 +511,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={authorFilter}
-                    onChange={setAuthorFilter}
+                    onChangeAction={setAuthorFilter}
                     options={exploreAuthorOptions}
                     variant='toolbar'
                     aria-label='저자 필터'
@@ -523,7 +523,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={minRatingFilter}
-                    onChange={setMinRatingFilter}
+                    onChangeAction={setMinRatingFilter}
                     options={exploreMinRatingOptions}
                     variant='toolbar'
                     aria-label='최소 평점'
@@ -535,7 +535,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={levelFilter}
-                    onChange={(v) => setLevelFilter(v as BookLevel | "")}
+                    onChangeAction={(v) => setLevelFilter(v as BookLevel | "")}
                     options={exploreLevelOptions}
                     variant='toolbar'
                     aria-label='문해력 수준 필터'
@@ -547,7 +547,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={categoryFilter}
-                    onChange={setCategoryFilter}
+                    onChangeAction={setCategoryFilter}
                     options={exploreCategoryOptions}
                     variant='toolbar'
                     aria-label='분야 필터'
@@ -559,7 +559,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={userIdFilter}
-                    onChange={setUserIdFilter}
+                    onChangeAction={setUserIdFilter}
                     options={exploreUserOptions}
                     variant='toolbar'
                     aria-label='등록 유저 필터'
@@ -571,7 +571,7 @@ function ExplorePageContent() {
                   </label>
                   <Select
                     value={sortBy}
-                    onChange={(v) =>
+                    onChangeAction={(v) =>
                       setSortBy(v as (typeof SORT_OPTIONS)[number]["value"])
                     }
                     options={exploreSortOptions}

@@ -171,7 +171,7 @@ export default function AdminBookExportPage() {
           <div className="max-w-md">
             <Select
               value={selectedUid}
-              onChange={setSelectedUid}
+              onChangeAction={setSelectedUid}
               options={userSelectOptions}
               variant="toolbar"
               aria-label="유저 선택"

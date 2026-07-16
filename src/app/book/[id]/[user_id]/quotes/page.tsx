@@ -385,7 +385,7 @@ export default function BookQuotesPage({
               <div className='w-full shrink-0 sm:w-44 sm:min-w-[11rem]'>
                 <Select
                   value={sortOrder}
-                  onChange={(v) => {
+                  onChangeAction={(v) => {
                     setSortOrder(v)
                     setCurrentPage(1)
                   }}

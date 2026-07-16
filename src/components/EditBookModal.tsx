@@ -291,7 +291,7 @@ export default function EditBookModal({
           </label>
           <Select<BookLevel | "">
             value={level}
-            onChange={setLevel}
+            onChangeAction={setLevel}
             options={levelOptions}
             variant="form-modal"
           />

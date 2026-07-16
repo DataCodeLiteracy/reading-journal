@@ -440,7 +440,7 @@ export default function AddBookModal({
             </label>
             <Select<Book["status"]>
               value={status}
-              onChange={setStatus}
+              onChangeAction={setStatus}
               options={statusOptions}
               variant="form-modal"
             />
@@ -510,7 +510,7 @@ export default function AddBookModal({
             </label>
             <Select<BookLevel | "">
               value={level}
-              onChange={setLevel}
+              onChangeAction={setLevel}
               options={levelOptions}
               variant="form-modal"
             />

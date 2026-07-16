@@ -249,7 +249,7 @@ export default function QuestionEditModal({
             </label>
             <Select<QuestionType>
               value={questionType}
-              onChange={setQuestionType}
+              onChangeAction={setQuestionType}
               options={questionTypeOptions}
               variant="form-modal"
             />

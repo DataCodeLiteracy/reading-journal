@@ -494,7 +494,7 @@ export default function QuestionsPage({
                 </span>
                 <Select
                   value={sortOrder}
-                  onChange={(v) => {
+                  onChangeAction={(v) => {
                     setSortOrder(v)
                     setCurrentPage(1)
                   }}

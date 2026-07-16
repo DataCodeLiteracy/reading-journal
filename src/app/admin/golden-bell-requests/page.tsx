@@ -205,7 +205,7 @@ export default function GoldenBellRequestsPage() {
               <label className='block text-xs text-theme-tertiary mb-1'>유저</label>
               <Select
                 value={userIdFilter}
-                onChange={setUserIdFilter}
+                onChangeAction={setUserIdFilter}
                 options={goldenBellUserSelectOptions}
                 variant='toolbar'
                 aria-label='유저 필터'

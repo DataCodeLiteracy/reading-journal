@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { CalendarDays, Plus, Search, Trash2 } from "lucide-react"
+import { AlertCircle, CalendarDays, Plus, Search, Trash2 } from "lucide-react"
 import AddBookModal from "@/components/AddBookModal"
+import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
 import Select, { type SelectOption } from "@/components/Select"
 import { BookService } from "@/services/bookService"
@@ -124,6 +124,10 @@ export default function GroupBooksPanel({
   const [isSearching, setIsSearching] = useState(false)
   const [panelError, setPanelError] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const [prePeriodTimerTarget, setPrePeriodTimerTarget] = useState<{
+    href: string
+    title: string
+  } | null>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000)
@@ -370,6 +374,15 @@ export default function GroupBooksPanel({
       ["reading", "reading_paused", "paused"].includes(option.value),
     )
   }
+  const handleTimerPageMove = (book: GroupBook, ownBook: Book) => {
+    const assignment = assignmentsByBook.get(book.id)
+    const href = `/book/${ownBook.id}/${userUid}`
+    if (assignment && nowMs < new Date(assignment.reading_start_at).getTime()) {
+      setPrePeriodTimerTarget({ href, title: book.title })
+      return
+    }
+    router.push(href)
+  }
   const changeStatus = async (book: GroupBook, status: GroupBookStatus) => {
     setBusyId(book.id)
     setPanelError(null)
@@ -561,7 +574,9 @@ export default function GroupBooksPanel({
                             <div className="w-[4.7rem] shrink-0">
                               <Select
                               value={displayStatus}
-                                onChange={(status) => void changeStatus(book, status)}
+                                onChangeAction={(status) =>
+                                  void changeStatus(book, status)
+                                }
                                 options={statusOptionsFor(book)}
                                 disabled={
                                   busyId === book.id ||
@@ -581,12 +596,13 @@ export default function GroupBooksPanel({
                             </span>
                           )}
                           {ownBook ? (
-                            <Link
-                              href={`/book/${ownBook.id}/${userUid}`}
+                            <button
+                              type="button"
+                              onClick={() => handleTimerPageMove(book, ownBook)}
                               className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white"
                             >
                               타이머 시작하러 가기
-                            </Link>
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -788,9 +804,29 @@ export default function GroupBooksPanel({
                       className="mt-0.5 h-3.5 w-3.5 shrink-0"
                       aria-hidden
                     />
-                    {editingRange
-                      ? `${editingStoppedDate ? "중단" : effectiveStatus(editing) === "completed" ? "완료" : "읽기"} 기간 ${editingRange.startDate} ~ ${editingStoppedDate ?? editingRange.endDate}`
-                      : "아직 회차에 배정되지 않았습니다."}
+                    {editingRange ? (
+                      <span className="font-medium text-theme-primary">
+                        {editingRange.startDate} ~{" "}
+                        {editingStoppedDate ?? editingRange.endDate}
+                        {(() => {
+                          const rangeStatusLabel =
+                            editingStoppedDate
+                              ? "중단"
+                              : effectiveStatus(editing) === "completed"
+                                ? "완료"
+                                : effectiveStatus(editing) === "reading_paused"
+                                  ? "정지"
+                                  : undefined
+                          return rangeStatusLabel ? (
+                            <span className="ml-1 text-[10px] font-normal text-theme-secondary">
+                              ({rangeStatusLabel})
+                            </span>
+                          ) : null
+                        })()}
+                      </span>
+                    ) : (
+                      "아직 회차에 배정되지 않았습니다."
+                    )}
                   </p>
                   {editingRange && editingStoppedDate && (
                     <p className="mt-1 text-xs text-theme-secondary">
@@ -850,6 +886,25 @@ export default function GroupBooksPanel({
           )}
         </div>
       </FormModalFrame>
+
+      <ConfirmModal
+        isOpen={Boolean(prePeriodTimerTarget)}
+        onClose={() => setPrePeriodTimerTarget(null)}
+        onConfirm={() => {
+          if (!prePeriodTimerTarget) return
+          router.push(prePeriodTimerTarget.href)
+        }}
+        title="읽기 기간 전이에요"
+        message={`이 기간 전에 시작한 타이머는 해당 회차 누적에 반영되지 않고 전체 독서 시간에만 쌓입니다.\n\n${prePeriodTimerTarget?.title} 상세 페이지로 이동할까요?`}
+        confirmText="책 상세로 이동"
+        cancelText="닫기"
+        icon={AlertCircle}
+        iconColor="text-amber-600"
+        iconBgColor="bg-amber-100 dark:bg-amber-950/30"
+        confirmButtonColor="bg-accent-theme"
+        confirmButtonHoverColor="hover:bg-accent-theme-secondary"
+        showSubtitle={false}
+      />
     </div>
   )
 }

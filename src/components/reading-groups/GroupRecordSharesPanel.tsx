@@ -370,7 +370,7 @@ export default function GroupRecordSharesPanel({
             <Select
               id="record-share-meeting"
               value={meetingId}
-              onChange={setMeetingId}
+              onChangeAction={setMeetingId}
               options={meetingOptions}
               emptyValue=""
               className="mt-1"

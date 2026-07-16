@@ -628,7 +628,7 @@ export default function GroupPostsPanel({
               <Select
                 id="group-post-type"
                 value={draft.type}
-                onChange={(type) => {
+                onChangeAction={(type) => {
                   setDraft({
                     ...draft,
                     type,

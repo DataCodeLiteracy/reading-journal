@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { RefreshCw } from "lucide-react"
 import Select, { type SelectOption } from "@/components/Select"
+import { UserService } from "@/services/userService"
 import type {
   GroupBook,
   GroupMeeting,
@@ -58,6 +59,7 @@ export default function GroupReadingProgress({
   isRefreshing = false,
 }: GroupReadingProgressProps) {
   const nowMs = Date.now()
+  const [userDisplayNames, setUserDisplayNames] = useState<Record<string, string>>({})
   const meetingsById = new Map(meetings.map((meeting) => [meeting.id, meeting]))
   const booksById = new Map(books.map((book) => [book.id, book]))
   const orderedAssignments = [...assignments].sort((left, right) => {
@@ -156,10 +158,44 @@ export default function GroupReadingProgress({
   const activeMembers = members.filter(
     (member) => member.status === "active" && member.user_id,
   )
+  const activeMemberUserIds = useMemo(
+    () =>
+      activeMembers
+        .map((member) => member.user_id)
+        .filter((userId): userId is string => Boolean(userId)),
+    [activeMembers],
+  )
+  useEffect(() => {
+    let cancelled = false
+    if (!activeMemberUserIds.length) {
+      setUserDisplayNames({})
+      return
+    }
+    void Promise.all(
+      activeMemberUserIds.map(async (userId) => {
+        const user = await UserService.getUser(userId)
+        return [userId, user?.displayName?.trim() || ""] as const
+      }),
+    )
+      .then((entries) => {
+        if (cancelled) return
+        setUserDisplayNames(
+          Object.fromEntries(entries.filter(([, displayName]) => Boolean(displayName))),
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setUserDisplayNames({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeMemberUserIds])
   const rankings = activeMembers
     .map((member) => ({
       id: member.id,
-      name: member.display_name,
+      name:
+        (member.user_id ? userDisplayNames[member.user_id] : "") ||
+        member.display_name,
       seconds: totalsByUser.get(member.user_id!) ?? 0,
     }))
     .sort(
@@ -226,7 +262,7 @@ export default function GroupReadingProgress({
       <Select
         id="group-reading-round"
         value={selectedAssignment.id}
-        onChange={setSelectedAssignmentId}
+        onChangeAction={setSelectedAssignmentId}
         options={assignmentOptions}
         className="mt-1"
         triggerClassName="min-h-11 bg-theme-secondary"

@@ -574,7 +574,7 @@ export default function WordsPage() {
               </label>
               <Select
                 value={String(selectedYear)}
-                onChange={(v) => setSelectedYear(Number(v))}
+                onChangeAction={(v) => setSelectedYear(Number(v))}
                 options={wordsYearOptions}
                 variant='toolbar'
                 triggerClassName='py-3 min-h-[3rem]'
@@ -588,7 +588,7 @@ export default function WordsPage() {
               </label>
               <Select
                 value={String(selectedMonth)}
-                onChange={(v) => setSelectedMonth(Number(v))}
+                onChangeAction={(v) => setSelectedMonth(Number(v))}
                 options={wordsMonthOptions}
                 variant='toolbar'
                 triggerClassName='py-3 min-h-[3rem]'
@@ -603,7 +603,7 @@ export default function WordsPage() {
               </label>
               <Select
                 value={filterStatus}
-                onChange={(v) =>
+                onChangeAction={(v) =>
                   setFilterStatus(v as "all" | "explained" | "unexplained")
                 }
                 options={wordsFilterStatusOptions}
@@ -620,7 +620,7 @@ export default function WordsPage() {
               </label>
               <Select
                 value={sortBy}
-                onChange={(v) =>
+                onChangeAction={(v) =>
                   setSortBy(v as "count" | "word" | "firstAppearance")
                 }
                 options={wordsSortByOptions}

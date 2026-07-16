@@ -215,7 +215,7 @@ export default function NewReadingGroupPage() {
                 <Select
                   id="default-weekday"
                   value={defaultWeekday}
-                  onChange={setDefaultWeekday}
+                  onChangeAction={setDefaultWeekday}
                   options={WEEKDAYS}
                   emptyValue=""
                   aria-label="기본 모임 요일"

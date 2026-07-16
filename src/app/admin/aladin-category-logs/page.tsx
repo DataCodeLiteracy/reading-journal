@@ -170,7 +170,7 @@ export default function AdminAladinCategoryLogsPage() {
           <div className="w-44">
             <Select
               value={severityFilter}
-              onChange={setSeverityFilter}
+              onChangeAction={setSeverityFilter}
               options={severityOptions}
               variant="toolbar"
               aria-label="심각도 필터"

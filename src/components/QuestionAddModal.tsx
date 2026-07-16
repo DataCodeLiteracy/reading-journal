@@ -318,7 +318,7 @@ export default function QuestionAddModal({
             </label>
             <Select<QuestionType>
               value={questionType}
-              onChange={setQuestionType}
+              onChangeAction={setQuestionType}
               options={questionTypeOptions}
               variant="form-modal"
             />

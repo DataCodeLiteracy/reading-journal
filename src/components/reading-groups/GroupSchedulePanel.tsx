@@ -377,49 +377,116 @@ export default function GroupSchedulePanel({
 
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300" role="alert">{error}</p>}
 
-      <section aria-label="월간 모임 달력" className="overflow-hidden rounded-xl border border-theme-tertiary">
-        <div className="flex items-center justify-between bg-theme-tertiary p-3">
+      <section
+        aria-label="월간 모임 달력"
+        className="overflow-hidden rounded-2xl border border-theme-tertiary/70 bg-theme-secondary shadow-sm"
+      >
+        <div className="flex items-center justify-between px-2 py-2 sm:px-3">
           <button
             type="button"
-            onClick={() => setMonth((current) => current.month === 0 ? { year: current.year - 1, month: 11 } : { ...current, month: current.month - 1 })}
-            className="rounded-md p-2 text-theme-primary hover:bg-theme-secondary"
+            onClick={() =>
+              setMonth((current) =>
+                current.month === 0
+                  ? { year: current.year - 1, month: 11 }
+                  : { ...current, month: current.month - 1 },
+              )
+            }
+            className="rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
             aria-label="이전 달"
           >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
+            <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
-          <h3 className="font-semibold text-theme-primary">{month.year}년 {month.month + 1}월</h3>
+          <h3 className="text-sm font-semibold tracking-tight text-theme-primary sm:text-base">
+            {month.year}년 {month.month + 1}월
+          </h3>
           <button
             type="button"
-            onClick={() => setMonth((current) => current.month === 11 ? { year: current.year + 1, month: 0 } : { ...current, month: current.month + 1 })}
-            className="rounded-md p-2 text-theme-primary hover:bg-theme-secondary"
+            onClick={() =>
+              setMonth((current) =>
+                current.month === 11
+                  ? { year: current.year + 1, month: 0 }
+                  : { ...current, month: current.month + 1 },
+              )
+            }
+            className="rounded-full p-1.5 text-theme-secondary transition-colors hover:bg-theme-tertiary hover:text-theme-primary"
             aria-label="다음 달"
           >
-            <ChevronRight className="h-5 w-5" aria-hidden />
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        <div className="grid grid-cols-7 bg-theme-secondary text-center text-xs text-theme-secondary">
-          {WEEKDAYS.map((day) => <div key={day} className="border-b border-theme-tertiary py-2">{day}</div>)}
+
+        <div className="grid grid-cols-7 px-1 pb-1">
+          {WEEKDAYS.map((weekday, weekdayIndex) => (
+            <div
+              key={weekday}
+              className={`py-1 text-center text-[10px] font-semibold sm:text-[11px] ${
+                weekdayIndex === 0
+                  ? "text-red-500/80"
+                  : weekdayIndex === 6
+                    ? "text-blue-500/80"
+                    : "text-theme-tertiary"
+              }`}
+            >
+              {weekday}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-px border-t border-theme-tertiary/50 bg-theme-tertiary/60 px-px pb-px">
           {calendarDays.map((day, index) => {
-            const key = day ? `${month.year}-${String(month.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` : ""
-            const dayMeetings = day ? meetingsByDate.get(key) ?? [] : []
+            const key = day
+              ? `${month.year}-${String(month.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+              : ""
+            const dayMeetings = day ? (meetingsByDate.get(key) ?? []) : []
+            const todayKey = groupDateKey(new Date(), group.time_zone)
+            const isToday = Boolean(day && key === todayKey)
+            const weekday = day
+              ? new Date(Date.UTC(month.year, month.month, day)).getUTCDay()
+              : -1
+
             return (
               <div
                 key={`${day ?? "empty"}-${index}`}
-                className={`min-h-20 border-b border-r border-theme-tertiary p-1 text-left sm:min-h-24 sm:p-2 ${key === groupDateKey(new Date(), group.time_zone) ? "bg-accent-theme/10" : ""}`}
+                className={`flex min-h-[2.75rem] flex-col items-center justify-start bg-theme-secondary py-0.5 sm:min-h-[3rem] ${
+                  day ? "" : "bg-theme-tertiary/25"
+                } ${dayMeetings.length > 0 ? "pb-1" : ""}`}
               >
-                {day && <span className="text-xs font-medium text-theme-primary">{day}</span>}
-                <div className="mt-1 space-y-1">
-                  {dayMeetings.map((meeting) => (
-                    <button
-                      key={meeting.id}
-                      type="button"
-                      onClick={() => document.getElementById(`meeting-${meeting.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                      className="block w-full truncate rounded bg-accent-theme px-1 py-0.5 text-left text-[10px] font-medium text-white sm:text-xs"
+                {day && (
+                  <>
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium sm:h-6 sm:w-6 sm:text-xs ${
+                        isToday
+                          ? "bg-accent-theme font-semibold text-white shadow-sm"
+                          : weekday === 0
+                            ? "text-red-500"
+                            : weekday === 6
+                              ? "text-blue-500"
+                              : "text-theme-primary"
+                      }`}
                     >
-                      {meeting.sequence}회
-                    </button>
-                  ))}
-                </div>
+                      {day}
+                    </span>
+                    {dayMeetings.length > 0 && (
+                      <div className="mt-0.5 flex w-full flex-col items-stretch gap-0.5 px-0.5">
+                        {dayMeetings.map((meeting) => (
+                          <button
+                            key={meeting.id}
+                            type="button"
+                            onClick={() =>
+                              document
+                                .getElementById(`meeting-${meeting.id}`)
+                                ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                            }
+                            className="w-full rounded-md bg-accent-theme px-1 py-0.5 text-center text-[10px] font-bold leading-tight text-white shadow-sm transition-colors hover:bg-accent-theme-secondary sm:text-[11px]"
+                            title={`${meeting.sequence}회 · ${meeting.title}`}
+                          >
+                            {meeting.sequence}회
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )
           })}
@@ -637,7 +704,18 @@ export default function GroupSchedulePanel({
             <legend className="px-1 text-sm font-semibold text-theme-primary">회차 책과 읽기 기간</legend>
             <label className="block text-sm font-medium text-theme-primary">
               책
-              <Select value={draft.groupBookId} onChange={(groupBookId) => setDraft({ ...draft, groupBookId })} options={bookOptions} emptyValue="" disabled={Boolean(editing)} className="mt-1" aria-label="회차 책" />
+              <Select
+                value={draft.groupBookId}
+                onChangeAction={(groupBookId) =>
+                  setDraft({ ...draft, groupBookId })
+                }
+                options={bookOptions}
+                emptyValue=""
+                disabled={Boolean(editing)}
+                className="mt-1"
+                aria-label="회차 책"
+                truncate={false}
+              />
             </label>
             <p className="text-xs text-theme-secondary">
               책 전체 완독을 목표로 하며, 선택한 독서 시작일부터 이번 모임 전날까지 읽습니다.

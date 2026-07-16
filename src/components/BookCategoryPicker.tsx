@@ -98,7 +98,7 @@ export default function BookCategoryPicker({
         </label>
         <Select
           value={depth1Id}
-          onChange={(v) => {
+          onChangeAction={(v) => {
             onDepth1Change(v)
             onDepth2Change("")
           }}
@@ -123,7 +123,7 @@ export default function BookCategoryPicker({
         />
         <Select
           value={depth2Id}
-          onChange={onDepth2Change}
+          onChangeAction={onDepth2Change}
           options={[
             depth2Options[0]!,
             ...filteredDepth2List.map((d) => ({

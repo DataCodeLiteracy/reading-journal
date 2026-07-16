@@ -775,7 +775,7 @@ function BooksPageContent() {
           <label className='block text-xs text-theme-tertiary mb-1'>정렬</label>
           <Select
             value={sortOrder}
-            onChange={setSortOrder}
+            onChangeAction={setSortOrder}
             options={librarySortOptions}
             variant='toolbar'
             aria-label='정렬'
@@ -811,7 +811,9 @@ function BooksPageContent() {
                   <label className='block text-xs text-theme-tertiary mb-1'>문해력 수준</label>
                   <Select
                     value={levelFilter}
-                    onChange={(v) => setLevelFilter(v as BookLevel | "")}
+                    onChangeAction={(v) =>
+                      setLevelFilter(v as BookLevel | "")
+                    }
                     options={levelSelectOptions}
                     variant='toolbar'
                     aria-label='문해력 수준 필터'
@@ -821,7 +823,7 @@ function BooksPageContent() {
                   <label className='block text-xs text-theme-tertiary mb-1'>분야</label>
                   <Select
                     value={categoryFilter}
-                    onChange={setCategoryFilter}
+                    onChangeAction={setCategoryFilter}
                     options={categorySelectOptions}
                     variant='toolbar'
                     aria-label='분야 필터'
@@ -833,7 +835,9 @@ function BooksPageContent() {
                   </label>
                   <Select
                     value={toReadThisYearFilter}
-                    onChange={(v) => setToReadThisYearFilter(v as "" | "yes")}
+                    onChangeAction={(v) =>
+                      setToReadThisYearFilter(v as "" | "yes")
+                    }
                     options={toReadThisYearOptions}
                     variant='toolbar'
                     aria-label='올해 읽을 책 필터'

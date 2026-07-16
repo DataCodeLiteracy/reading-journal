@@ -255,7 +255,7 @@ export default function CommunicationPage() {
               </label>
               <Select
                 value={selectedKeyword}
-                onChange={setSelectedKeyword}
+                onChangeAction={setSelectedKeyword}
                 options={keywordSelectOptions}
                 variant='toolbar'
                 triggerClassName='py-3 min-h-[3rem]'

@@ -9,6 +9,7 @@ import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
 import { queryKeys } from "@/lib/queryKeys"
 import { ReadingGroupService } from "@/services/readingGroupService"
+import { UserService } from "@/services/userService"
 import { BOOK_LEVELS, type BookLevel } from "@/types/book"
 import type {
   GroupMember,
@@ -82,6 +83,7 @@ export default function GroupInfoPanel({
   const [offlineName, setOfflineName] = useState("")
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [validationError, setValidationError] = useState("")
+  const [userDisplayNames, setUserDisplayNames] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!settingsOpen) setGroupForm(groupToForm(group))
@@ -91,6 +93,41 @@ export default function GroupInfoPanel({
     () => members.filter((member) => member.status === "active"),
     [members],
   )
+  const linkedMemberUserIds = useMemo(
+    () =>
+      activeMembers
+        .map((member) => member.user_id)
+        .filter((userId): userId is string => Boolean(userId)),
+    [activeMembers],
+  )
+  useEffect(() => {
+    let cancelled = false
+    if (!linkedMemberUserIds.length) {
+      setUserDisplayNames({})
+      return
+    }
+    void Promise.all(
+      linkedMemberUserIds.map(async (userId) => {
+        const user = await UserService.getUser(userId)
+        return [userId, user?.displayName?.trim() || ""] as const
+      }),
+    )
+      .then((entries) => {
+        if (cancelled) return
+        setUserDisplayNames(
+          Object.fromEntries(entries.filter(([, displayName]) => Boolean(displayName))),
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setUserDisplayNames({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [linkedMemberUserIds])
+
+  const memberLabel = (member: GroupMember) =>
+    (member.user_id ? userDisplayNames[member.user_id] : "") || member.display_name
 
   const refreshGroupQueries = async () => {
     await Promise.all([
@@ -194,7 +231,7 @@ export default function GroupInfoPanel({
 
   const removeMember = (member: GroupMember) => {
     if (member.user_id === group.owner_user_id || member.user_id === currentUserId) return
-    if (!window.confirm(`${member.display_name} 멤버를 모임에서 제거할까요?`)) return
+    if (!window.confirm(`${memberLabel(member)} 멤버를 모임에서 제거할까요?`)) return
     removeMemberMutation.mutate(member.id)
   }
 
@@ -319,7 +356,7 @@ export default function GroupInfoPanel({
               <li key={member.id} className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-theme-primary">
-                    {member.display_name}
+                    {memberLabel(member)}
                   </p>
                   <p className="mt-0.5 text-xs text-theme-secondary">
                     {member.role === "owner" ? "모임장" : "멤버"} ·{" "}
@@ -332,7 +369,7 @@ export default function GroupInfoPanel({
                     onClick={() => removeMember(member)}
                     disabled={removeMemberMutation.isPending}
                     className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/20"
-                    aria-label={`${member.display_name} 멤버 제거`}
+                    aria-label={`${memberLabel(member)} 멤버 제거`}
                   >
                     <UserMinus className="h-4 w-4" aria-hidden />
                     제거
@@ -440,7 +477,7 @@ export default function GroupInfoPanel({
             <Select
               id="edit-group-status"
               value={groupForm.status}
-              onChange={(status) =>
+              onChangeAction={(status) =>
                 setGroupForm((current) => ({
                   ...current,
                   status,
@@ -460,7 +497,7 @@ export default function GroupInfoPanel({
                 <Select
                   id="edit-group-weekday"
                   value={groupForm.defaultWeekday}
-                  onChange={(defaultWeekday) =>
+                  onChangeAction={(defaultWeekday) =>
                     setGroupForm((current) => ({
                       ...current,
                       defaultWeekday,
