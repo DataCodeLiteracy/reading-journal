@@ -1,13 +1,13 @@
 "use client"
 
 import { forwardRef } from "react"
-import { Calendar, Clock } from "lucide-react"
+import { Calendar, CalendarClock, Clock } from "lucide-react"
 
 export type FormNativePickerInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
   "type"
 > & {
-  picker: "date" | "time"
+  picker: "date" | "time" | "datetime-local"
   /**
    * true면 `form-control` 없이 `className`만 적용 (관리자 필터 등).
    * 이 경우 높이·테두리·배경은 className에 모두 넣어야 함.
@@ -24,7 +24,8 @@ export const FormNativePickerInput = forwardRef<
   { picker, className = "", bare, wrapperClassName = "", onClick, ...rest },
   ref
 ) {
-  const Icon = picker === "date" ? Calendar : Clock
+  const Icon =
+    picker === "date" ? Calendar : picker === "time" ? Clock : CalendarClock
 
   const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
     onClick?.(e)

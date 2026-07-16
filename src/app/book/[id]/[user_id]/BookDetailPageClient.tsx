@@ -342,6 +342,14 @@ export default function BookDetailPageClient({
 
   const beginTimerSession = async () => {
     if (isTimerProcessing) return
+    if (
+      !book ||
+      userUid !== book.user_id ||
+      book.user_id !== resolvedParams.user_id
+    ) {
+      setError("독서 타이머는 이 책의 소유자만 시작할 수 있습니다.")
+      return
+    }
     try {
       setIsTimerProcessing(true)
       await primeAmbientPlaybackFromGesture()
@@ -379,8 +387,11 @@ export default function BookDetailPageClient({
   const requestStartTimer = () => {
     if (isTimerProcessing) return
     if (!book?.id) return
-    if (userUid !== resolvedParams?.user_id) {
-      void beginTimerSession()
+    if (
+      userUid !== book.user_id ||
+      book.user_id !== resolvedParams.user_id
+    ) {
+      setError("독서 타이머는 이 책의 소유자만 시작할 수 있습니다.")
       return
     }
     if (
@@ -408,8 +419,9 @@ export default function BookDetailPageClient({
           ReadingSession,
           "id" | "created_at" | "updated_at"
         > = {
-          user_id: resolvedParams?.user_id || "",
+          user_id: book.user_id,
           bookId: resolvedParams?.id || "",
+          source: "timer",
           startTime: timerStartTime.toISOString(), // UTC 시간으로 저장
           endTime: endTime.toISOString(), // UTC 시간으로 저장
           duration,
@@ -1152,11 +1164,26 @@ export default function BookDetailPageClient({
                   <button
                     type='button'
                     onClick={requestStartTimer}
-                    disabled={isTimerProcessing}
+                    disabled={
+                      isTimerProcessing ||
+                      userUid !== book.user_id ||
+                      book.user_id !== resolvedParams.user_id
+                    }
                     className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-theme px-4 py-3 font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50'
+                    title={
+                      userUid !== book.user_id ||
+                      book.user_id !== resolvedParams.user_id
+                        ? "독서 타이머는 책 소유자만 사용할 수 있습니다."
+                        : undefined
+                    }
                   >
                     <Play className='h-5 w-5' />
-                    {isTimerProcessing ? "시작 중..." : "독서 시작"}
+                    {userUid !== book.user_id ||
+                    book.user_id !== resolvedParams.user_id
+                      ? "소유자만 시작 가능"
+                      : isTimerProcessing
+                        ? "시작 중..."
+                        : "독서 시작"}
                   </button>
                 )}
               </div>

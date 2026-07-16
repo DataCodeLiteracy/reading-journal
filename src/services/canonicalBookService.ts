@@ -91,6 +91,30 @@ export class CanonicalBookService {
     return ApiClient.getDocument<CanonicalBook>(COLLECTION, id)
   }
 
+  /**
+   * 로그인 사용자용 공유 판본 제목 접두 검색입니다.
+   * 빈 검색어로 컬렉션을 훑지 않으며, 호출자가 큰 값을 넘겨도 최대 20건만 읽습니다.
+   */
+  static async searchByTitlePrefix(
+    query: string,
+    limit = 20,
+  ): Promise<CanonicalBook[]> {
+    const titlePrefix = query.trim()
+    if (!titlePrefix) return []
+
+    const safeLimit = Math.min(20, Math.max(1, Math.floor(limit)))
+    return ApiClient.queryDocuments<CanonicalBook>(
+      COLLECTION,
+      [
+        ["title", ">=", titlePrefix],
+        ["title", "<=", `${titlePrefix}\uf8ff`],
+      ],
+      "title",
+      "asc",
+      safeLimit,
+    )
+  }
+
   static async findPrimaryByEdition(
     title: string,
     publisher?: string,

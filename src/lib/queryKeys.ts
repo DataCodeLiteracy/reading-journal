@@ -118,4 +118,42 @@ export const queryKeys = {
       page: number,
     ) => ["record", "contentPage", uid, contentType, scopeKey, page] as const,
   },
+  readingGroups: {
+    all: ["readingGroups"] as const,
+    browse: {
+      all: ["readingGroups", "browse"] as const,
+      list: (uid: string | null | undefined) =>
+        ["readingGroups", "browse", "list", uid] as const,
+      detail: (groupId: string, uid: string | null | undefined) =>
+        ["readingGroups", "browse", "detail", groupId, uid] as const,
+    },
+    mine: (uid: string | null | undefined) =>
+      ["readingGroups", "mine", uid] as const,
+    detail: (groupId: string) =>
+      ["readingGroups", "detail", groupId] as const,
+    members: (groupId: string) =>
+      ["readingGroups", groupId, "members"] as const,
+    books: (groupId: string) =>
+      ["readingGroups", groupId, "books"] as const,
+    meetings: (groupId: string) =>
+      ["readingGroups", groupId, "meetings"] as const,
+    assignments: (meetingId: string) =>
+      ["readingGroups", "meetings", meetingId, "assignments"] as const,
+    meetingRecord: (meetingId: string) =>
+      ["readingGroups", "meetings", meetingId, "record"] as const,
+    meetingRecords: (groupId: string) =>
+      ["readingGroups", groupId, "meetingRecords"] as const,
+    posts: (groupId: string) =>
+      ["readingGroups", groupId, "posts"] as const,
+    comments: (postId: string) =>
+      ["readingGroups", "posts", postId, "comments"] as const,
+    recordShares: (groupId: string) =>
+      ["readingGroups", groupId, "recordShares"] as const,
+    recordShareCandidates: (groupId: string, uid: string) =>
+      ["readingGroups", groupId, "recordShareCandidates", uid] as const,
+    attributions: (groupId: string) =>
+      ["readingGroups", groupId, "attributions"] as const,
+    sessionAttributions: (readingSessionId: string) =>
+      ["readingGroups", "sessions", readingSessionId, "attributions"] as const,
+  },
 } as const

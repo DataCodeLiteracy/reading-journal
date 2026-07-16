@@ -31,9 +31,25 @@ export class ApiError extends Error {
   }
 }
 
-const convertTimestampToDate = (timestamp: any): Date | undefined => {
-  if (!timestamp) return undefined
-  return timestamp.toDate?.() || undefined
+const convertFirestoreValue = (value: any): any => {
+  if (value instanceof Timestamp) return value.toDate()
+  if (Array.isArray(value)) return value.map(convertFirestoreValue)
+
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    (Object.getPrototypeOf(value) === Object.prototype ||
+      Object.getPrototypeOf(value) === null)
+  ) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [
+        key,
+        convertFirestoreValue(nestedValue),
+      ]),
+    )
+  }
+
+  return value
 }
 
 const removeUndefinedValues = (obj: any): any => {
@@ -47,12 +63,14 @@ const removeUndefinedValues = (obj: any): any => {
 }
 
 const convertFirestoreData = (data: any, docId?: string): any => {
+  const converted = convertFirestoreValue(data)
   return {
-    ...data,
+    ...converted,
     id: docId,
-    created_at: convertTimestampToDate(data.created_at),
-    updated_at: convertTimestampToDate(data.updated_at),
-    last_read_at: convertTimestampToDate(data.last_read_at),
+    // 기존에 항상 노출하던 필드는 유지하면서 중첩된 임의 Timestamp도 재귀 변환합니다.
+    created_at: convertFirestoreValue(data.created_at),
+    updated_at: convertFirestoreValue(data.updated_at),
+    last_read_at: convertFirestoreValue(data.last_read_at),
   }
 }
 
@@ -70,19 +88,20 @@ export class ApiClient {
     try {
       const docRef = doc(db, collectionName, id)
       const merge = options?.merge ?? false
+      const cleanedData = removeUndefinedValues(data)
 
       let payload: DocumentData
       if (merge) {
         const snap = await getDoc(docRef)
         payload = {
-          ...data,
+          ...cleanedData,
           updated_at: serverTimestamp(),
           ...(snap.exists() ? {} : { created_at: serverTimestamp() }),
         }
         await setDoc(docRef, payload, { merge: true })
       } else {
         payload = {
-          ...data,
+          ...cleanedData,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         }

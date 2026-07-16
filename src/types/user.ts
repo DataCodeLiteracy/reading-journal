@@ -24,6 +24,7 @@ export interface ReadingSession {
   id: string
   user_id: string
   bookId: string
+  source?: "timer" | "manual"
   startTime: string
   endTime: string
   duration: number

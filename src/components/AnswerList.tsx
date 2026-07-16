@@ -59,10 +59,10 @@ export default function AnswerList({
       setIsLoading(true)
       setError(null)
 
-      // AnswerService.getQuestionAnswers는 모든 사용자의 답변을 가져오므로
-      // userId로 필터링 필요
-      const allAnswers = await AnswerService.getQuestionAnswers(questionId)
-      const userAnswers = allAnswers.filter((answer) => answer.user_id === userId)
+      const userAnswers = await AnswerService.getQuestionAnswers(
+        questionId,
+        userId,
+      )
       setAnswers(userAnswers)
     } catch (err) {
       console.error("Error loading answers:", err)

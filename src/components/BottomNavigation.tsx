@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useRouter } from "next/navigation"
-import { Home, PenSquare, User, BookOpen, Compass } from "lucide-react"
+import { Home, Users, User, BookOpen, Compass } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useReadingTimerSheet } from "@/contexts/ReadingTimerSheetContext"
 
@@ -22,8 +22,8 @@ const navigationItems = [
     path: "/explore",
   },
   {
-    label: "기록",
-    icon: PenSquare,
+    label: "활동",
+    icon: Users,
     path: "/record",
   },
   {

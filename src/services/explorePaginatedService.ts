@@ -184,7 +184,9 @@ export function buildExploreTitlePageConditions(params: {
   categoryFilter: string
   userIdFilter: string
 }): ExploreTitlePageFirestoreCondition[] {
-  const c: ExploreTitlePageFirestoreCondition[] = []
+  const c: ExploreTitlePageFirestoreCondition[] = [
+    ["isBookPublic", "==", true],
+  ]
   if (params.statusFilter)
     c.push(["status", "==", params.statusFilter])
   if (params.levelFilter) c.push(["level", "==", params.levelFilter])

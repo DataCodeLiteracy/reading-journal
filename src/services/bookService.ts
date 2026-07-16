@@ -73,8 +73,19 @@ export class BookService {
     title: string,
     publisher?: string,
     limit = 200,
+    userId?: string,
   ): Promise<Book[]> {
     const key = editionKeyFromBook(title, publisher)
+    if (userId) {
+      const userBooks = await this.getUserBooks(userId)
+      return userBooks
+        .filter(
+          (book) =>
+            book.editionKey === key ||
+            normalizeBookDuplicateKey(book.title, book.publisher) === key,
+        )
+        .slice(0, limit)
+    }
     const byEditionKey = await ApiClient.queryDocuments<Book>(
       "books",
       [["editionKey", "==", key]],

@@ -83,12 +83,16 @@ export class AnswerService {
    * 질문에 대한 모든 답변 조회
    */
   static async getQuestionAnswers(
-    questionId: string
+    questionId: string,
+    userId: string,
   ): Promise<QuestionAnswer[]> {
     try {
       const answers = await ApiClient.queryDocuments<QuestionAnswer>(
         "questionAnswers",
-        [["questionId", "==", questionId]],
+        [
+          ["questionId", "==", questionId],
+          ["user_id", "==", userId],
+        ],
         "created_at",
         "desc"
       )

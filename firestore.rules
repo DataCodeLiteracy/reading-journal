@@ -1,0 +1,758 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || (
+            exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+          )
+        );
+    }
+
+    function ownsBook(bookId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/books/$(bookId))
+        && get(/databases/$(database)/documents/books/$(bookId)).data.user_id == request.auth.uid;
+    }
+
+    function bookIsPublic(bookId) {
+      return exists(/databases/$(database)/documents/books/$(bookId))
+        && (
+          get(/databases/$(database)/documents/books/$(bookId)).data.isBookPublic == true
+          || get(/databases/$(database)/documents/books/$(bookId)).data.reviewIsPublic == true
+        );
+    }
+
+    function contentIsReadable(contentType, contentId) {
+      return (
+          contentType == "quote"
+          && exists(/databases/$(database)/documents/quotes/$(contentId))
+          && (
+            get(/databases/$(database)/documents/quotes/$(contentId)).data.isPublic == true
+            || isSelf(get(/databases/$(database)/documents/quotes/$(contentId)).data.user_id)
+          )
+        )
+        || (
+          contentType == "critique"
+          && exists(/databases/$(database)/documents/critiques/$(contentId))
+          && (
+            get(/databases/$(database)/documents/critiques/$(contentId)).data.isPublic == true
+            || isSelf(get(/databases/$(database)/documents/critiques/$(contentId)).data.user_id)
+          )
+        )
+        || (
+          contentType == "review"
+          && exists(/databases/$(database)/documents/books/$(contentId))
+          && (
+            get(/databases/$(database)/documents/books/$(contentId)).data.reviewIsPublic == true
+            || isSelf(get(/databases/$(database)/documents/books/$(contentId)).data.user_id)
+          )
+        )
+        || (
+          contentType == "question"
+          && exists(/databases/$(database)/documents/bookQuestions/$(contentId))
+          && (
+            get(/databases/$(database)/documents/bookQuestions/$(contentId)).data.isPublic == true
+            || ownsBook(get(/databases/$(database)/documents/bookQuestions/$(contentId)).data.bookId)
+          )
+        )
+        || (
+          contentType == "answer"
+          && exists(/databases/$(database)/documents/questionAnswers/$(contentId))
+          && (
+            get(/databases/$(database)/documents/questionAnswers/$(contentId)).data.isPublic == true
+            || isSelf(get(/databases/$(database)/documents/questionAnswers/$(contentId)).data.user_id)
+          )
+        )
+        || (
+          contentType == "comment"
+          && exists(/databases/$(database)/documents/comments/$(contentId))
+          && get(/databases/$(database)/documents/comments/$(contentId)).data.isPublic == true
+        );
+    }
+
+    function groupPath(groupId) {
+      return /databases/$(database)/documents/readingGroups/$(groupId);
+    }
+
+    function membershipPath(groupId, userId) {
+      return /databases/$(database)/documents/readingGroupMembers/$(groupId + "__" + userId);
+    }
+
+    function isGroupOwner(groupId) {
+      return signedIn()
+        && exists(groupPath(groupId))
+        && get(groupPath(groupId)).data.owner_user_id == request.auth.uid;
+    }
+
+    function isGroupOwnerAfter(groupId) {
+      return signedIn()
+        && existsAfter(groupPath(groupId))
+        && getAfter(groupPath(groupId)).data.owner_user_id == request.auth.uid;
+    }
+
+    function isActiveGroupMember(groupId) {
+      return signedIn()
+        && exists(membershipPath(groupId, request.auth.uid))
+        && get(membershipPath(groupId, request.auth.uid)).data.group_id == groupId
+        && get(membershipPath(groupId, request.auth.uid)).data.user_id == request.auth.uid
+        && get(membershipPath(groupId, request.auth.uid)).data.status == "active";
+    }
+
+    function groupIdUnchanged() {
+      return request.resource.data.group_id == resource.data.group_id;
+    }
+
+    function validGroupBookStatus(status) {
+      return status in [
+        "planned",
+        "on_hold",
+        "reading",
+        "reading_paused",
+        "completed",
+        "paused"
+      ];
+    }
+
+    function validAssignmentLinks(data) {
+      let bookPath = /databases/$(database)/documents/readingGroupBooks/$(data.group_book_id);
+      let meetingPath = /databases/$(database)/documents/readingGroupMeetings/$(data.meeting_id);
+      return data.keys().hasAll([
+          "group_id",
+          "meeting_id",
+          "group_book_id",
+          "canonical_book_id",
+          "reading_start_at",
+          "reading_end_at",
+          "reading_range"
+        ])
+        && data.reading_start_at is string
+        && data.reading_end_at is string
+        && data.reading_start_at < data.reading_end_at
+        && existsAfter(bookPath)
+        && existsAfter(meetingPath)
+        && getAfter(bookPath).data.group_id == data.group_id
+        && getAfter(meetingPath).data.group_id == data.group_id
+        && getAfter(bookPath).data.canonical_book_id == data.canonical_book_id;
+    }
+
+    function validCompletedAssignment(data) {
+      let meetingPath = /databases/$(database)/documents/readingGroupMeetings/$(data.meeting_id);
+      let bookPath = /databases/$(database)/documents/readingGroupBooks/$(data.group_book_id);
+      return getAfter(meetingPath).data.status != "completed"
+        || (
+          data.keys().hasAll(["completed_at", "book_title_snapshot"])
+          && data.completed_at is string
+          && data.book_title_snapshot is string
+          && getAfter(bookPath).data.status in ["completed", "paused"]
+        );
+    }
+
+    function isOperationalPost(postType) {
+      return postType in [
+        "announcement",
+        "group_rule",
+        "reading_method",
+        "discussion_rule"
+      ];
+    }
+
+    function validShareBook(data, sourceBookId) {
+      let sourceBookPath = /databases/$(database)/documents/books/$(sourceBookId);
+      let groupBookPath = /databases/$(database)/documents/readingGroupBooks/$(data.group_book_id);
+      return exists(sourceBookPath)
+        && get(sourceBookPath).data.user_id == request.auth.uid
+        && exists(groupBookPath)
+        && get(groupBookPath).data.group_id == data.group_id
+        && get(sourceBookPath).data.canonicalBookId == data.canonical_book_id
+        && get(groupBookPath).data.canonical_book_id == data.canonical_book_id
+        && get(sourceBookPath).data.title == data.book_title;
+    }
+
+    function validShareMeeting(data) {
+      return !data.keys().hasAny(["meeting_id"])
+        || (
+          data.meeting_id is string
+          && exists(/databases/$(database)/documents/readingGroupMeetings/$(data.meeting_id))
+          && get(/databases/$(database)/documents/readingGroupMeetings/$(data.meeting_id)).data.group_id == data.group_id
+        );
+    }
+
+    function validShareSource(data) {
+      return data.keys().hasAll([
+          "group_id",
+          "shared_by_user_id",
+          "shared_by_display_name",
+          "record_type",
+          "record_id",
+          "group_book_id",
+          "canonical_book_id",
+          "book_title",
+          "record_title",
+          "record_excerpt",
+          "shared_at"
+        ])
+        && data.shared_by_user_id == request.auth.uid
+        && data.shared_by_display_name
+          == get(membershipPath(data.group_id, request.auth.uid)).data.display_name
+        && validShareMeeting(data)
+        && (
+          (
+            data.record_type == "quote"
+            && exists(/databases/$(database)/documents/quotes/$(data.record_id))
+            && get(/databases/$(database)/documents/quotes/$(data.record_id)).data.user_id == request.auth.uid
+            && validShareBook(
+              data,
+              get(/databases/$(database)/documents/quotes/$(data.record_id)).data.bookId
+            )
+            && data.record_title == "인용 기록"
+            && data.record_excerpt
+              == get(/databases/$(database)/documents/quotes/$(data.record_id)).data.quoteText
+          )
+          || (
+            data.record_type == "critique"
+            && exists(/databases/$(database)/documents/critiques/$(data.record_id))
+            && get(/databases/$(database)/documents/critiques/$(data.record_id)).data.user_id == request.auth.uid
+            && validShareBook(
+              data,
+              get(/databases/$(database)/documents/critiques/$(data.record_id)).data.bookId
+            )
+            && data.record_title is string
+            && data.record_excerpt
+              == get(/databases/$(database)/documents/critiques/$(data.record_id)).data.content
+          )
+          || (
+            data.record_type == "review"
+            && validShareBook(data, data.record_id)
+            && get(/databases/$(database)/documents/books/$(data.record_id)).data.review is string
+            && data.record_title == "리뷰"
+            && data.record_excerpt
+              == get(/databases/$(database)/documents/books/$(data.record_id)).data.review
+          )
+        );
+    }
+
+    function validAttribution(data) {
+      let session = get(/databases/$(database)/documents/readingSessions/$(data.reading_session_id));
+      let assignment = get(/databases/$(database)/documents/readingGroupMeetingBookAssignments/$(data.meeting_book_assignment_id));
+      let meeting = get(/databases/$(database)/documents/readingGroupMeetings/$(data.meeting_id));
+      let groupBook = get(/databases/$(database)/documents/readingGroupBooks/$(data.group_book_id));
+      let book = get(/databases/$(database)/documents/books/$(session.data.bookId));
+      return isSelf(data.user_id)
+        && isActiveGroupMember(data.group_id)
+        && session.data.user_id == request.auth.uid
+        && session.data.source == "timer"
+        && data.session_start_at == session.data.startTime
+        && data.session_end_at == session.data.endTime
+        && data.counted_seconds is int
+        && data.counted_seconds > 0
+        && data.counted_seconds <= session.data.duration
+        && assignment.data.group_id == data.group_id
+        && assignment.data.meeting_id == data.meeting_id
+        && assignment.data.group_book_id == data.group_book_id
+        && assignment.data.canonical_book_id == data.canonical_book_id
+        && meeting.data.group_id == data.group_id
+        && groupBook.data.group_id == data.group_id
+        && groupBook.data.canonical_book_id == data.canonical_book_id
+        && book.data.user_id == data.user_id
+        && book.data.canonicalBookId == data.canonical_book_id;
+    }
+
+    // Existing application collections are listed explicitly. There is no
+    // global allow rule, so the reading-group rules below cannot be bypassed.
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isSelf(userId)
+        && request.resource.data.uid == request.auth.uid
+        && (
+          !request.resource.data.keys().hasAny(["isAdmin"])
+          || request.resource.data.isAdmin == false
+        );
+      allow update: if isSelf(userId)
+        && request.resource.data.uid == resource.data.uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["isAdmin"]);
+      allow delete: if isSelf(userId) || isAdmin();
+    }
+
+    match /books/{bookId} {
+      allow read: if resource.data.isBookPublic == true
+        || resource.data.reviewIsPublic == true
+        || isSelf(resource.data.user_id)
+        || isAdmin();
+      allow create: if isSelf(request.resource.data.user_id);
+      allow update: if isSelf(resource.data.user_id)
+        && request.resource.data.user_id == resource.data.user_id;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /readingSessions/{sessionId} {
+      allow read: if isSelf(resource.data.user_id)
+        || ownsBook(resource.data.bookId)
+        || bookIsPublic(resource.data.bookId)
+        || isAdmin();
+      allow create: if isSelf(request.resource.data.user_id)
+        && ownsBook(request.resource.data.bookId);
+      allow update: if isSelf(resource.data.user_id)
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.bookId == resource.data.bookId;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /userStatistics/{userId} {
+      allow read: if isSelf(userId) || resource.data.isProfilePublic == true;
+      allow create, update: if isSelf(userId)
+        && request.resource.data.user_id == request.auth.uid;
+      allow delete: if isSelf(userId);
+    }
+
+    match /statistics/{userId} {
+      allow read: if isSelf(userId) || resource.data.isProfilePublic == true;
+      allow create, update: if isSelf(userId)
+        && request.resource.data.user_id == request.auth.uid;
+      allow delete: if isSelf(userId);
+    }
+
+    match /userSummaries/{userId} {
+      allow read, write: if isSelf(userId);
+    }
+
+    match /bookQuestions/{questionId} {
+      allow read: if resource.data.isPublic == true || ownsBook(resource.data.bookId);
+      allow create: if ownsBook(request.resource.data.bookId)
+        && (
+          !request.resource.data.keys().hasAny(["user_id"])
+          || request.resource.data.user_id == request.auth.uid
+        );
+      allow update: if ownsBook(resource.data.bookId)
+        && request.resource.data.bookId == resource.data.bookId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["user_id"]);
+      allow delete: if ownsBook(resource.data.bookId);
+    }
+
+    match /questionAnswers/{answerId} {
+      allow read: if resource.data.isPublic == true || isSelf(resource.data.user_id);
+      allow create: if isSelf(request.resource.data.user_id);
+      allow update: if isSelf(resource.data.user_id)
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.questionId == resource.data.questionId
+        && request.resource.data.bookId == resource.data.bookId;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /quotes/{quoteId} {
+      allow read: if resource.data.isPublic == true
+        || isSelf(resource.data.user_id)
+        || ownsBook(resource.data.bookId);
+      allow create: if isSelf(request.resource.data.user_id)
+        && ownsBook(request.resource.data.bookId);
+      allow update: if isSelf(resource.data.user_id)
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.bookId == resource.data.bookId;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /critiques/{critiqueId} {
+      allow read: if resource.data.isPublic == true
+        || isSelf(resource.data.user_id)
+        || ownsBook(resource.data.bookId);
+      allow create: if isSelf(request.resource.data.user_id)
+        && ownsBook(request.resource.data.bookId);
+      allow update: if isSelf(resource.data.user_id)
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.bookId == resource.data.bookId;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /likes/{likeId} {
+      allow read: if contentIsReadable(resource.data.contentType, resource.data.contentId);
+      allow create: if isSelf(request.resource.data.user_id)
+        && contentIsReadable(request.resource.data.contentType, request.resource.data.contentId);
+      allow update: if false;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /comments/{commentId} {
+      allow read: if contentIsReadable(resource.data.contentType, resource.data.contentId);
+      allow create: if isSelf(request.resource.data.user_id)
+        && contentIsReadable(request.resource.data.contentType, request.resource.data.contentId);
+      allow update: if isSelf(resource.data.user_id)
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.contentType == resource.data.contentType
+        && request.resource.data.contentId == resource.data.contentId;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /rereads/{rereadId} {
+      allow read: if isSelf(resource.data.user_id)
+        || ownsBook(resource.data.bookId);
+      allow create: if isSelf(request.resource.data.user_id);
+      allow update: if isSelf(resource.data.user_id)
+        && request.resource.data.user_id == resource.data.user_id;
+      allow delete: if isSelf(resource.data.user_id);
+    }
+
+    match /userChecklists/{userId} {
+      allow read: if isSelf(userId);
+      allow create, update: if isSelf(userId)
+        && request.resource.data.user_id == request.auth.uid;
+      allow delete: if isSelf(userId);
+    }
+
+    match /readingExamProgress/{progressId} {
+      allow read: if isSelf(resource.data.userId)
+        || (
+          signedIn()
+          && progressId.matches("^" + request.auth.uid + "__.*$")
+        );
+      allow create: if isSelf(request.resource.data.userId)
+        && progressId.matches("^" + request.auth.uid + "__.*$");
+      allow update: if isSelf(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.bookId == resource.data.bookId;
+      allow delete: if isSelf(resource.data.userId);
+    }
+
+    match /readingExcerptProgress/{progressId} {
+      allow read: if isSelf(resource.data.userId)
+        || (
+          signedIn()
+          && progressId.matches("^" + request.auth.uid + "__.*$")
+        );
+      allow create: if isSelf(request.resource.data.userId)
+        && progressId.matches("^" + request.auth.uid + "__.*$");
+      allow update: if isSelf(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.bookId == resource.data.bookId;
+      allow delete: if isSelf(resource.data.userId);
+    }
+
+    match /goldenBellResults/{resultId} {
+      allow read: if isSelf(resource.data.userId);
+      allow create: if isSelf(request.resource.data.userId);
+      allow update: if isSelf(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSelf(resource.data.userId);
+    }
+
+    match /goldenBellInProgress/{sessionId} {
+      allow read: if isSelf(resource.data.userId)
+        || (
+          signedIn()
+          && sessionId.matches("^" + request.auth.uid + "__.*$")
+        );
+      allow create: if isSelf(request.resource.data.userId)
+        && sessionId.matches("^" + request.auth.uid + "__.*$");
+      allow update: if isSelf(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSelf(resource.data.userId);
+    }
+
+    match /goldenBellRequests/{requestId} {
+      allow read: if isAdmin() || isSelf(resource.data.user_id);
+      allow create: if isSelf(request.resource.data.user_id)
+        && request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+
+    // Shared/reference and administrative collections are named explicitly.
+    // Admin SDK calls are not evaluated by these client security rules.
+    match /systemChecklists/{documentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /canonicalBooks/{documentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.user_ids.hasAny([request.auth.uid]);
+      allow update: if signedIn()
+        && request.resource.data.editionKey == resource.data.editionKey
+        && request.resource.data.user_ids.hasAll(resource.data.user_ids)
+        && request.resource.data.user_ids.hasAny([request.auth.uid]);
+      allow delete: if isAdmin();
+    }
+
+    match /readingContentPacks/{documentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /goldenBellQuizzes/{documentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /bookCategoryDepth1/{documentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /bookCategoryDepth2/{documentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /readingAiGradingPrompts/{documentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /reading_records/{documentId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /adminSettings/{documentId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /aladinCategoryApplyLogs/{documentId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /readingGroups/{groupId} {
+      allow create: if signedIn()
+        && request.resource.data.owner_user_id == request.auth.uid
+        && request.resource.data.join_mode == "invite_code";
+      allow read: if isGroupOwner(groupId)
+        || isActiveGroupMember(groupId);
+      allow update: if isGroupOwner(groupId)
+        && request.resource.data.owner_user_id == resource.data.owner_user_id;
+      allow delete: if isGroupOwner(groupId);
+    }
+
+    match /readingGroupMembers/{memberId} {
+      allow read: if isSelf(resource.data.user_id)
+        || isGroupOwner(resource.data.group_id)
+        || isActiveGroupMember(resource.data.group_id);
+      allow create: if (
+          isGroupOwnerAfter(request.resource.data.group_id)
+          && request.resource.data.user_id == request.auth.uid
+          && request.resource.data.role == "owner"
+          && request.resource.data.status == "active"
+          && memberId == request.resource.data.group_id + "__" + request.auth.uid
+        )
+        || (
+          isGroupOwner(request.resource.data.group_id)
+          && request.resource.data.user_id == null
+          && request.resource.data.role == "member"
+          && request.resource.data.status == "active"
+        )
+        ;
+      allow update: if (
+          isGroupOwner(resource.data.group_id)
+          && request.resource.data.group_id == resource.data.group_id
+          && request.resource.data.user_id == resource.data.user_id
+          && (
+            resource.data.user_id != get(groupPath(resource.data.group_id)).data.owner_user_id
+            || (
+              request.resource.data.role == "owner"
+              && request.resource.data.status == "active"
+            )
+          )
+        )
+        || (
+          isSelf(resource.data.user_id)
+          && resource.data.role == "member"
+          && request.resource.data.group_id == resource.data.group_id
+          && request.resource.data.user_id == resource.data.user_id
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == "active"
+        );
+      allow delete: if isGroupOwner(resource.data.group_id)
+        && (
+          resource.data.user_id != get(groupPath(resource.data.group_id)).data.owner_user_id
+          || !existsAfter(groupPath(resource.data.group_id))
+        );
+    }
+
+    match /readingGroupBooks/{bookId} {
+      allow read: if isActiveGroupMember(resource.data.group_id);
+      allow create: if isGroupOwner(request.resource.data.group_id)
+        && request.resource.data.status == "planned"
+        && !request.resource.data.keys().hasAny(["start_date", "end_date"]);
+      allow update: if isGroupOwner(resource.data.group_id)
+        && groupIdUnchanged()
+        && validGroupBookStatus(request.resource.data.status);
+      allow delete: if isGroupOwner(resource.data.group_id);
+    }
+
+    match /readingGroupMeetings/{meetingId} {
+      allow read: if isActiveGroupMember(resource.data.group_id);
+      allow create: if isGroupOwner(request.resource.data.group_id);
+      allow update: if isGroupOwner(resource.data.group_id) && groupIdUnchanged();
+      allow delete: if isGroupOwner(resource.data.group_id);
+    }
+
+    match /readingGroupMeetingBookAssignments/{assignmentId} {
+      allow read: if isActiveGroupMember(resource.data.group_id);
+      allow create: if isGroupOwner(request.resource.data.group_id)
+        && validAssignmentLinks(request.resource.data)
+        && validCompletedAssignment(request.resource.data);
+      allow update: if isGroupOwner(resource.data.group_id)
+        && groupIdUnchanged()
+        && get(/databases/$(database)/documents/readingGroupMeetings/$(resource.data.meeting_id)).data.status != "completed"
+        && request.resource.data.meeting_id == resource.data.meeting_id
+        && validAssignmentLinks(request.resource.data)
+        && validCompletedAssignment(request.resource.data);
+      allow delete: if isGroupOwner(resource.data.group_id)
+        && get(/databases/$(database)/documents/readingGroupMeetings/$(resource.data.meeting_id)).data.status != "completed";
+    }
+
+    match /readingGroupMeetingRecords/{recordId} {
+      allow read: if isActiveGroupMember(resource.data.group_id)
+        || (
+          signedIn()
+          && exists(/databases/$(database)/documents/readingGroupMeetings/$(recordId))
+          && isActiveGroupMember(
+            get(/databases/$(database)/documents/readingGroupMeetings/$(recordId)).data.group_id
+          )
+        );
+      allow create: if isGroupOwner(request.resource.data.group_id)
+        && request.resource.data.recorded_by_user_id == request.auth.uid;
+      allow update: if isGroupOwner(resource.data.group_id)
+        && groupIdUnchanged()
+        && request.resource.data.meeting_id == resource.data.meeting_id
+        && request.resource.data.recorded_by_user_id == resource.data.recorded_by_user_id;
+      allow delete: if isGroupOwner(resource.data.group_id);
+    }
+
+    match /readingGroupPosts/{postId} {
+      allow read: if isActiveGroupMember(resource.data.group_id);
+      allow create: if (
+          isOperationalPost(request.resource.data.type)
+          && isGroupOwner(request.resource.data.group_id)
+          && request.resource.data.author_user_id == request.auth.uid
+          && request.resource.data.author_display_name
+            == get(membershipPath(request.resource.data.group_id, request.auth.uid)).data.display_name
+        )
+        || (
+          request.resource.data.type == "member_post"
+          && isActiveGroupMember(request.resource.data.group_id)
+          && request.resource.data.author_user_id == request.auth.uid
+          && request.resource.data.author_display_name
+            == get(membershipPath(request.resource.data.group_id, request.auth.uid)).data.display_name
+          && request.resource.data.is_pinned == false
+        );
+      allow update: if (
+          (
+            isOperationalPost(resource.data.type)
+            && isGroupOwner(resource.data.group_id)
+            && request.resource.data.type == resource.data.type
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "title",
+              "content",
+              "is_pinned",
+              "version",
+              "published_at",
+              "updated_at"
+            ])
+          )
+          || (
+            resource.data.type == "member_post"
+            && isSelf(resource.data.author_user_id)
+            && isActiveGroupMember(resource.data.group_id)
+            && request.resource.data.type == resource.data.type
+            && request.resource.data.is_pinned == resource.data.is_pinned
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "title",
+              "content",
+              "updated_at"
+            ])
+          )
+        )
+        && request.resource.data.group_id == resource.data.group_id
+        && request.resource.data.author_user_id == resource.data.author_user_id;
+      allow delete: if isSelf(resource.data.author_user_id)
+        || isGroupOwner(resource.data.group_id);
+    }
+
+    match /readingGroupPostComments/{commentId} {
+      allow read: if isActiveGroupMember(resource.data.group_id);
+      allow create: if isActiveGroupMember(request.resource.data.group_id)
+        && request.resource.data.author_user_id == request.auth.uid
+        && request.resource.data.author_display_name
+          == get(membershipPath(request.resource.data.group_id, request.auth.uid)).data.display_name
+        && exists(/databases/$(database)/documents/readingGroupPosts/$(request.resource.data.post_id))
+        && get(/databases/$(database)/documents/readingGroupPosts/$(request.resource.data.post_id)).data.group_id == request.resource.data.group_id;
+      allow update: if isSelf(resource.data.author_user_id)
+        && isActiveGroupMember(resource.data.group_id)
+        && request.resource.data.group_id == resource.data.group_id
+        && request.resource.data.post_id == resource.data.post_id
+        && request.resource.data.author_user_id == resource.data.author_user_id
+        && request.resource.data.author_display_name == resource.data.author_display_name
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "content",
+          "updated_at"
+        ]);
+      allow delete: if isSelf(resource.data.author_user_id)
+        || isGroupOwner(resource.data.group_id)
+        || (
+          exists(/databases/$(database)/documents/readingGroupPosts/$(resource.data.post_id))
+          && isSelf(get(/databases/$(database)/documents/readingGroupPosts/$(resource.data.post_id)).data.author_user_id)
+          && !existsAfter(/databases/$(database)/documents/readingGroupPosts/$(resource.data.post_id))
+        );
+    }
+
+    match /readingGroupRecordShares/{shareId} {
+      allow read: if isActiveGroupMember(resource.data.group_id);
+      allow create: if isActiveGroupMember(request.resource.data.group_id)
+        && shareId
+          == request.resource.data.group_id + "__"
+            + request.resource.data.record_type + "__"
+            + request.resource.data.record_id + "__"
+            + request.auth.uid
+        && validShareSource(request.resource.data);
+      allow update: if isSelf(resource.data.shared_by_user_id)
+        && isActiveGroupMember(resource.data.group_id)
+        && groupIdUnchanged()
+        && validShareMeeting(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "note",
+          "meeting_id",
+          "updated_at"
+        ]);
+      allow delete: if isSelf(resource.data.shared_by_user_id)
+        || isGroupOwner(resource.data.group_id);
+    }
+
+    match /readingGroupReadingAttributions/{attributionId} {
+      allow read: if isSelf(resource.data.user_id)
+        || isActiveGroupMember(resource.data.group_id);
+      allow create: if attributionId
+          == request.resource.data.reading_session_id + "__"
+            + request.resource.data.meeting_book_assignment_id
+        && validAttribution(request.resource.data);
+      allow update: if isSelf(resource.data.user_id)
+        && attributionId
+          == request.resource.data.reading_session_id + "__"
+            + request.resource.data.meeting_book_assignment_id
+        && validAttribution(request.resource.data)
+        && request.resource.data.group_id == resource.data.group_id
+        && request.resource.data.reading_session_id == resource.data.reading_session_id
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.user_display_name == resource.data.user_display_name
+        && request.resource.data.canonical_book_id == resource.data.canonical_book_id;
+      allow delete: if (
+          isSelf(resource.data.user_id)
+          && exists(/databases/$(database)/documents/readingSessions/$(resource.data.reading_session_id))
+          && get(/databases/$(database)/documents/readingSessions/$(resource.data.reading_session_id)).data.user_id == request.auth.uid
+        )
+        || (
+          isGroupOwner(resource.data.group_id)
+          && !existsAfter(groupPath(resource.data.group_id))
+        );
+    }
+  }
+}

@@ -10,7 +10,7 @@ export type SelectOption<T extends string = string> = {
   optionClassName?: string
 }
 
-export type SelectVariant = "form-modal" | "toolbar"
+export type SelectVariant = "form-modal" | "toolbar" | "compact"
 
 const variantClass: Record<SelectVariant, string> = {
   /** 모달·폼 전체 너비 — 터치 친화 높이 (focus-level form-modal 정렬) */
@@ -19,6 +19,9 @@ const variantClass: Record<SelectVariant, string> = {
   /** 목록·필터 바 — 입력 필드와 동일한 느낌의 rounded-lg */
   toolbar:
     "h-10 min-h-10 max-md:min-h-[2.75rem] rounded-lg border border-theme-tertiary bg-theme-primary px-3 py-0 text-sm font-medium text-theme-primary shadow-none hover:border-theme-primary",
+  /** 카드 안의 짧은 상태 선택 */
+  compact:
+    "h-8 min-h-8 rounded-md border border-theme-tertiary bg-theme-primary px-2 py-0 text-xs font-medium text-theme-primary shadow-none hover:border-theme-primary",
 }
 
 type SelectProps<T extends string> = {
@@ -33,6 +36,7 @@ type SelectProps<T extends string> = {
   className?: string
   triggerClassName?: string
   emptyValue?: string
+  menuPlacement?: "top" | "bottom"
   "aria-label"?: string
 }
 
@@ -48,6 +52,7 @@ export default function Select<T extends string>({
   className = "",
   triggerClassName = "",
   emptyValue,
+  menuPlacement = "bottom",
   "aria-label": ariaLabel,
 }: SelectProps<T>) {
   const reactId = useId()
@@ -125,7 +130,11 @@ export default function Select<T extends string>({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-[110] mt-1 max-h-60 overflow-auto rounded-md border border-card bg-theme-primary py-1 shadow-lg"
+          className={`absolute left-0 z-[110] max-h-60 overflow-auto rounded-md border border-card bg-theme-primary py-1 shadow-lg ${
+            variant === "compact" ? "min-w-[7rem]" : "right-0"
+          } ${
+            menuPlacement === "top" ? "bottom-full mb-1" : "top-full mt-1"
+          }`}
         >
           {options.map((opt) => {
             const isActive = opt.value === value
@@ -136,7 +145,11 @@ export default function Select<T extends string>({
                   role="option"
                   aria-selected={isActive}
                   disabled={opt.disabled}
-                  className={`flex w-full items-center px-3 py-2.5 text-left text-sm sm:py-2 ${
+                  className={`flex w-full items-center text-left ${
+                    variant === "compact"
+                      ? "px-2 py-1.5 text-xs"
+                      : "px-3 py-2.5 text-sm sm:py-2"
+                  } ${
                     opt.disabled
                       ? "cursor-not-allowed text-theme-tertiary"
                       : `cursor-pointer hover:bg-theme-tertiary ${

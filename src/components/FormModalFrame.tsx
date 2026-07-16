@@ -13,6 +13,8 @@ type FormModalFrameProps = {
   children: ReactNode
   /** 헤더 왼쪽 (아이콘 배지 등) */
   headerStart?: ReactNode
+  /** 닫기 버튼 앞에 배치할 헤더 액션 */
+  headerEnd?: ReactNode
   /** true면 닫기·배경 클릭 차단 + lockOverlay 표시 */
   interactionLocked?: boolean
   lockOverlay?: ReactNode
@@ -28,6 +30,7 @@ export default function FormModalFrame({
   size = "default",
   children,
   headerStart,
+  headerEnd,
   interactionLocked = false,
   lockOverlay,
 }: FormModalFrameProps) {
@@ -45,7 +48,7 @@ export default function FormModalFrame({
         onClick={interactionLocked ? undefined : onClose}
       />
       <div
-        className={`${shellClass} modal-dialog-surface relative z-10 min-w-0 max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 ${
+        className={`${shellClass} modal-dialog-surface relative z-10 min-w-0 max-h-[calc(82dvh-50px)] overflow-y-auto rounded-xl p-4 sm:max-h-[calc(90vh-50px)] sm:p-6 ${
           interactionLocked ? "overflow-hidden" : ""
         }`}
         role="dialog"
@@ -63,6 +66,7 @@ export default function FormModalFrame({
               {title}
             </h2>
           </div>
+          {headerEnd}
           <button
             type="button"
             onClick={onClose}

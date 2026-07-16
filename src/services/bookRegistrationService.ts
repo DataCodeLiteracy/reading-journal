@@ -88,35 +88,47 @@ export async function findExploreEditionRegisteredByOthers(
   const trimmed = title.trim()
   if (!trimmed) return { match: false }
 
-  const books = await BookService.findBooksByEditionKey(trimmed, publisher)
-  const others = books.filter((b) => b.user_id !== userId)
-  if (others.length === 0) return { match: false }
+  const canonical = await CanonicalBookService.findPrimaryByEdition(
+    trimmed,
+    publisher,
+  )
+  const otherUserIds =
+    canonical?.user_ids.filter((registeredUserId) => registeredUserId !== userId) ??
+    []
+  if (!canonical || otherUserIds.length === 0) return { match: false }
 
-  const seed = books[0]
   return {
     match: true,
-    userCount: new Set(others.map((b) => b.user_id)).size,
-    title: seed?.title?.trim() || trimmed,
-    publisher: seed?.publisher?.trim() || publisher?.trim(),
+    userCount: new Set(otherUserIds).size,
+    title: canonical.title.trim() || trimmed,
+    publisher: canonical.publisher?.trim() || publisher?.trim(),
   }
 }
 
 export async function findPrimaryCanonicalForRegistration(
   title: string,
   publisher?: string,
+  userId?: string,
 ): Promise<CanonicalBook | null> {
-  return resolvePrimaryCanonical(title, publisher)
+  return resolvePrimaryCanonical(title, publisher, userId)
 }
 
 /** canonicalBooks 또는 기존 books 판본에서 primary canonical 확보 */
 export async function resolvePrimaryCanonical(
   title: string,
   publisher?: string,
+  userId?: string,
 ): Promise<CanonicalBook | null> {
   const existing = await CanonicalBookService.findPrimaryByEdition(title, publisher)
   if (existing) return existing
 
-  const editionBooks = await BookService.findBooksByEditionKey(title, publisher)
+  if (!userId) return null
+  const editionBooks = await BookService.findBooksByEditionKey(
+    title,
+    publisher,
+    200,
+    userId,
+  )
   if (editionBooks.length === 0) return null
 
   return CanonicalBookService.createPrimaryFromExistingBooks(
@@ -136,7 +148,11 @@ export async function checkBookRegistration(
     return { status: "own_duplicate" }
   }
 
-  const existing = await resolvePrimaryCanonical(input.title, input.publisher)
+  const existing = await resolvePrimaryCanonical(
+    input.title,
+    input.publisher,
+    userId,
+  )
   if (!existing) return { status: "new_edition" }
 
   if (existing.user_ids.includes(userId)) {

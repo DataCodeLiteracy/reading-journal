@@ -151,6 +151,7 @@ export default function AddReadingSessionModal({
       await onSave({
         user_id: userId,
         bookId,
+        source: "manual",
         startTime: startDate.toISOString(),
         endTime: finalEndDate.toISOString(),
         duration,

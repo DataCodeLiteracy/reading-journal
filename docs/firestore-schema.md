@@ -279,3 +279,45 @@ Firestore Console에서 다음 복합 인덱스를 생성해야 합니다:
    - `contentType` (Ascending) + `contentId` (Ascending) + `created_at` (Ascending)
    - `user_id` (Ascending) + `created_at` (Descending)
 
+---
+
+## 독서모임 컬렉션과 권한
+
+독서모임 데이터는 모두 루트 컬렉션으로 저장하며, 관련 문서는 `group_id`로 연결합니다.
+
+- `readingGroups`: 모임 기본 정보, owner, 초대코드
+- `readingGroupMembers`: 멤버와 owner membership (`{group_id}__{user_id}` ID 사용)
+- `readingGroupBooks`: 모임 선정 도서
+- `readingGroupMeetings`: 모임 회차
+- `readingGroupMeetingBookAssignments`: 회차별 읽기 과제
+- `readingGroupMeetingRecords`: 회차 기록
+- `readingGroupPosts`: 운영 문서와 회원 게시물
+- `readingGroupPostComments`: 회원 게시물 댓글
+- `readingGroupRecordShares`: 모임에 공유한 개인 기록
+- `readingGroupReadingAttributions`: 개인 독서 세션을 모임 과제에 귀속한 기록
+
+### 권한 요약
+
+- 모든 독서모임 작업에는 Firebase Authentication이 필요합니다.
+- `readingGroups.owner_user_id`인 owner만 모임 구조, 멤버, 도서, 회차, 과제, 회차 기록과 운영 문서(`announcement`, `group_rule`, `reading_method`, `discussion_rule`)를 생성·수정·삭제할 수 있습니다.
+- `status == "active"`인 membership을 가진 사용자는 해당 모임 데이터를 읽을 수 있습니다.
+- active member는 `member_post`와 댓글을 만들 수 있습니다. 작성자만 자기 글·댓글을 수정할 수 있으며, owner는 moderation 목적으로 삭제만 할 수 있고 다른 회원 글을 수정할 수 없습니다.
+- 기록 공유는 active member가 본인 명의로 만들고 수정·삭제합니다. owner는 moderation 삭제가 가능합니다.
+- 독서 귀속은 본인의 `readingSessions` 문서에 대해서만 만들 수 있습니다. membership이 active여야 하며, 과제·회차·그룹 도서의 `group_id`와 귀속 문서의 `group_id`가 모두 일치해야 합니다. 수정 시 `group_id`, `reading_session_id`, `user_id`, 표시 이름, canonical book ID는 바꿀 수 없습니다. 일반 삭제는 해당 사용자만 가능하고, owner가 모임 문서도 같은 atomic batch에서 삭제하는 cascade에 한해 owner 삭제를 허용합니다.
+- owner membership은 모임 문서와 같은 batch에서 생성할 수 있도록 Rules의 `getAfter()`로 새 모임의 owner를 확인합니다.
+
+### 초대코드 가입
+
+클라이언트는 `/api/groups/join`에 Firebase ID token, 초대코드, 표시 이름을 보냅니다. 서버가 ID token과 active 그룹의 초대코드를 검증한 후 Admin SDK transaction으로 membership을 생성합니다. 가입 전 그룹 문서 읽기와 클라이언트의 membership self-create는 Security Rules에서 허용하지 않습니다.
+
+### 모임 책 상태와 회차 읽기 기간
+
+- `readingGroupBooks`는 날짜 없는 모임 책장 항목입니다. 새 문서는 항상 `planned`로 생성하며 기존 `start_date`/`end_date`는 호환 목적으로 읽기만 합니다.
+- `status`는 `planned`(예정), `on_hold`(선정 보류), `reading`(읽는 중), `reading_paused`(정지), `completed`(완료), `paused`(중단)입니다. 기존 `paused`의 의미는 중단으로 유지합니다.
+- 미배정 책은 `planned`와 `on_hold` 사이에서만 바꿉니다. 배정 후 시작 시각부터 유효 상태가 `reading`이며, 진행 중에는 `reading_paused` 또는 `paused`로 바꿀 수 있습니다. `completed`는 회차 완료 batch에서만 확정합니다.
+- 회차당 `readingGroupMeetingBookAssignments` 한 문서를 사용합니다. 독서 시작일은 모임장이 선택하며 첫 회차는 그룹 생성일 다음 날, 후속 회차는 직전 회차 날짜 다음 날을 기본값으로 제안합니다. `reading_end_at`은 종료 날짜의 실제 모임 시간과 같고, 그 시각이 지나면 회차는 `완료 대기`로 표시됩니다. 귀속 범위는 ISO `[reading_start_at, reading_end_at)`입니다.
+- `paused` 전환은 `stopped_at`에 중단 시점을 기록하되 원래 예정 마감 스냅샷인 `reading_end_at`은 변경하지 않습니다. 새로 생성·수정·재동기화하는 귀속은 `[reading_start_at, min(reading_end_at, stopped_at))`만 계산합니다.
+- 중단을 실행한 사용자가 해당 판본을 개인 서재에 보유한 경우 본인 소유 세션은 즉시 재동기화합니다. 다른 멤버의 기존 귀속은 권한을 우회해 일괄 수정하지 않으며, 이후 해당 멤버 세션이 수정·재동기화될 때 중단 경계가 반영됩니다.
+- 완료 batch는 회차를 `completed`로 바꾸고 assignment에 `completed_at`, `book_title_snapshot`, 선택적 `book_author_snapshot`/`book_cover_url_snapshot`을 저장합니다. 정상 진행 책은 `completed`가 되며, 이미 `paused`로 중단된 책은 중단 상태를 보존합니다. 완료된 회차의 assignment는 이후 수정·삭제하지 않습니다.
+- 기존 assignment에 스냅샷이 없으면 화면과 공개 API는 현재 `readingGroupBooks`의 제목·저자·표지를 fallback으로 사용합니다.
+

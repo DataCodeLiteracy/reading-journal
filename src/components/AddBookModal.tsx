@@ -27,7 +27,9 @@ import { buildBookCategoryFields } from "@/utils/bookCategoryFields"
 interface AddBookModalProps {
   isOpen: boolean
   onClose: () => void
-  onAddBook: (book: Omit<Book, "id" | "user_id">) => void
+  onAddBook: (
+    book: Omit<Book, "id" | "user_id">,
+  ) => void | Promise<void>
   initialTitle?: string
   initialAuthor?: string
   initialPublishedDate?: string
@@ -85,6 +87,8 @@ export default function AddBookModal({
   } | null>(null)
   const exploreSuggestDismissedKeyRef = useRef<string | null>(null)
   const [aladinFetchBusy, setAladinFetchBusy] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const duplicateKeySet = useMemo(
     () => new Set(userBookDuplicateKeys),
@@ -167,6 +171,8 @@ export default function AddBookModal({
       setExploreSuggestEdition(null)
       exploreSuggestDismissedKeyRef.current = null
       setAladinFetchBusy(false)
+      setIsSubmitting(false)
+      setSubmitError(null)
     }
   }, [
     isOpen,
@@ -200,6 +206,8 @@ export default function AddBookModal({
     setExploreSuggestOpen(false)
     setExploreSuggestEdition(null)
     exploreSuggestDismissedKeyRef.current = null
+    setIsSubmitting(false)
+    setSubmitError(null)
   }
 
   const maybeSuggestExploreEdition = useCallback(
@@ -249,9 +257,9 @@ export default function AddBookModal({
     setExploreSuggestOpen(false)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || aladinBusy) return
+    if (!title.trim() || aladinBusy || isSubmitting) return
 
     if (hasOwnDuplicateEdition) {
       setOwnDuplicateModalOpen(true)
@@ -282,13 +290,24 @@ export default function AddBookModal({
       ...(isbn13.trim() ? { isbn13: isbn13.trim() } : {}),
     }
 
-    onAddBook(newBook)
-    resetForm()
-    onClose()
+    setIsSubmitting(true)
+    setSubmitError(null)
+    try {
+      await onAddBook(newBook)
+      resetForm()
+      onClose()
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "책을 추가하지 못했습니다. 다시 시도해 주세요.",
+      )
+      setIsSubmitting(false)
+    }
   }
 
   const handleClose = () => {
-    if (aladinBusy) return
+    if (aladinBusy || isSubmitting) return
     resetForm()
     onClose()
   }
@@ -310,7 +329,7 @@ export default function AddBookModal({
         isOpen={isOpen}
         onClose={handleClose}
         title="새 책 추가"
-        interactionLocked={aladinBusy}
+        interactionLocked={aladinBusy || isSubmitting}
         lockOverlay={
           <AladinFormApplyOverlay
             active={aladinBusy}
@@ -328,7 +347,7 @@ export default function AddBookModal({
           className="form-modal-fieldset relative max-h-[min(70vh,32rem)] overflow-y-auto"
         >
           <fieldset
-            disabled={aladinBusy}
+            disabled={aladinBusy || isSubmitting}
             className="m-0 min-w-0 space-y-4 border-0 p-0 sm:space-y-5"
           >
           <div>
@@ -532,21 +551,30 @@ export default function AddBookModal({
             </div>
           </div>
 
+          {submitError && (
+            <p
+              className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
+              role="alert"
+            >
+              {submitError}
+            </p>
+          )}
+
           <div className="sticky bottom-0 mt-2 flex justify-end gap-2 border-t border-theme-tertiary bg-theme-secondary pt-4">
             <button
               type="button"
               onClick={handleClose}
-              disabled={aladinBusy}
+              disabled={aladinBusy || isSubmitting}
               className="rounded-md bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary disabled:opacity-50"
             >
               취소
             </button>
             <button
               type="submit"
-              disabled={!title.trim() || aladinBusy}
+              disabled={!title.trim() || aladinBusy || isSubmitting}
               className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              추가하기
+              {isSubmitting ? "추가 중…" : "추가하기"}
             </button>
           </div>
           </fieldset>

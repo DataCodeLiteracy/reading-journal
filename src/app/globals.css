@@ -364,12 +364,14 @@ input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
  * 시각적 아이콘은 Lucide 오버레이(.form-native-picker-field) 사용.
  */
 .form-native-picker-field input[type="date"],
-.form-native-picker-field input[type="time"] {
+.form-native-picker-field input[type="time"],
+.form-native-picker-field input[type="datetime-local"] {
   position: relative;
 }
 
 .form-native-picker-field input[type="date"]::-webkit-calendar-picker-indicator,
-.form-native-picker-field input[type="time"]::-webkit-calendar-picker-indicator {
+.form-native-picker-field input[type="time"]::-webkit-calendar-picker-indicator,
+.form-native-picker-field input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   position: absolute;
   left: 0;
   top: 0;
