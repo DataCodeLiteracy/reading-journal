@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore"
 import { NextResponse } from "next/server"
 import { getAdminFirestore } from "@/lib/firebaseAdmin"
+import { syncGroupBooksToUser } from "@/lib/groupLibrarySyncAdmin"
 import { verifyFirebaseIdToken } from "@/lib/verifyFirebaseIdToken"
 
 export async function POST(request: Request) {
@@ -10,6 +11,7 @@ export async function POST(request: Request) {
       inviteCode?: string
       displayName?: string
       memberKind?: string
+      readsForUserId?: string
     }
     const verified = await verifyFirebaseIdToken(body.idToken ?? "")
     if (!verified) {
@@ -20,6 +22,8 @@ export async function POST(request: Request) {
     const displayName = body.displayName?.trim()
     const memberKind =
       body.memberKind === "guardian" ? "guardian" : "participant"
+    const readsForUserId =
+      memberKind === "guardian" ? body.readsForUserId?.trim() || null : null
     if (!inviteCode || !displayName) {
       return NextResponse.json(
         { error: "초대 코드와 표시 이름을 입력해주세요." },
@@ -59,6 +63,9 @@ export async function POST(request: Request) {
           status: "active",
           joined_at: now,
           updated_at: FieldValue.serverTimestamp(),
+          ...(readsForUserId
+            ? { reads_for_user_id: readsForUserId }
+            : { reads_for_user_id: FieldValue.delete() }),
           ...(existing.exists
             ? {}
             : { created_at: FieldValue.serverTimestamp() }),
@@ -66,6 +73,12 @@ export async function POST(request: Request) {
         { merge: true },
       )
     })
+
+    try {
+      await syncGroupBooksToUser(db, groupDocument.id, verified.uid)
+    } catch (syncError) {
+      console.error("reading group join library sync:", syncError)
+    }
 
     return NextResponse.json({ ok: true, groupId: groupDocument.id })
   } catch (error) {

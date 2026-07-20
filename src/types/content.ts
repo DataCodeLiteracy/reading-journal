@@ -10,7 +10,7 @@ export interface Quote {
   bookId: string
   user_id: string
   quoteText: string // 타이핑한 구절 텍스트
-  /** 하이라이트 분류(고정 목록, `none` 또는 생략 = 미분류) */
+  /** 구절 유형(고정 목록, `none` 또는 생략 = 미분류) */
   highlightKind?: QuoteHighlightKind
   /** 이 구절을 남긴 이유(한두 문장) */
   passageRecordReason?: string

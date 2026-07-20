@@ -213,6 +213,7 @@ export class ReadingGroupService {
     userId: string,
     displayName: string,
     memberKind: "participant" | "guardian" = "participant",
+    readsForUserId?: string,
   ): Promise<ReadingGroup> {
     if (!userId) throw new ApiError("로그인이 필요합니다.", "AUTH_REQUIRED")
     const idToken = await getClientIdToken()
@@ -224,6 +225,7 @@ export class ReadingGroupService {
         inviteCode,
         displayName,
         memberKind,
+        ...(readsForUserId ? { readsForUserId } : {}),
       }),
     })
     const result = (await response.json()) as {
@@ -242,6 +244,27 @@ export class ReadingGroupService {
       throw new ApiError("가입한 모임을 불러오지 못했습니다.", "GROUP_FETCH_ERROR")
     }
     return group
+  }
+
+  /** 모임 책을 모든 멤버 서재에 동기화 (모임장) */
+  static async syncGroupBookToMemberLibraries(
+    groupId: string,
+    canonicalBookId: string,
+  ): Promise<void> {
+    const idToken = await getClientIdToken()
+    const response = await fetch("/api/groups/sync-member-books", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, groupId, canonicalBookId }),
+    })
+    const result = (await response.json()) as { error?: string }
+    if (!response.ok) {
+      throw new ApiError(
+        result.error ?? "모임 책 서재 동기화에 실패했습니다.",
+        "GROUP_BOOK_LIBRARY_SYNC_ERROR",
+        response.status,
+      )
+    }
   }
 
   static async transferOwnership(
@@ -406,6 +429,19 @@ export class ReadingGroupService {
       ...input,
       status: "planned",
       group_id: groupId,
+    }).then(async (id) => {
+      try {
+        await this.syncGroupBookToMemberLibraries(
+          groupId,
+          input.canonical_book_id,
+        )
+      } catch (error) {
+        console.warn(
+          "ReadingGroupService: 모임 책 멤버 서재 동기화 실패",
+          error,
+        )
+      }
+      return id
     })
   }
 
@@ -1207,7 +1243,7 @@ export class ReadingGroupService {
     groupId: string,
     input: CreateGroupReadingAttributionInput,
   ): Promise<string> {
-    const id = `${input.reading_session_id}__${input.meeting_book_assignment_id}`
+    const id = `${input.reading_session_id}__${input.meeting_book_assignment_id}__${input.user_id}`
     return ApiClient.createDocument(
       COLLECTIONS.attributions,
       id,
@@ -1253,13 +1289,12 @@ export class ReadingGroupService {
 
   static async deleteReadingAttributionsBySession(
     readingSessionId: string,
-    userId: string,
+    _userId?: string,
   ): Promise<number> {
     const snapshot = await getDocs(
       query(
         collection(db, COLLECTIONS.attributions),
         where("reading_session_id", "==", readingSessionId),
-        where("user_id", "==", userId),
       ),
     )
     if (snapshot.size >= 500) {

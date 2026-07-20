@@ -84,15 +84,16 @@ function MetaBadges({
             ? "보통"
             : "어려움"}
       </span>
-      <span className='rounded-full bg-theme-tertiary px-2 py-0.5 text-[11px] font-medium leading-tight text-theme-secondary sm:text-xs'>
-        {getQuestionTypeLabel(question.questionType)}
-      </span>
+      {question.questionType !== "general" && (
+        <span className='rounded-full bg-theme-tertiary px-2 py-0.5 text-[11px] font-medium leading-tight text-theme-secondary sm:text-xs'>
+          {getQuestionTypeLabel(question.questionType)}
+        </span>
+      )}
       {question.questionFocus && question.questionFocus !== "none" && (
         <span
           className='max-w-full rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-medium leading-tight text-violet-800 dark:text-violet-200 sm:text-xs'
           title={questionFocusDescription(question.questionFocus)}
         >
-          <span className='hidden sm:inline'>초점·</span>
           {questionFocusLabel(question.questionFocus)}
         </span>
       )}

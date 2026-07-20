@@ -579,6 +579,7 @@ export default function QuestionsPage({
             onSave={handleQuestionAdd}
             bookId={resolvedParams.id}
             existingQuestions={questions}
+            tocOutline={book?.tocOutline}
             bannerMessage={questionAddBanner}
             defaultReadingPhase={addModalReadingPhase}
           />
@@ -594,6 +595,7 @@ export default function QuestionsPage({
             }}
             onSave={handleQuestionUpdate}
             question={questionToEdit}
+            tocOutline={book?.tocOutline}
           />
         )}
 

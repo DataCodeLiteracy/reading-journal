@@ -1,25 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Edit, Lock, Globe } from "lucide-react"
-import { BookQuestion, QuestionType, Difficulty } from "@/types/question"
+import { BookQuestion } from "@/types/question"
+import type { BookTocEntry } from "@/types/bookToc"
 import FormModalFrame from "@/components/FormModalFrame"
+import DescribedSelect from "@/components/DescribedSelect"
+import RecordTypeSuggestModal from "@/components/RecordTypeSuggestModal"
 import Select, { type SelectOption } from "@/components/Select"
+import { RECORD_TYPE_SUGGEST_MIN_CHARS } from "@/lib/recordTypeSuggestPrompts"
 import {
   QUESTION_DIFFICULTY_HELP,
   QUESTION_FOCUS_OPTIONS,
-  QUESTION_TYPE_HELP,
+  questionReasonPlaceholder,
   type QuestionFocusKind,
 } from "@/constants/readingMeta"
+import {
+  buildTocPickerOptions,
+  chapterPathToDisplayText,
+  displayTextToChapterPath,
+} from "@/utils/questionChapterPath"
 
 interface QuestionEditModalProps {
   isOpen: boolean
   onClose: () => void
   onSave: (
     questionId: string,
-    question: Partial<Omit<BookQuestion, "id" | "created_at" | "updated_at" | "bookId" | "order">>
+    question: Partial<Omit<BookQuestion, "id" | "created_at" | "updated_at" | "bookId" | "order">>,
   ) => Promise<void>
   question: BookQuestion
+  tocOutline?: BookTocEntry[]
 }
 
 export default function QuestionEditModal({
@@ -27,51 +37,61 @@ export default function QuestionEditModal({
   onClose,
   onSave,
   question,
+  tocOutline = [],
 }: QuestionEditModalProps) {
   const [questionText, setQuestionText] = useState(question.questionText)
   const [questionFocus, setQuestionFocus] = useState<QuestionFocusKind>(
     question.questionFocus ?? "none",
   )
   const [questionReason, setQuestionReason] = useState(question.questionReason ?? "")
-  const [chapterPath, setChapterPath] = useState<string[]>(question.chapterPath)
-  const [questionType, setQuestionType] = useState<QuestionType>(question.questionType)
-  const [difficulty, setDifficulty] = useState<Difficulty>(question.difficulty)
-  const [isPublic, setIsPublic] = useState((question as any).isPublic || false)
+  const [chapterPartText, setChapterPartText] = useState("")
+  const [tocPick, setTocPick] = useState("")
+  const [difficulty, setDifficulty] = useState(question.difficulty)
+  const [isPublic, setIsPublic] = useState(question.isPublic || false)
   const [isSaving, setIsSaving] = useState(false)
+  const savingRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
+  const [typeSuggestOpen, setTypeSuggestOpen] = useState(false)
+
+  const tocPickerOptions = useMemo(() => buildTocPickerOptions(tocOutline), [tocOutline])
+  const hasToc = tocPickerOptions.length > 0
+  const canSuggestType = questionText.trim().length >= RECORD_TYPE_SUGGEST_MIN_CHARS
 
   useEffect(() => {
     if (isOpen) {
       setQuestionText(question.questionText)
       setQuestionFocus(question.questionFocus ?? "none")
       setQuestionReason(question.questionReason ?? "")
-      setChapterPath([...question.chapterPath])
-      setQuestionType(question.questionType)
+      setChapterPartText(chapterPathToDisplayText(question.chapterPath))
+      setTocPick("")
       setDifficulty(question.difficulty)
-      setIsPublic((question as any).isPublic || false)
+      setIsPublic(question.isPublic || false)
       setError(null)
+      setIsSaving(false)
+      savingRef.current = false
     }
   }, [isOpen, question])
 
-  const handleChapterPathChange = (index: number, value: string): void => {
-    const newPath = [...chapterPath]
-    newPath[index] = value
-
-    // 빈 값이면 그 이후 경로 제거
-    if (!value.trim() && index < newPath.length - 1) {
-      newPath.splice(index + 1)
+  const handleTocPick = (path: string) => {
+    setTocPick(path)
+    if (!path) return
+    const opt = tocPickerOptions.find((o) => o.value === path)
+    if (opt) {
+      setChapterPartText(chapterPathToDisplayText(opt.chapterPath))
     }
+  }
 
-    // 최대 5단계까지만
-    if (newPath.length < 5 && value.trim() && index === newPath.length - 1) {
-      newPath.push("")
+  const resolveChapterPath = (): string[] => {
+    if (tocPick) {
+      const opt = tocPickerOptions.find((o) => o.value === tocPick)
+      if (opt) return opt.chapterPath
     }
-
-    setChapterPath(newPath)
+    return displayTextToChapterPath(chapterPartText)
   }
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
+    if (savingRef.current) return
     setError(null)
 
     if (!questionText.trim()) {
@@ -79,26 +99,15 @@ export default function QuestionEditModal({
       return
     }
 
-    // chapterPath에서 빈 값 제거
-    const finalChapterPath = chapterPath.filter((path) => path.trim() !== "")
-    if (finalChapterPath.length === 0) {
-      setError("목차 경로를 입력해주세요. (없으면 '전체'로 입력)")
-      return
-    }
-
-    // '전체'로 입력된 경우
-    const normalizedPath = finalChapterPath.length === 1 && finalChapterPath[0] === "전체"
-      ? ["전체"]
-      : finalChapterPath
-
     try {
+      savingRef.current = true
       setIsSaving(true)
       await onSave(question.id, {
         questionText: questionText.trim(),
-        chapterPath: normalizedPath,
+        chapterPath: resolveChapterPath(),
         questionFocus: questionFocus === "none" ? undefined : questionFocus,
         questionReason: questionReason.trim() || undefined,
-        questionType,
+        questionType: question.questionType,
         difficulty,
         isPublic,
       })
@@ -108,249 +117,220 @@ export default function QuestionEditModal({
         err instanceof Error ? err.message : "질문을 수정하는 중 오류가 발생했습니다."
       setError(errorMessage)
     } finally {
+      savingRef.current = false
       setIsSaving(false)
     }
   }
 
-  const questionTypeOptions: SelectOption<QuestionType>[] = [
-    { value: "general", label: "일반" },
-    { value: "comprehension", label: "사실 파악" },
-    { value: "analysis", label: "인과·비교" },
-    { value: "synthesis", label: "주제·메시지" },
-    { value: "application", label: "실생활 적용" },
+  const tocSelectOptions: SelectOption<string>[] = [
+    { value: "", label: "목차에서 고르기 (선택)" },
+    ...tocPickerOptions.map((o) => ({ value: o.value, label: o.label })),
   ]
 
+  const reasonPlaceholder = questionReasonPlaceholder(questionFocus)
+
   return (
-    <FormModalFrame
-      isOpen={isOpen}
-      onClose={onClose}
-      title="질문 수정"
-      size="wide"
-      headerStart={
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-          <Edit className="h-5 w-5 text-blue-500" aria-hidden />
+    <>
+      <FormModalFrame
+        isOpen={isOpen}
+        onClose={onClose}
+        title='질문 수정'
+        size='wide'
+        headerStart={
+          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30'>
+            <Edit className='h-5 w-5 text-blue-500' aria-hidden />
+          </div>
+        }
+      >
+      {error && (
+        <div className='mb-4 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20'>
+          <p className='text-sm text-red-700 dark:text-red-400'>{error}</p>
         </div>
-      }
-    >
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
-          </div>
-        )}
+      )}
 
-        <div className='mb-4 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3 text-xs leading-relaxed text-theme-secondary'>
-          <span className='font-medium text-theme-primary'>질문 유형</span>은 질문의{" "}
-          <em>형식</em>, <span className='font-medium text-theme-primary'>질문의 초점</span>은
-          무엇을 <em>궁금해하는지</em>에 가깝습니다.
+      <form onSubmit={handleSubmit} className='form-modal-fieldset space-y-3 sm:space-y-4'>
+        <div>
+          <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+            질문 *
+          </label>
+          <textarea
+            value={questionText}
+            onChange={(e) => setQuestionText(e.target.value)}
+            className='form-control form-control-textarea resize-none'
+            placeholder='질문을 입력하세요'
+            rows={4}
+            required
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="form-modal-fieldset space-y-3 sm:space-y-4">
-          <div>
-            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              질문 텍스트 *
+        <div>
+          <div className='mb-0.5 flex min-h-6 items-center justify-between gap-2'>
+            <label className='text-sm font-medium leading-none text-theme-primary'>
+              질문 유형 (선택)
             </label>
-            <textarea
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              className="form-control form-control-textarea resize-none"
-              placeholder="질문을 입력하세요"
-              rows={4}
-              required
-            />
-          </div>
-
-          <div>
-            <label className='mb-2 block text-sm font-medium text-theme-primary'>
-              질문의 초점 (선택)
-            </label>
-            <p className='mb-2 text-xs text-theme-secondary'>
-              이 질문이 주로 무엇을 겨냥하는지 한 가지를 골라 주세요.
-            </p>
-            <div className='max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-theme-tertiary bg-theme-primary/30 p-2'>
-              {QUESTION_FOCUS_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className='flex cursor-pointer gap-2 rounded-md p-2 hover:bg-theme-tertiary/50'
-                >
-                  <input
-                    type='radio'
-                    name='questionFocusEdit'
-                    checked={questionFocus === opt.value}
-                    onChange={() => setQuestionFocus(opt.value)}
-                    className='mt-1 border-theme-tertiary text-accent-theme focus:ring-accent-theme'
-                  />
-                  <span className='min-w-0'>
-                    <span className='block text-sm font-medium text-theme-primary'>
-                      {opt.label}
-                    </span>
-                    <span className='mt-0.5 block text-xs leading-snug text-theme-secondary'>
-                      {opt.description}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
-              이 질문을 떠올린 이유 (선택)
-            </label>
-            <textarea
-              value={questionReason}
-              onChange={(e) => setQuestionReason(e.target.value)}
-              className='form-control form-control-textarea resize-none'
-              placeholder='예: 앞 장과 모순되어 궁금해졌다…'
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              목차 경로 * (최대 5단계, 없으면 '전체' 입력)
-            </label>
-            <div className='space-y-2'>
-              {chapterPath.map((path, index) => (
-                <div key={index} className='flex items-center gap-2'>
-                  <span className='text-xs text-theme-secondary w-8'>
-                    {index + 1}단계
-                  </span>
-                  <input
-                    type="text"
-                    value={path}
-                    onChange={(e) => handleChapterPathChange(index, e.target.value)}
-                    className="form-control min-w-0 flex-1"
-                    placeholder={
-                      index === 0
-                        ? "예: 5부 또는 전체"
-                        : `예: ${index === 1 ? "1장" : index === 2 ? "1절" : index === 3 ? "1항" : "1목"}`
-                    }
-                  />
-                </div>
-              ))}
-              {chapterPath.length < 5 && chapterPath[chapterPath.length - 1]?.trim() && (
-                <button
-                  type='button'
-                  onClick={() => setChapterPath([...chapterPath, ""])}
-                  className='text-xs text-accent-theme hover:underline'
-                >
-                  + 경로 추가
-                </button>
-              )}
-            </div>
-            <p className='text-xs text-theme-secondary mt-2'>
-              예: ["5부", "1장", "1절"] 또는 ["전체"]
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              질문 유형 *
-            </label>
-            <Select<QuestionType>
-              value={questionType}
-              onChangeAction={setQuestionType}
-              options={questionTypeOptions}
-              variant="form-modal"
-            />
-            <p className='mt-1.5 text-xs leading-relaxed text-theme-secondary'>
-              {QUESTION_TYPE_HELP[questionType]}
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              난이도 *
-            </label>
-            <div className='flex gap-3'>
-              {(["easy", "medium", "hard"] as Difficulty[]).map((level) => (
-                <button
-                  key={level}
-                  type='button'
-                  onClick={() => setDifficulty(level)}
-                  className={`flex-1 px-4 py-2 rounded-md transition-colors ${
-                    difficulty === level
-                      ? level === "easy"
-                        ? "bg-green-500 text-white"
-                        : level === "medium"
-                          ? "bg-yellow-500 text-white"
-                          : "bg-red-500 text-white"
-                      : "bg-theme-tertiary text-theme-secondary hover:bg-theme-tertiary/80"
-                  }`}
-                >
-                  {level === "easy" ? "쉬움" : level === "medium" ? "보통" : "어려움"}
-                </button>
-              ))}
-            </div>
-            <p className='mt-1.5 text-xs leading-relaxed text-theme-secondary'>
-              {QUESTION_DIFFICULTY_HELP[difficulty]}
-            </p>
-          </div>
-
-          {/* 공개 설정 */}
-          <div>
-            <div className="flex items-center justify-between rounded-lg bg-theme-tertiary p-3">
-              <div className='flex items-center gap-2'>
-                {isPublic ? (
-                  <Globe className='h-5 w-5 text-blue-500' />
-                ) : (
-                  <Lock className='h-5 w-5 text-gray-400' />
-                )}
-                <div>
-                  <label className='text-sm font-medium text-theme-primary cursor-pointer'>
-                    공개하기
-                  </label>
-                  <p className='text-xs text-theme-tertiary'>
-                    {isPublic
-                      ? "다른 독서자들이 이 질문을 볼 수 있습니다"
-                      : "나만 볼 수 있습니다"}
-                  </p>
-                </div>
-              </div>
+            {canSuggestType ? (
               <button
                 type='button'
-                onClick={() => setIsPublic(!isPublic)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isPublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                onClick={() => setTypeSuggestOpen(true)}
+                className='inline-flex h-6 shrink-0 items-center rounded-md border border-violet-200 bg-violet-50 px-2 text-[11px] font-medium leading-none text-violet-700 transition-colors hover:bg-violet-100 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/50'
+              >
+                AI 유형 추천
+              </button>
+            ) : null}
+          </div>
+          <DescribedSelect<QuestionFocusKind>
+            value={questionFocus}
+            onChangeAction={setQuestionFocus}
+            options={QUESTION_FOCUS_OPTIONS}
+            aria-label='질문 유형'
+          />
+        </div>
+
+        <div>
+          <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+            어느 부분? (선택)
+          </label>
+          {hasToc ? (
+            <div className='mb-2'>
+              <Select
+                value={tocPick}
+                onChangeAction={handleTocPick}
+                options={tocSelectOptions}
+                placeholder='목차에서 고르기'
+                variant='form-modal'
+                truncate={false}
+                aria-label='등록된 목차에서 선택'
+              />
+            </div>
+          ) : null}
+          <input
+            type='text'
+            value={chapterPartText}
+            onChange={(e) => {
+              setChapterPartText(e.target.value)
+              if (tocPick) setTocPick("")
+            }}
+            className='form-control'
+            placeholder='예: 3장, 중반, p.42 — 목차 없어도 대략만 적어도 돼요'
+          />
+          <p className='mt-1 text-xs text-theme-secondary'>
+            비워 두면 「전체」로 저장됩니다.
+          </p>
+        </div>
+
+        <div>
+          <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+            질문과 함께 남기는 나의 생각 (선택)
+          </label>
+          <textarea
+            value={questionReason}
+            onChange={(e) => setQuestionReason(e.target.value)}
+            className='form-control form-control-textarea resize-none'
+            placeholder={reasonPlaceholder}
+            rows={3}
+          />
+        </div>
+
+        <div>
+          <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+            난이도 (선택)
+          </label>
+          <div className='flex gap-3'>
+            {(["easy", "medium", "hard"] as const).map((level) => (
+              <button
+                key={level}
+                type='button'
+                onClick={() => setDifficulty(level)}
+                className={`flex-1 rounded-md px-4 py-2 transition-colors ${
+                  difficulty === level
+                    ? level === "easy"
+                      ? "bg-green-500 text-white"
+                      : level === "medium"
+                        ? "bg-yellow-500 text-white"
+                        : "bg-red-500 text-white"
+                    : "bg-theme-tertiary text-theme-secondary hover:bg-theme-tertiary/80"
                 }`}
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    isPublic ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
+                {level === "easy" ? "쉬움" : level === "medium" ? "보통" : "어려움"}
               </button>
-            </div>
+            ))}
           </div>
+          <p className='mt-1.5 text-xs leading-relaxed text-theme-secondary'>
+            {QUESTION_DIFFICULTY_HELP[difficulty]}
+          </p>
+        </div>
 
-          <div className="mt-4 flex justify-end gap-2 sm:mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-tertiary"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving || !questionText.trim()}
-              className="flex items-center justify-center gap-2 rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSaving ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  저장 중...
-                </>
+        <div>
+          <div className='flex items-center justify-between rounded-lg bg-theme-tertiary p-3'>
+            <div className='flex items-center gap-2'>
+              {isPublic ? (
+                <Globe className='h-5 w-5 text-blue-500' />
               ) : (
-                <>
-                  <Edit className="h-4 w-4" />
-                  수정하기
-                </>
+                <Lock className='h-5 w-5 text-gray-400' />
               )}
+              <div>
+                <label className='cursor-pointer text-sm font-medium text-theme-primary'>
+                  공개하기
+                </label>
+                <p className='text-xs text-theme-tertiary'>
+                  {isPublic
+                    ? "다른 독서자들이 이 질문을 볼 수 있습니다"
+                    : "나만 볼 수 있습니다"}
+                </p>
+              </div>
+            </div>
+            <button
+              type='button'
+              onClick={() => setIsPublic(!isPublic)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isPublic ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isPublic ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
             </button>
           </div>
-        </form>
-    </FormModalFrame>
+        </div>
+
+        <div className='mt-4 flex justify-end gap-2 sm:mt-6'>
+          <button
+            type='button'
+            onClick={onClose}
+            className='rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-tertiary'
+          >
+            취소
+          </button>
+          <button
+            type='submit'
+            disabled={isSaving || !questionText.trim()}
+            className='flex items-center justify-center gap-2 rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-theme-secondary disabled:cursor-not-allowed disabled:opacity-50'
+          >
+            {isSaving ? (
+              <>
+                <div className='h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent' />
+                저장 중...
+              </>
+            ) : (
+              <>
+                <Edit className='h-4 w-4' />
+                수정하기
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+      </FormModalFrame>
+
+      <RecordTypeSuggestModal
+        isOpen={isOpen && typeSuggestOpen}
+        onClose={() => setTypeSuggestOpen(false)}
+        mode='question'
+        sourceText={questionText}
+        onSuggested={(kind) => setQuestionFocus(kind as QuestionFocusKind)}
+      />
+    </>
   )
 }
-

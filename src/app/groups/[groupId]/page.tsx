@@ -425,6 +425,7 @@ export default function ReadingGroupDetailPage() {
                   attributions={attributions}
                   members={members}
                   timeZone={group.time_zone}
+                  memberKind={membership.member_kind}
                   onRefetch={detailQuery.refetch}
                   isRefreshing={detailQuery.isFetching}
                 />
@@ -460,6 +461,7 @@ export default function ReadingGroupDetailPage() {
               timeZone={group.time_zone}
               isOwner={isOwner}
               userUid={userUid}
+              memberKind={membership.member_kind}
               onChangedAction={detailQuery.refetch}
             />
           )}
@@ -473,6 +475,7 @@ export default function ReadingGroupDetailPage() {
                 attributions={attributions}
                 members={members}
                 timeZone={group.time_zone}
+                memberKind={membership.member_kind}
                 onRefetch={detailQuery.refetch}
                 isRefreshing={detailQuery.isFetching}
               />

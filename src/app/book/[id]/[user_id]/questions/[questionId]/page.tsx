@@ -169,6 +169,7 @@ export default function QuestionDetailPage({
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           question={question}
+          tocOutline={book?.tocOutline}
           onSave={async (questionId, data) => {
             await QuestionService.updateQuestion(questionId, data)
             const updated = await QuestionService.getQuestion(questionId)

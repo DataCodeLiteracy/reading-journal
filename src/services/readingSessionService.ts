@@ -1,16 +1,6 @@
 import { ApiClient } from "@/lib/apiClient"
 import { ReadingGroupService } from "@/services/readingGroupService"
-import type { Book } from "@/types/book"
-import type {
-  GroupMember,
-  MeetingBookAssignment,
-} from "@/types/readingGroup"
 import type { ReadingSession } from "@/types/user"
-import {
-  calculateHalfOpenOverlapSeconds,
-  effectiveAssignmentEndMs,
-} from "@/utils/readingSessionAttribution"
-
 export class ReadingSessionService {
   private static warnAttributionSync(sessionId: string, error: unknown) {
     console.warn(
@@ -21,106 +11,22 @@ export class ReadingSessionService {
 
   /**
    * 기존 귀속을 지운 뒤 현재 세션 상태로 다시 계산합니다.
-   * 호출자가 실패를 감지해 재시도할 수 있도록 이 메서드 자체는 오류를 전달합니다.
+   * 보호자→자녀 이중 귀속을 위해 Admin API로 동기화합니다.
    */
   static async syncGroupAttributionsForSession(
     sessionId: string,
   ): Promise<void> {
-    const session = await ApiClient.getDocument<ReadingSession>(
-      "readingSessions",
-      sessionId,
-    )
-    if (!session) {
-      throw new Error("귀속할 독서 세션을 찾을 수 없습니다.")
+    const { getClientIdToken } = await import("@/lib/getClientIdToken")
+    const idToken = await getClientIdToken()
+    const response = await fetch("/api/groups/sync-session-attributions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, sessionId }),
+    })
+    const result = (await response.json()) as { error?: string }
+    if (!response.ok) {
+      throw new Error(result.error ?? "그룹 독서 귀속 동기화에 실패했습니다.")
     }
-
-    await ReadingGroupService.deleteReadingAttributionsBySession(
-      sessionId,
-      session.user_id,
-    )
-    if (session.source !== "timer") return
-
-    const sessionStartMs = new Date(session.startTime).getTime()
-    const sessionEndMs = new Date(session.endTime).getTime()
-    if (
-      !Number.isFinite(sessionStartMs) ||
-      !Number.isFinite(sessionEndMs) ||
-      sessionEndMs <= sessionStartMs
-    ) {
-      throw new Error("독서 세션의 시작/종료 시간이 올바르지 않습니다.")
-    }
-
-    // BookService가 이 서비스를 import하므로 순환 의존성을 피한다.
-    const book = await ApiClient.getDocument<Book>("books", session.bookId)
-    if (!book?.canonicalBookId) return
-
-    const memberships = await ApiClient.queryDocuments<GroupMember>(
-      "readingGroupMembers",
-      [
-        ["user_id", "==", session.user_id],
-        ["status", "==", "active"],
-      ],
-    )
-
-    const assignmentsByMembership = await Promise.all(
-      memberships.map(async (membership) => ({
-        membership,
-        assignments: await ApiClient.queryDocuments<MeetingBookAssignment>(
-          "readingGroupMeetingBookAssignments",
-          [
-            ["group_id", "==", membership.group_id],
-            ["canonical_book_id", "==", book.canonicalBookId],
-          ],
-        ),
-      })),
-    )
-    const attributedAt = new Date().toISOString()
-
-    await Promise.all(
-      assignmentsByMembership.flatMap(({ membership, assignments }) =>
-        assignments.flatMap((assignment) => {
-          const assignmentStartMs = new Date(assignment.reading_start_at).getTime()
-          const assignmentEndMs = effectiveAssignmentEndMs(
-            assignment.reading_end_at,
-            assignment.stopped_at,
-          )
-          if (
-            !Number.isFinite(assignmentStartMs) ||
-            !Number.isFinite(assignmentEndMs) ||
-            assignmentEndMs <= assignmentStartMs
-          ) {
-            return []
-          }
-
-          const countedSeconds = calculateHalfOpenOverlapSeconds(
-            sessionStartMs,
-            sessionEndMs,
-            assignmentStartMs,
-            assignmentEndMs,
-          )
-          if (countedSeconds <= 0) return []
-
-          return [
-            ReadingGroupService.createReadingAttribution(
-              membership.group_id,
-              {
-                reading_session_id: sessionId,
-                user_id: session.user_id,
-                user_display_name: membership.display_name || "모임원",
-                group_book_id: assignment.group_book_id,
-                meeting_id: assignment.meeting_id,
-                meeting_book_assignment_id: assignment.id,
-                canonical_book_id: book.canonicalBookId!,
-                session_start_at: session.startTime,
-                session_end_at: session.endTime,
-                counted_seconds: countedSeconds,
-                attributed_at: attributedAt,
-              },
-            ),
-          ]
-        }),
-      ),
-    )
   }
 
   static async createReadingSession(

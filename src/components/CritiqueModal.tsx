@@ -13,7 +13,7 @@ interface CritiqueModalProps {
       Critique,
       "id" | "created_at" | "updated_at" | "likesCount" | "commentsCount"
     >
-  ) => void
+  ) => Promise<void>
   bookId: string
   bookTitle?: string
   existingCritique?: Critique | null
@@ -30,6 +30,8 @@ export default function CritiqueModal({
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [isPublic, setIsPublic] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const savingRef = useRef(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -43,7 +45,8 @@ export default function CritiqueModal({
         setContent("")
         setIsPublic(false)
       }
-      // 모달이 열릴 때 제목 입력란에 포커스
+      setIsSaving(false)
+      savingRef.current = false
       setTimeout(() => {
         titleInputRef.current?.focus()
       }, 100)
@@ -52,8 +55,9 @@ export default function CritiqueModal({
 
   useBodyScrollLock(isOpen)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (savingRef.current) return
     if (!content.trim()) {
       alert("서평 내용을 입력해주세요.")
       return
@@ -70,7 +74,17 @@ export default function CritiqueModal({
       isPublic,
     }
 
-    onSave(critiqueData)
+    savingRef.current = true
+    setIsSaving(true)
+    try {
+      await onSave(critiqueData)
+    } catch (err) {
+      console.error(err)
+      alert(err instanceof Error ? err.message : "서평을 저장하는 중 오류가 발생했습니다.")
+    } finally {
+      savingRef.current = false
+      setIsSaving(false)
+    }
   }
 
   const handleClose = () => {
@@ -109,7 +123,11 @@ export default function CritiqueModal({
         </div>
 
         {/* 내용 - 스크롤 가능 */}
-        <form onSubmit={handleSubmit} className='flex-1 overflow-y-auto p-4 sm:p-6 min-h-0'>
+        <form
+          id='critique-modal-form'
+          onSubmit={handleSubmit}
+          className='flex-1 overflow-y-auto p-4 sm:p-6 min-h-0'
+        >
           <div className='space-y-4'>
             {/* 제목 (선택사항) */}
             <div>
@@ -192,10 +210,11 @@ export default function CritiqueModal({
             </button>
             <button
               type='submit'
-              onClick={handleSubmit}
-              className='flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors'
+              form='critique-modal-form'
+              disabled={isSaving}
+              className='flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50'
             >
-              {existingCritique ? "수정하기" : "저장하기"}
+              {isSaving ? "저장 중..." : existingCritique ? "수정하기" : "저장하기"}
             </button>
           </div>
         </div>

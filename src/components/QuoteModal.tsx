@@ -1,20 +1,20 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { X, BookOpen, Lock, Globe } from "lucide-react"
+import { X, Lock, Globe } from "lucide-react"
 import { Quote } from "@/types/content"
-import { PURPOSE_LABELS } from "@/utils/quoteDisplay"
-import {
-  QUOTE_HIGHLIGHT_OPTIONS,
-  QUOTE_PURPOSE_META,
-  type QuoteHighlightKind,
-} from "@/constants/readingMeta"
+import { QUOTE_HIGHLIGHT_OPTIONS, quoteRecordReasonPlaceholder, quoteThoughtsPlaceholder, type QuoteHighlightKind } from "@/constants/readingMeta"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
+import DescribedSelect from "@/components/DescribedSelect"
+import RecordTypeSuggestModal from "@/components/RecordTypeSuggestModal"
+import { RECORD_TYPE_SUGGEST_MIN_CHARS } from "@/lib/recordTypeSuggestPrompts"
 
 interface QuoteModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (quote: Omit<Quote, "id" | "created_at" | "updated_at" | "likesCount" | "commentsCount">) => void
+  onSave: (
+    quote: Omit<Quote, "id" | "created_at" | "updated_at" | "likesCount" | "commentsCount">
+  ) => Promise<void>
   bookId: string
   bookTitle?: string
   existingQuote?: Quote | null
@@ -22,21 +22,10 @@ interface QuoteModalProps {
   showMemorableLineGuide?: boolean
 }
 
-function parseGeneralThoughts(raw: string | undefined): { reason: string; purposes: string[] } {
-  if (!raw || typeof raw !== "string") return { reason: "", purposes: [] }
-  const s = raw.trim()
-  const parts = s.split(/\s*\/\s*/)
-  const reason = parts[0]?.trim() ?? ""
-  const tagStr = parts.slice(1).join(" / ").trim()
-  const purposes = tagStr
-    ? tagStr
-        .split(",")
-        .map((t) => t.trim().toLowerCase())
-        .filter((k) => PURPOSE_LABELS[k])
-    : []
-  return { reason, purposes }
+function extractGeneralThoughtsText(raw: string | undefined): string {
+  if (!raw || typeof raw !== "string") return ""
+  return raw.trim().split(/\s*\/\s*/)[0]?.trim() ?? ""
 }
-
 
 export default function QuoteModal({
   isOpen,
@@ -52,10 +41,14 @@ export default function QuoteModal({
   const [passageRecordReason, setPassageRecordReason] = useState("")
   const [thoughts, setThoughts] = useState("")
   const [generalThoughtsReason, setGeneralThoughtsReason] = useState("")
-  const [generalThoughtsPurposes, setGeneralThoughtsPurposes] = useState<string[]>([])
   const [page, setPage] = useState<number | "">("")
   const [isPublic, setIsPublic] = useState(false)
+  const [typeSuggestOpen, setTypeSuggestOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const savingRef = useRef(false)
   const quoteTextRef = useRef<HTMLTextAreaElement>(null)
+
+  const canSuggestType = quoteText.trim().length >= RECORD_TYPE_SUGGEST_MIN_CHARS
 
   useEffect(() => {
     if (isOpen) {
@@ -64,9 +57,7 @@ export default function QuoteModal({
         setHighlightKind(existingQuote.highlightKind ?? "none")
         setPassageRecordReason(existingQuote.passageRecordReason ?? "")
         setThoughts(existingQuote.thoughts || "")
-        const { reason, purposes } = parseGeneralThoughts(existingQuote.generalThoughts)
-        setGeneralThoughtsReason(reason)
-        setGeneralThoughtsPurposes(purposes)
+        setGeneralThoughtsReason(extractGeneralThoughtsText(existingQuote.generalThoughts))
         setPage(existingQuote.page ?? "")
         setIsPublic(existingQuote.isPublic || false)
       } else {
@@ -75,11 +66,12 @@ export default function QuoteModal({
         setPassageRecordReason("")
         setThoughts("")
         setGeneralThoughtsReason("")
-        setGeneralThoughtsPurposes([])
         setPage("")
         setIsPublic(false)
       }
       // 모달이 열릴 때 구절 텍스트 입력란에 포커스
+      setIsSaving(false)
+      savingRef.current = false
       setTimeout(() => {
         quoteTextRef.current?.focus()
       }, 100)
@@ -88,17 +80,18 @@ export default function QuoteModal({
 
   useBodyScrollLock(isOpen)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const recordReasonPlaceholder = quoteRecordReasonPlaceholder(highlightKind)
+  const thoughtsPlaceholder = quoteThoughtsPlaceholder(highlightKind)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (savingRef.current) return
     if (!quoteText.trim()) {
       alert("구절을 입력해주세요.")
       return
     }
 
-    const reason = generalThoughtsReason.trim()
-    const purposeStr = generalThoughtsPurposes.length ? generalThoughtsPurposes.join(", ") : ""
-    const generalThoughtsValue =
-      reason || purposeStr ? (reason && purposeStr ? `${reason} / ${purposeStr}` : reason || purposeStr) : undefined
+    const generalThoughtsValue = generalThoughtsReason.trim() || undefined
 
     const quoteData: Omit<Quote, "id" | "created_at" | "updated_at" | "likesCount" | "commentsCount"> = {
       bookId,
@@ -112,8 +105,17 @@ export default function QuoteModal({
       isPublic,
     }
 
-    onSave(quoteData)
-    // 폼 초기화는 부모 컴포넌트에서 처리
+    savingRef.current = true
+    setIsSaving(true)
+    try {
+      await onSave(quoteData)
+    } catch (err) {
+      console.error(err)
+      alert(err instanceof Error ? err.message : "구절 기록을 저장하는 중 오류가 발생했습니다.")
+    } finally {
+      savingRef.current = false
+      setIsSaving(false)
+    }
   }
 
   const handleClose = () => {
@@ -122,9 +124,9 @@ export default function QuoteModal({
     setPassageRecordReason("")
     setThoughts("")
     setGeneralThoughtsReason("")
-    setGeneralThoughtsPurposes([])
     setPage("")
     setIsPublic(false)
+    setTypeSuggestOpen(false)
     onClose()
   }
 
@@ -132,7 +134,7 @@ export default function QuoteModal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4'>
-      <div className='modal-legacy-panel rounded-xl border border-slate-200/90 bg-white dark:border-slate-600/80 dark:bg-gray-800 w-full max-w-2xl max-h-[90vh] flex flex-col'>
+      <div className='modal-legacy-panel rounded-xl border border-slate-200/90 bg-white dark:border-slate-600/80 dark:bg-gray-800 w-full max-w-2xl max-h-[calc(min(85dvh,100dvh-2rem)-105px)] sm:max-h-[calc(min(90dvh,100dvh-2rem)-105px)] flex flex-col'>
         {/* 헤더 */}
         <div className='flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>
           <div className='flex-1 min-w-0'>
@@ -154,7 +156,11 @@ export default function QuoteModal({
         </div>
 
         {/* 내용 - 스크롤 가능 */}
-        <form onSubmit={handleSubmit} className='flex-1 overflow-y-auto p-4 sm:p-6 min-h-0'>
+        <form
+          id='quote-modal-form'
+          onSubmit={handleSubmit}
+          className='flex-1 overflow-y-auto p-4 sm:p-6 min-h-0'
+        >
           <div className='space-y-4'>
             {showMemorableLineGuide && !existingQuote ? (
               <div className='rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-100'>
@@ -205,39 +211,28 @@ export default function QuoteModal({
               </p>
             </div>
 
-            {/* 하이라이트 종류 */}
+            {/* 구절 유형 */}
             <div>
-              <label className='mb-2 block text-sm font-medium text-gray-900 dark:text-white'>
-                하이라이트 종류
-              </label>
-              <p className='mb-2 text-xs text-gray-500 dark:text-gray-400'>
-                이 구절을 왜 특히 남기고 싶은지, 한 가지를 골라 주세요. 나중에 목록에서
-                찾기 쉽게 쓰입니다.
-              </p>
-              <div className='max-h-52 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700/50'>
-                {QUOTE_HIGHLIGHT_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className='flex cursor-pointer gap-2 rounded-md p-2 hover:bg-white/80 dark:hover:bg-gray-600/50'
+              <div className='mb-0.5 flex min-h-6 items-center justify-between gap-2'>
+                <label className='text-sm font-medium leading-none text-gray-900 dark:text-white'>
+                  구절 유형 (선택)
+                </label>
+                {canSuggestType ? (
+                  <button
+                    type='button'
+                    onClick={() => setTypeSuggestOpen(true)}
+                    className='inline-flex h-6 shrink-0 items-center rounded-md border border-violet-200 bg-violet-50 px-2 text-[11px] font-medium leading-none text-violet-700 transition-colors hover:bg-violet-100 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/50'
                   >
-                    <input
-                      type='radio'
-                      name='highlightKind'
-                      checked={highlightKind === opt.value}
-                      onChange={() => setHighlightKind(opt.value)}
-                      className='mt-1 border-gray-300 text-accent-theme focus:ring-accent-theme'
-                    />
-                    <span className='min-w-0'>
-                      <span className='block text-sm font-medium text-gray-900 dark:text-white'>
-                        {opt.label}
-                      </span>
-                      <span className='mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400'>
-                        {opt.description}
-                      </span>
-                    </span>
-                  </label>
-                ))}
+                    AI 유형 추천
+                  </button>
+                ) : null}
               </div>
+              <DescribedSelect<QuoteHighlightKind>
+                value={highlightKind}
+                onChangeAction={setHighlightKind}
+                options={QUOTE_HIGHLIGHT_OPTIONS}
+                aria-label='구절 유형'
+              />
             </div>
 
             <div>
@@ -247,7 +242,7 @@ export default function QuoteModal({
               <textarea
                 value={passageRecordReason}
                 onChange={(e) => setPassageRecordReason(e.target.value)}
-                placeholder='예: 다음 장으로 이어지는 복선이라 저장해 두고 싶다, 문장 리듬이 좋다…'
+                placeholder={recordReasonPlaceholder}
                 className='w-full resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-accent-theme dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400'
                 rows={2}
               />
@@ -264,7 +259,7 @@ export default function QuoteModal({
               <textarea
                 value={thoughts}
                 onChange={(e) => setThoughts(e.target.value)}
-                placeholder='이 구절이 왜 인상 깊었는지, 어떤 생각이 들었는지 적어보세요...'
+                placeholder={thoughtsPlaceholder}
                 className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent resize-none'
                 rows={4}
               />
@@ -282,47 +277,8 @@ export default function QuoteModal({
                 className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-theme focus:border-transparent resize-none'
                 rows={3}
               />
-              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1 mb-2'>
+              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
                 구절과 무관하게 책을 읽다가 느낀 점을 자유롭게 적어주세요.
-              </p>
-              <label className='mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300'>
-                읽는 중 느낀 점 — 목적 태그 (선택)
-              </label>
-              <p className='mb-2 text-xs text-gray-500 dark:text-gray-400'>
-                위 문단과 함께, 어떤 관점에서 적었는지 태그로 골라 주세요. 여러 개 선택
-                가능합니다.
-              </p>
-              <div className='max-h-48 space-y-2 overflow-y-auto rounded-lg bg-gray-50 p-2 dark:bg-gray-700/50'>
-                {QUOTE_PURPOSE_META.map(({ slug, label, description }) => (
-                  <label
-                    key={slug}
-                    className='flex cursor-pointer gap-2 rounded-md p-2 hover:bg-white/80 dark:hover:bg-gray-600/50'
-                  >
-                    <input
-                      type='checkbox'
-                      checked={generalThoughtsPurposes.includes(slug)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setGeneralThoughtsPurposes((prev) => [...prev, slug])
-                        } else {
-                          setGeneralThoughtsPurposes((prev) => prev.filter((p) => p !== slug))
-                        }
-                      }}
-                      className='mt-1 rounded border-gray-300 text-accent-theme focus:ring-accent-theme dark:border-gray-600'
-                    />
-                    <span className='min-w-0'>
-                      <span className='block text-sm font-medium text-gray-800 dark:text-gray-200'>
-                        {label}
-                      </span>
-                      <span className='mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400'>
-                        {description}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-                해당하는 목적을 선택하세요 (여러 개 선택 가능).
               </p>
             </div>
 
@@ -374,14 +330,23 @@ export default function QuoteModal({
             </button>
             <button
               type='submit'
-              onClick={handleSubmit}
-              className='flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors'
+              form='quote-modal-form'
+              disabled={isSaving}
+              className='flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50'
             >
-              {existingQuote ? "수정하기" : "저장하기"}
+              {isSaving ? "저장 중..." : existingQuote ? "수정하기" : "저장하기"}
             </button>
           </div>
         </div>
       </div>
+
+      <RecordTypeSuggestModal
+        isOpen={typeSuggestOpen}
+        onClose={() => setTypeSuggestOpen(false)}
+        mode='quote'
+        sourceText={quoteText}
+        onSuggested={(kind) => setHighlightKind(kind as QuoteHighlightKind)}
+      />
     </div>
   )
 }

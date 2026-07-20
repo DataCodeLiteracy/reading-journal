@@ -112,3 +112,26 @@ export async function gradeGoldenBellOpen(input: {
   if (!res.ok) throw new Error(data.error || "채점 요청에 실패했습니다.")
   return { isCorrect: Boolean(data.isCorrect), feedback: data.feedback ?? "" }
 }
+
+export async function suggestRecordType(input: {
+  mode: "quote" | "question"
+  text: string
+}): Promise<{ kind: string; label: string }> {
+  const user = auth.currentUser
+  if (!user) throw new Error("로그인이 필요합니다.")
+  const idToken = await user.getIdToken()
+
+  const res = await fetch("/api/reading-ai/suggest-record-type", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      idToken,
+      mode: input.mode,
+      text: input.text.trim(),
+    }),
+  })
+  const data = (await res.json()) as { error?: string; kind?: string; label?: string }
+  if (!res.ok) throw new Error(data.error || "유형 추천 요청에 실패했습니다.")
+  if (!data.kind) throw new Error("유형 추천 결과가 비어 있습니다.")
+  return { kind: data.kind, label: data.label ?? data.kind }
+}

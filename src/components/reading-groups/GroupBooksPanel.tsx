@@ -32,6 +32,7 @@ import {
   groupDateKey,
   inclusiveReadingDateRange,
 } from "@/utils/readingGroupDates"
+import { resolveMemberKind } from "@/utils/groupMemberLabels"
 
 type Props = {
   groupId: string
@@ -41,6 +42,7 @@ type Props = {
   timeZone: string
   isOwner: boolean
   userUid: string
+  memberKind?: "participant" | "guardian"
   onChangedAction: () => void | Promise<unknown>
 }
 
@@ -109,9 +111,13 @@ export default function GroupBooksPanel({
   timeZone,
   isOwner,
   userUid,
+  memberKind,
   onChangedAction,
 }: Props) {
   const router = useRouter()
+  const isGuardian = resolveMemberKind({ member_kind: memberKind }) === "guardian"
+  const goReadLabel = isGuardian ? "자녀 읽어주러 가기" : "타이머 시작하러 가기"
+  const goReadConfirmText = isGuardian ? "읽어주러 가기" : "책 상세로 이동"
   const [addOpen, setAddOpen] = useState(false)
   const [newBookOpen, setNewBookOpen] = useState(false)
   const [searchText, setSearchText] = useState("")
@@ -629,7 +635,7 @@ export default function GroupBooksPanel({
                               onClick={() => handleTimerPageMove(book, ownBook)}
                               className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white"
                             >
-                              타이머 시작하러 가기
+                              {goReadLabel}
                             </button>
                           ) : (
                             <button
@@ -981,9 +987,15 @@ export default function GroupBooksPanel({
           if (!prePeriodTimerTarget) return
           router.push(prePeriodTimerTarget.href)
         }}
-        title="읽기 기간 전이에요"
-        message={`이 기간 전에 시작한 타이머는 해당 회차 누적에 반영되지 않고 전체 독서 시간에만 쌓입니다.\n\n${prePeriodTimerTarget?.title} 상세 페이지로 이동할까요?`}
-        confirmText="책 상세로 이동"
+        title={
+          isGuardian ? "읽기 기간 전 · 자녀 읽어주기" : "읽기 기간 전이에요"
+        }
+        message={
+          isGuardian
+            ? `이 기간 전에 시작한 읽어주기는 해당 회차 누적에 반영되지 않고 전체 독서 시간에만 쌓입니다.\n\n『${prePeriodTimerTarget?.title}』 페이지로 이동할까요?`
+            : `이 기간 전에 시작한 타이머는 해당 회차 누적에 반영되지 않고 전체 독서 시간에만 쌓입니다.\n\n${prePeriodTimerTarget?.title} 상세 페이지로 이동할까요?`
+        }
+        confirmText={goReadConfirmText}
         cancelText="닫기"
         icon={AlertCircle}
         iconColor="text-amber-600"

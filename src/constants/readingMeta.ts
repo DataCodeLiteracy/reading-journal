@@ -1,51 +1,108 @@
 /**
- * 독서 메타데이터(구절 하이라이트, 질문 초점, 구절 목적 태그) — 코드에 고정.
+ * 독서 메타데이터(구절 유형, 질문 유형, 구절 목적 태그) — 코드에 고정.
  * 관리자·유저 커스텀 확장은 추후 별도 설계.
  */
 
-/** 구절을 어떤 관점에서 특히 남겼는지 */
+/** 구절을 어떤 마음으로 남겼는지 — UI에서는 「구절 유형」 */
 export type QuoteHighlightKind =
+  | "moving"
+  | "obscure"
+  | "questioning"
+  | "amusing"
+  | "core"
+  | "important"
+  | "connected"
+  | "none"
+  /** @deprecated 이전 분류 — DB에 남아 있을 수 있음 */
   | "favorite_line"
   | "memorable"
   | "vocabulary"
   | "plot_turn"
-  | "none"
 
-export const QUOTE_HIGHLIGHT_OPTIONS: ReadonlyArray<{
-  value: QuoteHighlightKind
+export type MetaSelectOption<T extends string> = {
+  value: T
   label: string
   description: string
-}> = [
+  hint: string
+  /** 기록한 이유 / 질문과 함께 남기는 생각 */
+  recordReasonPlaceholder: string
+  /** 구절: 느낌·생각 (구절 기록만) */
+  thoughtsPlaceholder?: string
+}
+
+export const QUOTE_HIGHLIGHT_OPTIONS: ReadonlyArray<MetaSelectOption<QuoteHighlightKind>> = [
   {
-    value: "favorite_line",
-    label: "애착 구절",
-    description:
-      "문장이 특히 좋아 나중에 다시 찾아보거나, 따라 읽어 보고 싶은 한 줄·한 문단이에요.",
+    value: "moving",
+    label: "감동",
+    hint: "마음이 움직이는",
+    description: "마음이 움직이거나 울림이 느껴지는 문장이에요.",
+    recordReasonPlaceholder: "예: 이 문장에서 마음이 먹먹해져서 꼭 남겨 두고 싶다…",
+    thoughtsPlaceholder: "예: 어떤 감정이 들었는지, 왜 울림이 있었는지…",
   },
   {
-    value: "memorable",
-    label: "인상 깊은 구절",
-    description:
-      "내용·상황·이미지가 오래 남거나, 책을 떠올릴 때 가장 먼저 떠오르는 부분이에요.",
+    value: "obscure",
+    label: "난해",
+    hint: "뜻이 안 와닿는",
+    description: "뜻이나 맥락이 잘 와닿지 않는 문장이에요.",
+    recordReasonPlaceholder: "예: 뜻을 더 찾아보려고 일단 저장해 둔다…",
+    thoughtsPlaceholder: "예: 어떤 부분이 헷갈리는지, 어떻게 이해하려 했는지…",
   },
   {
-    value: "vocabulary",
-    label: "표현·어휘",
-    description:
-      "단어나 비유, 문장 짜임이 새롭거나 배워 두고 싶은 표현이에요. (말모이 등으로 이어가기 좋아요.)",
+    value: "questioning",
+    label: "의문",
+    hint: "더 알고 싶은",
+    description: "더 알고 싶거나 생각이 이어지는 문장이에요.",
+    recordReasonPlaceholder: "예: 다음에 어떻게 풀릴지 궁금해서 적어 둔다…",
+    thoughtsPlaceholder: "예: 어떤 의문이 생겼는지, 더 알고 싶은 점…",
   },
   {
-    value: "plot_turn",
-    label: "전개·감정",
-    description:
-      "소설 등에서 사건이 꺾이거나, 인물의 마음이 드러나는 등 장면의 핵심으로 느껴지는 부분이에요.",
+    value: "amusing",
+    label: "재미",
+    hint: "즐겁거나 웃긴",
+    description: "읽다가 즐겁거나 웃음·재미가 느껴지는 문장이에요.",
+    recordReasonPlaceholder: "예: 웃기면서도 기억에 남아서 남긴다…",
+    thoughtsPlaceholder: "예: 왜 재미있다고 느꼈는지, 어떤 장면이 떠오르는지…",
+  },
+  {
+    value: "core",
+    label: "핵심",
+    hint: "작가의 메시지",
+    description: "작가가 전하려는 메시지가 담긴 것 같을 때예요.",
+    recordReasonPlaceholder: "예: 책의 핵심 메시지가 담긴 것 같아 저장한다…",
+    thoughtsPlaceholder: "예: 작가가 전하려는 바가 무엇 같았는지…",
+  },
+  {
+    value: "important",
+    label: "중요",
+    hint: "다시 볼 만한",
+    description: "나중에 다시 봐야 할 만큼 중요하다고 느낄 때예요.",
+    recordReasonPlaceholder: "예: 나중에 다시 꼭 보려고 남겨 둔다…",
+    thoughtsPlaceholder: "예: 왜 중요하다고 느꼈는지, 다른 부분과 어떻게 연결되는지…",
+  },
+  {
+    value: "connected",
+    label: "연결",
+    hint: "내 경험과 연결",
+    description: "내 경험·삶과 바로 이어지는 문장이에요.",
+    recordReasonPlaceholder: "예: 내 경험과 바로 이어져서 남긴다…",
+    thoughtsPlaceholder: "예: 어떤 기억·상황이 떠올랐는지, 어떻게 맞닿는지…",
   },
   {
     value: "none",
     label: "선택 안 함",
-    description: "아직 분류하지 않았거나, 여러 이유가 겹쳐 한 가지로만 정하기 어려울 때예요.",
+    hint: "나중에 정리",
+    description: "아직 분류하지 않았거나, 한 가지로만 정하기 어려울 때예요.",
+    recordReasonPlaceholder: "예: 다음 장으로 이어지는 복선이라 저장해 두고 싶다…",
+    thoughtsPlaceholder: "이 구절이 왜 인상 깊었는지, 어떤 생각이 들었는지 적어보세요…",
   },
 ]
+
+const LEGACY_QUOTE_HIGHLIGHT_LABELS: Record<string, string> = {
+  favorite_line: "애착 구절",
+  memorable: "인상 깊은 구절",
+  vocabulary: "표현·어휘",
+  plot_turn: "전개·감정",
+}
 
 /** 질문이 무엇을 겨냥하는지(질문 유형 questionType과 별개) */
 export type QuestionFocusKind =
@@ -57,55 +114,71 @@ export type QuestionFocusKind =
   | "open"
   | "none"
 
-export const QUESTION_FOCUS_OPTIONS: ReadonlyArray<{
-  value: QuestionFocusKind
-  label: string
-  description: string
-}> = [
+export const QUESTION_FOCUS_OPTIONS: ReadonlyArray<MetaSelectOption<QuestionFocusKind>> = [
   {
     value: "comprehension",
     label: "내용·사실",
+    hint: "사건·정보 짚기",
     description: "무슨 일이 일어나는지, 인물·설정·정보를 정확히 짚고 싶을 때예요.",
+    recordReasonPlaceholder:
+      "예: 이 사건·설정이 맞는지, 앞뒤가 어떻게 이어지는지 궁금해서…",
   },
   {
     value: "interpretation",
     label: "해석·의미",
+    hint: "왜·무슨 뜻인지",
     description:
       "왜 이렇게 썼는지, 상징·주제·문맥 속 의미를 더 깊게 헤아리고 싶을 때예요.",
+    recordReasonPlaceholder:
+      "예: 왜 이렇게 썼는지, 상징·주제가 무엇인지 더 헤아리고 싶어서…",
   },
   {
     value: "craft",
     label: "문장·구성",
+    hint: "글쓰기·리듬",
     description:
       "리듬, 반복, 전환, 문장 길이 등 글쓰기·구성이 어떻게 효과를 내는지 보고 싶을 때예요.",
+    recordReasonPlaceholder:
+      "예: 문장 리듬·구성이 어떻게 효과를 내는지 알고 싶어서…",
   },
   {
     value: "connection",
     label: "연결·적용",
+    hint: "삶·다른 책 연결",
     description: "내 경험, 다른 책, 뉴스·세상과 어떻게 맞닿는지 떠올리고 싶을 때예요.",
+    recordReasonPlaceholder:
+      "예: 내 삶·다른 책과 어떻게 맞닿는지 떠올리며…",
   },
   {
     value: "evaluation",
     label: "평가·비평",
+    hint: "설득력·톤 판단",
     description:
       "설득력, 공정성, 톤 등 이 글이 나에게 어떻게 작동하는지 판단하고 싶을 때예요.",
+    recordReasonPlaceholder:
+      "예: 설득력이나 톤이 어떻게 느껴졌는지 정리하려고…",
   },
   {
     value: "open",
     label: "열린 질문",
+    hint: "형식 없이 궁금",
     description: "위에 해당하기 어렵거나, 그냥 궁금한 것을 자유롭게 남기고 싶을 때예요.",
+    recordReasonPlaceholder: "예: 형식 없이 떠오른 궁금증을 적어 둔다…",
   },
   {
     value: "none",
     label: "선택 안 함",
+    hint: "나중에 정리",
     description: "초점을 정하지 않았거나, 나중에 정리해도 될 때예요.",
+    recordReasonPlaceholder: "예: 앞 장과 모순되어 궁금해졌다…",
   },
 ]
 
 export function quoteHighlightLabel(kind: string | undefined): string {
   if (!kind || kind === "none") return ""
   const o = QUOTE_HIGHLIGHT_OPTIONS.find((x) => x.value === kind)
-  return o?.label ?? kind
+  if (o) return o.label
+  return LEGACY_QUOTE_HIGHLIGHT_LABELS[kind] ?? kind
 }
 
 export function questionFocusLabel(kind: string | undefined): string {
@@ -117,6 +190,38 @@ export function questionFocusLabel(kind: string | undefined): string {
 export function questionFocusDescription(kind: string | undefined): string {
   if (!kind || kind === "none") return ""
   return QUESTION_FOCUS_OPTIONS.find((x) => x.value === kind)?.description ?? ""
+}
+
+function quoteHighlightOption(kind: string | undefined) {
+  if (!kind || kind === "none") {
+    return QUOTE_HIGHLIGHT_OPTIONS.find((x) => x.value === "none")
+  }
+  return (
+    QUOTE_HIGHLIGHT_OPTIONS.find((x) => x.value === kind) ??
+    QUOTE_HIGHLIGHT_OPTIONS.find((x) => x.value === "none")
+  )
+}
+
+function questionFocusOption(kind: string | undefined) {
+  if (!kind || kind === "none") {
+    return QUESTION_FOCUS_OPTIONS.find((x) => x.value === "none")
+  }
+  return (
+    QUESTION_FOCUS_OPTIONS.find((x) => x.value === kind) ??
+    QUESTION_FOCUS_OPTIONS.find((x) => x.value === "none")
+  )
+}
+
+export function quoteRecordReasonPlaceholder(kind: string | undefined): string {
+  return quoteHighlightOption(kind)?.recordReasonPlaceholder ?? ""
+}
+
+export function quoteThoughtsPlaceholder(kind: string | undefined): string {
+  return quoteHighlightOption(kind)?.thoughtsPlaceholder ?? ""
+}
+
+export function questionReasonPlaceholder(kind: string | undefined): string {
+  return questionFocusOption(kind)?.recordReasonPlaceholder ?? ""
 }
 
 const READING_PHASE_LABELS: Record<string, string> = {
@@ -146,7 +251,7 @@ export const QUESTION_DIFFICULTY_HELP: Record<string, string> = {
   hard: "여러 장을 넘나들거나, 추론·비평 수준이 필요할 때.",
 }
 
-/** 구절 모달「목적」체크박스 — slug → 한글 라벨 + 짧은 설명 */
+/** @deprecated 목적 태그 UI 제거 — 기존 generalThoughts 표시용으로만 유지 */
 export const QUOTE_PURPOSE_META: ReadonlyArray<{
   slug: string
   label: string

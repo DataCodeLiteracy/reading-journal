@@ -66,6 +66,11 @@ export interface GroupMember extends ReadingGroupDocument {
    * 없으면 참여자로 취급합니다.
    */
   member_kind?: GroupMemberKind
+  /**
+   * 보호자가 읽어주는 대상(자녀) 계정 user_id.
+   * 타이머 귀속·서재 동기화 시 보호자와 함께 반영됩니다.
+   */
+  reads_for_user_id?: string | null
   status: GroupMemberStatus
   joined_at?: string
   invited_at?: string
@@ -294,7 +299,13 @@ export type CreateGroupMemberInput = Omit<
 export type UpdateGroupMemberInput = Partial<
   Pick<
     GroupMember,
-    "display_name" | "role" | "member_kind" | "status" | "joined_at" | "invited_at"
+    | "display_name"
+    | "role"
+    | "member_kind"
+    | "reads_for_user_id"
+    | "status"
+    | "joined_at"
+    | "invited_at"
   >
 >
 

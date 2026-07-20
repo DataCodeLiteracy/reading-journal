@@ -776,6 +776,7 @@ export default function BookJournalHubPage({
           onSave={handleQuestionAdd}
           bookId={resolved.id}
           existingQuestions={questions}
+          tocOutline={book?.tocOutline}
         />
 
         <ConfirmModal

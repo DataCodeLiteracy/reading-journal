@@ -209,6 +209,7 @@ export default function GroupInfoPanel({
     try {
       await ReadingGroupService.updateMember(member.id, {
         member_kind: memberKind,
+        ...(memberKind === "participant" ? { reads_for_user_id: null } : {}),
       })
       await refreshGroupQueries()
     } catch (error) {
@@ -219,6 +220,45 @@ export default function GroupInfoPanel({
       setBusyMemberId(null)
     }
   }
+
+  const changeReadsFor = async (
+    member: GroupMember,
+    readsForUserId: string,
+  ) => {
+    const next = readsForUserId || null
+    if ((member.reads_for_user_id ?? null) === next) return
+    setBusyMemberId(member.id)
+    setMemberActionError("")
+    try {
+      await ReadingGroupService.updateMember(member.id, {
+        reads_for_user_id: next,
+      })
+      await refreshGroupQueries()
+    } catch (error) {
+      setMemberActionError(
+        errorMessage(error, "자녀 계정 연결을 변경하지 못했습니다."),
+      )
+    } finally {
+      setBusyMemberId(null)
+    }
+  }
+
+  const participantOptionsForGuardian = (
+    guardian: GroupMember,
+  ): SelectOption<string>[] => [
+    { value: "", label: "자녀 미연결" },
+    ...activeMembers
+      .filter(
+        (member) =>
+          resolveMemberKind(member) === "participant" &&
+          Boolean(member.user_id) &&
+          member.user_id !== guardian.user_id,
+      )
+      .map((member) => ({
+        value: member.user_id as string,
+        label: memberLabel(member),
+      })),
+  ]
 
   const transferOwnership = async (member: GroupMember) => {
     if (!member.user_id || member.user_id === group.owner_user_id) return
@@ -454,6 +494,20 @@ export default function GroupInfoPanel({
                         aria-label={`${memberLabel(member)} 참여 유형`}
                       />
                     </div>
+                    {kind === "guardian" && member.user_id && (
+                      <div className="min-w-[9rem] flex-1 sm:max-w-[12rem]">
+                        <Select
+                          value={member.reads_for_user_id ?? ""}
+                          onChangeAction={(next) =>
+                            void changeReadsFor(member, next)
+                          }
+                          options={participantOptionsForGuardian(member)}
+                          variant="compact"
+                          disabled={busyMemberId === member.id}
+                          aria-label={`${memberLabel(member)} 자녀 계정`}
+                        />
+                      </div>
+                    )}
                     {!isOwnerSelf && member.user_id && (
                       <button
                         type="button"
@@ -481,6 +535,22 @@ export default function GroupInfoPanel({
                     )}
                   </div>
                 )}
+                {!isOwner &&
+                  kind === "guardian" &&
+                  member.user_id === currentUserId && (
+                    <div className="min-w-[9rem] sm:max-w-[12rem]">
+                      <Select
+                        value={member.reads_for_user_id ?? ""}
+                        onChangeAction={(next) =>
+                          void changeReadsFor(member, next)
+                        }
+                        options={participantOptionsForGuardian(member)}
+                        variant="compact"
+                        disabled={busyMemberId === member.id}
+                        aria-label="읽어줄 자녀 계정"
+                      />
+                    </div>
+                  )}
               </li>
             )
           })}

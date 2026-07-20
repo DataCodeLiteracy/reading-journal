@@ -2,10 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { BookOpen, RefreshCw } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
+import { BookOpen, RefreshCw, Timer } from "lucide-react"
+import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
 import Select, { type SelectOption } from "@/components/Select"
 import GroupMemberName from "@/components/reading-groups/GroupMemberName"
+import { useAuth } from "@/contexts/AuthContext"
+import { BookService } from "@/services/bookService"
+import { CanonicalBookService } from "@/services/canonicalBookService"
+import { registerUserBook } from "@/services/bookRegistrationService"
 import { UserService } from "@/services/userService"
 import type {
   GroupBook,
@@ -31,6 +38,7 @@ interface GroupReadingProgressProps {
   attributions: GroupReadingAttribution[]
   members: GroupMember[]
   timeZone?: string
+  memberKind?: "participant" | "guardian"
   onRefetch?: () => void | Promise<unknown>
   isRefreshing?: boolean
 }
@@ -47,9 +55,11 @@ function formatRemaining(endAt: string, nowMs: number) {
     Math.ceil((new Date(endAt).getTime() - nowMs) / 1000),
   )
   const days = Math.floor(remainingSeconds / 86400)
-  const hours = Math.ceil((remainingSeconds % 86400) / 3600)
-  if (days > 0) return `${days}일 ${hours}시간`
-  return `${hours}시간`
+  const hours = Math.floor((remainingSeconds % 86400) / 3600)
+  const minutes = Math.floor((remainingSeconds % 3600) / 60)
+  if (days > 0) return `${days}일 ${hours}시간 ${minutes}분`
+  if (hours > 0) return `${hours}시간 ${minutes}분`
+  return `${minutes}분`
 }
 
 function assignmentPeriodMs(assignment: MeetingBookAssignment) {
@@ -69,14 +79,46 @@ export default function GroupReadingProgress({
   attributions,
   members,
   timeZone = "Asia/Seoul",
+  memberKind,
   onRefetch,
   isRefreshing = false,
 }: GroupReadingProgressProps) {
+  const router = useRouter()
+  const { userUid } = useAuth()
+  const isGuardian = resolveMemberKind({ member_kind: memberKind }) === "guardian"
+  const goReadLabel = isGuardian ? "자녀 읽어주러 가기" : "타이머 페이지로 이동"
+  const goReadConfirmText = isGuardian
+    ? "서재 추가 후 읽어주러 가기"
+    : "서재 추가 후 이동"
+  const goReadConfirmReady = isGuardian ? "읽어주러 가기" : "이동하기"
   const nowMs = Date.now()
   const [userDisplayNames, setUserDisplayNames] = useState<
     Record<string, string>
   >({})
   const [detailMemberId, setDetailMemberId] = useState<string | null>(null)
+  const [timerTarget, setTimerTarget] = useState<{
+    title: string
+    assignment: MeetingBookAssignment
+    href?: string
+    needsLibraryAdd: boolean
+  } | null>(null)
+  const [timerBusy, setTimerBusy] = useState(false)
+  const [timerError, setTimerError] = useState<string | null>(null)
+
+  const userBooksQuery = useQuery({
+    queryKey: ["group-reading-progress", "user-library", userUid],
+    queryFn: () => BookService.getUserBooks(userUid!),
+    enabled: Boolean(userUid),
+  })
+  const booksByCanonical = useMemo(
+    () =>
+      new Map(
+        (userBooksQuery.data ?? [])
+          .filter((book) => book.canonicalBookId)
+          .map((book) => [book.canonicalBookId!, book]),
+      ),
+    [userBooksQuery.data],
+  )
 
   const booksById = useMemo(
     () => new Map(books.map((book) => [book.id, book])),
@@ -296,6 +338,94 @@ export default function GroupReadingProgress({
     periodAssignment.reading_end_at,
     timeZone,
   )
+
+  const openTimerConfirm = (assignment: MeetingBookAssignment) => {
+    if (!userUid) return
+    const groupBook = booksById.get(assignment.group_book_id)
+    const title =
+      assignment.book_title_snapshot ?? groupBook?.title ?? "이 책"
+    const ownBook = booksByCanonical.get(assignment.canonical_book_id)
+    setTimerError(null)
+    setTimerTarget({
+      title,
+      assignment,
+      href: ownBook ? `/book/${ownBook.id}/${userUid}` : undefined,
+      needsLibraryAdd: !ownBook,
+    })
+  }
+
+  const confirmGoToTimer = async (target: {
+    title: string
+    assignment: MeetingBookAssignment
+    href?: string
+    needsLibraryAdd: boolean
+  }) => {
+    if (!userUid || timerBusy) return
+    setTimerBusy(true)
+    setTimerError(null)
+    try {
+      let href = target.href
+      if (!href) {
+        const canonical = await CanonicalBookService.getById(
+          target.assignment.canonical_book_id,
+        )
+        if (!canonical) {
+          throw new Error("공유 판본 정보를 찾을 수 없습니다.")
+        }
+        const created = await registerUserBook(
+          userUid,
+          {
+            title: canonical.title,
+            author: canonical.author || "",
+            publisher: canonical.publisher,
+            publishedDate: canonical.publishedDate || "",
+            status: "want-to-read",
+            rating: 0,
+            hasStartedReading: false,
+            coverUrl: canonical.coverUrl,
+            isbn13: canonical.isbn13,
+            level: canonical.level,
+            categoryDepth1Id: canonical.categoryDepth1Id,
+            categoryDepth1Label: canonical.categoryDepth1Label,
+            categoryDepth2Id: canonical.categoryDepth2Id,
+            categoryDepth2Label: canonical.categoryDepth2Label,
+          },
+          { linkToCanonicalId: canonical.id },
+        )
+        await userBooksQuery.refetch()
+        href = `/book/${created.id}/${userUid}`
+      }
+      setTimerTarget(null)
+      router.push(href)
+    } catch (error) {
+      setTimerTarget(target)
+      setTimerError(
+        error instanceof Error
+          ? error.message
+          : "책 상세 페이지로 이동하지 못했습니다.",
+      )
+    } finally {
+      setTimerBusy(false)
+    }
+  }
+
+  const timerConfirmMessage = (() => {
+    if (!timerTarget) return ""
+    const beforePeriod =
+      nowMs < new Date(timerTarget.assignment.reading_start_at).getTime()
+    const pre =
+      beforePeriod
+        ? "읽기 기간 전에 시작한 타이머는 이 회차 누적에 반영되지 않고 전체 독서 시간에만 쌓입니다.\n\n"
+        : ""
+    if (timerTarget.needsLibraryAdd) {
+      return `${pre}『${timerTarget.title}』을(를) 내 서재에 추가한 뒤 ${
+        isGuardian ? "자녀 읽어주기" : "타이머"
+      } 페이지로 이동할까요?`
+    }
+    return `${pre}『${timerTarget.title}』 ${
+      isGuardian ? "자녀 읽어주기" : "타이머(책 상세)"
+    } 페이지로 이동할까요?`
+  })()
   const selectedStoppedDate = periodAssignment.stopped_at
     ? groupDateKey(periodAssignment.stopped_at, timeZone)
     : undefined
@@ -391,6 +521,11 @@ export default function GroupReadingProgress({
       <h3 className="mt-5 text-sm font-semibold text-theme-primary">
         회차 책 {selectedAssignments.length}권
       </h3>
+      <p className="mt-1 text-xs text-theme-secondary">
+        {isGuardian
+          ? "책을 누르면 자녀 읽어주기(책 상세) 페이지로 이동할 수 있습니다."
+          : "책을 누르면 타이머(책 상세) 페이지로 이동할 수 있습니다."}
+      </p>
       <ul className="mt-2 space-y-2">
         {selectedAssignments.map((assignment) => {
           const book = booksById.get(assignment.group_book_id)
@@ -405,37 +540,42 @@ export default function GroupReadingProgress({
             )
             .reduce((total, item) => total + displayedSeconds(item), 0)
           return (
-            <li
-              key={assignment.id}
-              className="flex gap-3 rounded-lg bg-theme-secondary p-3"
-            >
-              <div className="relative h-20 w-[3.4rem] shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
-                {coverUrl ? (
-                  <Image
-                    src={coverUrl}
-                    alt={`${title} 표지`}
-                    fill
-                    sizes="54px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-theme-secondary">
-                    <BookOpen className="h-5 w-5" aria-hidden />
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 font-semibold text-theme-primary">
-                  {title}
-                </p>
-                <p className="mt-0.5 truncate text-sm text-theme-secondary">
-                  {author}
-                </p>
-                <p className="mt-2 text-xs font-medium text-theme-primary">
-                  누적 {formatDuration(bookSeconds)}
-                </p>
-              </div>
+            <li key={assignment.id}>
+              <button
+                type="button"
+                onClick={() => openTimerConfirm(assignment)}
+                disabled={!userUid || timerBusy}
+                className="flex w-full gap-3 rounded-lg bg-theme-secondary p-3 text-left transition-colors hover:bg-theme-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-theme disabled:opacity-50"
+                aria-label={`${title} ${isGuardian ? "자녀 읽어주기" : "타이머"} 페이지로 이동`}
+              >
+                <div className="relative h-20 w-[3.4rem] shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
+                  {coverUrl ? (
+                    <Image
+                      src={coverUrl}
+                      alt={`${title} 표지`}
+                      fill
+                      sizes="54px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-theme-secondary">
+                      <BookOpen className="h-5 w-5" aria-hidden />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 font-semibold text-theme-primary">
+                    {title}
+                  </p>
+                  <p className="mt-0.5 truncate text-sm text-theme-secondary">
+                    {author}
+                  </p>
+                  <p className="mt-2 text-xs font-medium text-theme-primary">
+                    누적 {formatDuration(bookSeconds)}
+                  </p>
+                </div>
+              </button>
             </li>
           )
         })}
@@ -568,6 +708,39 @@ export default function GroupReadingProgress({
           </div>
         )}
       </FormModalFrame>
+
+      <ConfirmModal
+        isOpen={Boolean(timerTarget)}
+        onClose={() => {
+          if (timerBusy) return
+          setTimerTarget(null)
+          setTimerError(null)
+        }}
+        onConfirm={() => {
+          if (!timerTarget) return
+          void confirmGoToTimer(timerTarget)
+        }}
+        title={goReadLabel}
+        message={
+          timerError
+            ? `${timerConfirmMessage}\n\n오류: ${timerError}`
+            : timerConfirmMessage
+        }
+        confirmText={
+          timerBusy
+            ? "이동 중…"
+            : timerTarget?.needsLibraryAdd
+              ? goReadConfirmText
+              : goReadConfirmReady
+        }
+        cancelText="닫기"
+        icon={Timer}
+        iconColor="text-accent-theme"
+        iconBgColor="bg-accent-theme/15"
+        confirmButtonColor="bg-accent-theme"
+        confirmButtonHoverColor="hover:bg-accent-theme-secondary"
+        showSubtitle={false}
+      />
     </section>
   )
 }
