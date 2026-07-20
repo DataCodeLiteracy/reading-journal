@@ -209,9 +209,13 @@ export default function BookTocPage({
               <span className='font-medium text-theme-primary'>최상위 추가</span>로{" "}
               <code className='rounded bg-theme-tertiary/80 px-1 font-mono'>1</code>
               부터 만들고, 각 줄의{" "}
-              <span className='font-medium text-theme-primary'>하위</span>로{" "}
+              <span className='font-medium text-theme-primary'>동급</span>으로 같은
+              단계(
+              <code className='rounded bg-theme-tertiary/80 px-1 font-mono'>1 → 2</code>
+              )를,{" "}
+              <span className='font-medium text-theme-primary'>하위</span>로 한 단계 아래(
               <code className='rounded bg-theme-tertiary/80 px-1 font-mono'>1.1</code>
-              …처럼 이어 붙입니다. 최대 네 단계(
+              )를 이어 붙입니다. 최대 네 단계(
               <code className='rounded bg-theme-tertiary/80 px-1 font-mono'>
                 1.1.1.1
               </code>

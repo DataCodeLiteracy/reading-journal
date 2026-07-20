@@ -503,6 +503,7 @@ export default function BookQuotesPage({
           }}
           bookId={resolvedParams?.id || ""}
           bookTitle={book.title}
+          tocOutline={book.tocOutline}
           existingQuote={editingQuote}
         />
 

@@ -9,6 +9,7 @@ import {
   buildTocTreeFromEntries,
   nextChildPath,
   nextRootPath,
+  nextSiblingPath,
   pathDepth,
   removeEntryAndDescendants,
   type TocTreeNode,
@@ -27,16 +28,16 @@ type FlatRow = { node: TocTreeNode; depth: number }
 
 function collectVisibleRows(
   nodes: TocTreeNode[],
-  foldedPaths: Set<string>,
+  expandedPaths: Set<string>,
   depth: number,
   out: FlatRow[],
 ): void {
   for (const node of nodes) {
     out.push({ node, depth })
     const hasChildren = node.children.length > 0
-    const open = !foldedPaths.has(node.path)
+    const open = expandedPaths.has(node.path)
     if (hasChildren && open) {
-      collectVisibleRows(node.children, foldedPaths, depth + 1, out)
+      collectVisibleRows(node.children, expandedPaths, depth + 1, out)
     }
   }
 }
@@ -74,11 +75,12 @@ type RowBlockProps = {
   node: TocTreeNode
   depth: number
   entries: BookTocEntry[]
-  foldedPaths: Set<string>
-  onToggleFold: (path: string) => void
+  expandedPaths: Set<string>
+  onToggleExpand: (path: string) => void
   onPatch: (index: number, patch: Partial<BookTocEntry>) => void
   onRemoveBranch: (path: string) => void
   onAddChild: (parentPath: string) => void
+  onAddSibling: (siblingPath: string) => void
   disabled?: boolean
 }
 
@@ -86,16 +88,17 @@ function TocRowBlock({
   node,
   depth,
   entries,
-  foldedPaths,
-  onToggleFold,
+  expandedPaths,
+  onToggleExpand,
   onPatch,
   onRemoveBranch,
   onAddChild,
+  onAddSibling,
   disabled,
 }: RowBlockProps) {
   const entry = entries[node.entryIndex]!
   const hasChildren = node.children.length > 0
-  const isOpen = !foldedPaths.has(node.path)
+  const isOpen = expandedPaths.has(node.path)
   const canAddChild = pathDepth(node.path) < BOOK_TOC_MAX_DEPTH
   const depthPx = 10 + depth * INDENT_PER_DEPTH_PX
 
@@ -104,7 +107,7 @@ function TocRowBlock({
       <div className='flex min-w-0 items-start gap-2'>
         <button
           type='button'
-          onClick={() => onToggleFold(node.path)}
+          onClick={() => onToggleExpand(node.path)}
           className={`mt-0.5 shrink-0 rounded-md p-1 text-theme-tertiary hover:bg-theme-tertiary/35 ${
             hasChildren ? "" : "pointer-events-none invisible"
           }`}
@@ -155,6 +158,16 @@ function TocRowBlock({
               />
             </label>
             <div className='ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2'>
+              <button
+                type='button'
+                disabled={disabled}
+                onClick={() => onAddSibling(node.path)}
+                className='inline-flex h-9 items-center gap-1 rounded-lg border border-theme-tertiary bg-theme-secondary px-2.5 text-xs font-medium text-theme-primary hover:bg-theme-tertiary disabled:opacity-50'
+                aria-label={`${node.path}과 같은 단계 목차 추가`}
+              >
+                <Plus className='h-3.5 w-3.5' />
+                동급
+              </button>
               {canAddChild ? (
                 <button
                   type='button'
@@ -188,7 +201,10 @@ export function BookTocTreeEditor({
   onEntriesChangeAction,
   disabled,
 }: Props) {
-  const [foldedPaths, setFoldedPaths] = useState<Set<string>>(() => new Set())
+  /** 비어 있으면 전부 접힘 → 최상위만 보임 */
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    () => new Set(),
+  )
 
   const { roots, orphanIndices } = useMemo(
     () => buildTocTreeFromEntries(entries),
@@ -197,12 +213,12 @@ export function BookTocTreeEditor({
 
   const flatRows = useMemo(() => {
     const out: FlatRow[] = []
-    collectVisibleRows(roots, foldedPaths, 0, out)
+    collectVisibleRows(roots, expandedPaths, 0, out)
     return out
-  }, [roots, foldedPaths])
+  }, [roots, expandedPaths])
 
-  const toggleFold = (path: string) => {
-    setFoldedPaths((prev) => {
+  const toggleExpand = (path: string) => {
+    setExpandedPaths((prev) => {
       const next = new Set(prev)
       if (next.has(path)) next.delete(path)
       else next.add(path)
@@ -225,11 +241,17 @@ export function BookTocTreeEditor({
   const onAddChild = (parentPath: string) => {
     const np = nextChildPath(entries, parentPath)
     if (!np) return
-    setFoldedPaths((prev) => {
+    setExpandedPaths((prev) => {
       const next = new Set(prev)
-      next.delete(parentPath)
+      next.add(parentPath)
       return next
     })
+    onEntriesChangeAction([...entries, { path: np, title: "" }])
+  }
+
+  const onAddSibling = (siblingPath: string) => {
+    const np = nextSiblingPath(entries, siblingPath)
+    if (!np) return
     onEntriesChangeAction([...entries, { path: np, title: "" }])
   }
 
@@ -332,11 +354,12 @@ export function BookTocTreeEditor({
                 node={node}
                 depth={depth}
                 entries={entries}
-                foldedPaths={foldedPaths}
-                onToggleFold={toggleFold}
+                expandedPaths={expandedPaths}
+                onToggleExpand={toggleExpand}
                 onPatch={onPatch}
                 onRemoveBranch={onRemoveBranch}
                 onAddChild={onAddChild}
+                onAddSibling={onAddSibling}
                 disabled={disabled}
               />
             ))}

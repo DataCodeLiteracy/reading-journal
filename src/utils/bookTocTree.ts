@@ -144,6 +144,18 @@ export function nextChildPath(
   return `${prefix}${max + 1}`
 }
 
+/** 같은 depth의 다음 형제 경로 (예: 1.2 → 1.3, 최상위 2 → 3) */
+export function nextSiblingPath(
+  entries: BookTocEntry[],
+  siblingNormalized: string,
+): string | null {
+  const p = normalizeBookTocPath(siblingNormalized)
+  if (!p) return null
+  const parent = getParentPath(p)
+  if (parent === "") return nextRootPath(entries)
+  return nextChildPath(entries, parent)
+}
+
 export function removeEntryAndDescendants(
   entries: BookTocEntry[],
   targetNormalized: string,

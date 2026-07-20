@@ -178,5 +178,7 @@ export const queryKeys = {
       ] as const,
     sessionAttributions: (readingSessionId: string) =>
       ["readingGroups", "sessions", readingSessionId, "attributions"] as const,
+    canonicalTocOutlines: (groupId: string, idsKey: string) =>
+      ["readingGroups", groupId, "canonicalTocOutlines", idsKey] as const,
   },
 } as const

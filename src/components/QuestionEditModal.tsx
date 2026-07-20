@@ -53,7 +53,10 @@ export default function QuestionEditModal({
   const [error, setError] = useState<string | null>(null)
   const [typeSuggestOpen, setTypeSuggestOpen] = useState(false)
 
-  const tocPickerOptions = useMemo(() => buildTocPickerOptions(tocOutline), [tocOutline])
+  const tocPickerOptions = useMemo(
+    () => buildTocPickerOptions(tocOutline, { showPath: true }),
+    [tocOutline],
+  )
   const hasToc = tocPickerOptions.length > 0
   const canSuggestType = questionText.trim().length >= RECORD_TYPE_SUGGEST_MIN_CHARS
 
@@ -63,18 +66,33 @@ export default function QuestionEditModal({
       setQuestionFocus(question.questionFocus ?? "none")
       setQuestionReason(question.questionReason ?? "")
       setChapterPartText(chapterPathToDisplayText(question.chapterPath))
-      setTocPick("")
+      const options = buildTocPickerOptions(tocOutline, { showPath: true })
+      const byPath = question.tocPath
+        ? options.find((o) => o.value === question.tocPath)
+        : undefined
+      const byChapter =
+        !byPath && question.chapterPath?.length
+          ? options.find(
+              (o) =>
+                JSON.stringify(o.chapterPath) ===
+                JSON.stringify(question.chapterPath),
+            )
+          : undefined
+      setTocPick(byPath?.value ?? byChapter?.value ?? "")
       setDifficulty(question.difficulty)
       setIsPublic(question.isPublic || false)
       setError(null)
       setIsSaving(false)
       savingRef.current = false
     }
-  }, [isOpen, question])
+  }, [isOpen, question, tocOutline])
 
   const handleTocPick = (path: string) => {
     setTocPick(path)
-    if (!path) return
+    if (!path) {
+      setChapterPartText("")
+      return
+    }
     const opt = tocPickerOptions.find((o) => o.value === path)
     if (opt) {
       setChapterPartText(chapterPathToDisplayText(opt.chapterPath))
@@ -86,6 +104,7 @@ export default function QuestionEditModal({
       const opt = tocPickerOptions.find((o) => o.value === tocPick)
       if (opt) return opt.chapterPath
     }
+    if (hasToc) return ["전체"]
     return displayTextToChapterPath(chapterPartText)
   }
 
@@ -105,6 +124,7 @@ export default function QuestionEditModal({
       await onSave(question.id, {
         questionText: questionText.trim(),
         chapterPath: resolveChapterPath(),
+        ...(tocPick ? { tocPath: tocPick } : { tocPath: "" }),
         questionFocus: questionFocus === "none" ? undefined : questionFocus,
         questionReason: questionReason.trim() || undefined,
         questionType: question.questionType,
@@ -123,7 +143,7 @@ export default function QuestionEditModal({
   }
 
   const tocSelectOptions: SelectOption<string>[] = [
-    { value: "", label: "목차에서 고르기 (선택)" },
+    { value: "", label: "선택 안 함" },
     ...tocPickerOptions.map((o) => ({ value: o.value, label: o.label })),
   ]
 
@@ -151,7 +171,7 @@ export default function QuestionEditModal({
       <form onSubmit={handleSubmit} className='form-modal-fieldset space-y-3 sm:space-y-4'>
         <div>
           <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
-            질문 *
+            질문 <span className='text-red-500'>*</span>
           </label>
           <textarea
             value={questionText}
@@ -186,37 +206,38 @@ export default function QuestionEditModal({
           />
         </div>
 
-        <div>
-          <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
-            어느 부분? (선택)
-          </label>
-          {hasToc ? (
-            <div className='mb-2'>
-              <Select
-                value={tocPick}
-                onChangeAction={handleTocPick}
-                options={tocSelectOptions}
-                placeholder='목차에서 고르기'
-                variant='form-modal'
-                truncate={false}
-                aria-label='등록된 목차에서 선택'
-              />
-            </div>
-          ) : null}
-          <input
-            type='text'
-            value={chapterPartText}
-            onChange={(e) => {
-              setChapterPartText(e.target.value)
-              if (tocPick) setTocPick("")
-            }}
-            className='form-control'
-            placeholder='예: 3장, 중반, p.42 — 목차 없어도 대략만 적어도 돼요'
-          />
-          <p className='mt-1 text-xs text-theme-secondary'>
-            비워 두면 「전체」로 저장됩니다.
-          </p>
-        </div>
+        {hasToc ? (
+          <div>
+            <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+              목차 (선택)
+            </label>
+            <Select
+              value={tocPick}
+              onChangeAction={handleTocPick}
+              options={tocSelectOptions}
+              placeholder='선택 안 함'
+              variant='form-modal'
+              truncate={false}
+              aria-label='목차 선택'
+            />
+          </div>
+        ) : (
+          <div>
+            <label className='mb-0.5 block text-sm font-medium text-theme-primary'>
+              어느 부분? (선택)
+            </label>
+            <input
+              type='text'
+              value={chapterPartText}
+              onChange={(e) => setChapterPartText(e.target.value)}
+              className='form-control'
+              placeholder='예: 3장, 중반, p.42 — 대략만 적어도 돼요'
+            />
+            <p className='mt-1 text-xs text-theme-secondary'>
+              비워 두면 「전체」로 저장됩니다.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className='mb-0.5 block text-sm font-medium text-theme-primary'>

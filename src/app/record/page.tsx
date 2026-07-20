@@ -10,6 +10,7 @@ import {
   PenSquare,
   Plus,
   Star,
+  StickyNote,
   TicketCheck,
   Users,
 } from "lucide-react"
@@ -36,6 +37,14 @@ const RECORD_LINKS = [
     icon: HelpCircle,
     color: "text-green-600 dark:text-green-400",
     background: "bg-green-100 dark:bg-green-900/20",
+  },
+  {
+    href: "/record/memos",
+    title: "메모",
+    description: "목차·읽기 중 떠오른 메모",
+    icon: StickyNote,
+    color: "text-teal-600 dark:text-teal-400",
+    background: "bg-teal-100 dark:bg-teal-900/20",
   },
   {
     href: "/record/reviews",

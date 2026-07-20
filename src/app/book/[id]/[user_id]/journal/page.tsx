@@ -7,6 +7,7 @@ import {
   PenSquare,
   Plus,
   Star,
+  StickyNote,
   Trash2,
   Heart,
   Sparkles,
@@ -15,17 +16,20 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Book } from "@/types/book"
 import { BookQuestion } from "@/types/question"
+import type { BookMemo } from "@/types/memo"
 import QuestionCard from "@/components/QuestionCard"
 import QuoteModal from "@/components/QuoteModal"
 import QuoteCard from "@/components/QuoteCard"
 import QuoteJsonUploadModal from "@/components/QuoteJsonUploadModal"
 import JsonUploadModal from "@/components/JsonUploadModal"
 import QuestionAddModal from "@/components/QuestionAddModal"
+import MemoModal from "@/components/MemoModal"
 import CritiqueCard from "@/components/CritiqueCard"
 import JournalPreviewList from "@/components/JournalPreviewList"
 import { QuestionService } from "@/services/questionService"
 import { QuoteService } from "@/services/quoteService"
 import { CritiqueService } from "@/services/critiqueService"
+import { MemoService } from "@/services/memoService"
 import { LikeService } from "@/services/likeService"
 import { CommentService } from "@/services/commentService"
 import { BookService } from "@/services/bookService"
@@ -41,6 +45,7 @@ import {
   isPreReadNotesEmpty,
   preReadNotesJoinedBody,
 } from "@/utils/preReadNotes"
+import { memoTocDisplayText } from "@/utils/questionChapterPath"
 
 const JOURNAL_PREVIEW_LIMIT = 3
 
@@ -79,6 +84,7 @@ export default function BookJournalHubPage({
   const [questions, setQuestions] = useState<BookQuestion[]>([])
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [critiques, setCritiques] = useState<Critique[]>([])
+  const [memos, setMemos] = useState<BookMemo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -89,6 +95,8 @@ export default function BookJournalHubPage({
   const [isQuoteJsonModalOpen, setIsQuoteJsonModalOpen] = useState(false)
   const [isQuestionJsonModalOpen, setIsQuestionJsonModalOpen] = useState(false)
   const [isQuestionAddModalOpen, setIsQuestionAddModalOpen] = useState(false)
+  const [isMemoModalOpen, setIsMemoModalOpen] = useState(false)
+  const [editingMemo, setEditingMemo] = useState<BookMemo | null>(null)
   const [isDeleteCritiqueModalOpen, setIsDeleteCritiqueModalOpen] =
     useState(false)
   const [critiqueToDelete, setCritiqueToDelete] = useState<string | null>(null)
@@ -113,14 +121,21 @@ export default function BookJournalHubPage({
           return
         }
         setBook(bookData)
-        const [questionsData, quotesData, critiquesData] = await Promise.all([
-          QuestionService.getBookQuestions(resolved.id),
-          QuoteService.getBookQuotes(resolved.id),
-          CritiqueService.getBookCritiques(resolved.id),
-        ])
+        const [questionsData, quotesData, critiquesData, memosData] =
+          await Promise.all([
+            QuestionService.getBookQuestions(resolved.id),
+            QuoteService.getBookQuotes(resolved.id),
+            CritiqueService.getBookCritiques(resolved.id),
+            MemoService.getBookMemos(resolved.id),
+          ])
         setQuestions(questionsData)
         setQuotes(quotesData)
         setCritiques(critiquesData)
+        setMemos(
+          userUid === resolved.user_id
+            ? memosData
+            : memosData.filter((m) => m.isPublic),
+        )
 
         if (bookData.review && bookData.reviewIsPublic) {
           const [likes, comments] = await Promise.all([
@@ -353,6 +368,84 @@ export default function BookJournalHubPage({
                   <span>더보기 ({questions.length}개)</span>
                   <ChevronRight className='h-4 w-4' />
                 </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 메모 */}
+        <div className='bg-theme-secondary rounded-lg shadow-sm p-4 mb-6'>
+          <div className='flex items-center justify-between mb-3'>
+            <h2 className='text-lg font-semibold text-theme-primary'>메모</h2>
+            <span className='text-sm text-theme-secondary bg-theme-tertiary px-2 py-1 rounded-full'>
+              {memos.length}개
+            </span>
+          </div>
+
+          {memos.length === 0 ? (
+            <div className='text-center py-6'>
+              <StickyNote className='mx-auto mb-4 h-12 w-12 text-gray-400' />
+              <p className='mb-4 text-theme-secondary'>
+                목차를 읽으며 떠오른 생각을 메모해 보세요. 목차 없이도 먼저 적을
+                수 있어요.
+              </p>
+              {userUid === resolved.user_id ? (
+                <button
+                  type='button'
+                  onClick={() => {
+                    setEditingMemo(null)
+                    setIsMemoModalOpen(true)
+                  }}
+                  className='inline-flex items-center justify-center gap-2 rounded-lg bg-accent-theme px-4 py-2 text-white transition-colors hover:bg-accent-theme-secondary'
+                >
+                  <Plus className='h-4 w-4' />
+                  <span>메모 추가하기</span>
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <JournalPreviewList
+                items={sortByNewest(memos).slice(0, JOURNAL_PREVIEW_LIMIT)}
+                renderItem={(memo) => (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      if (userUid !== resolved.user_id) return
+                      setEditingMemo(memo)
+                      setIsMemoModalOpen(true)
+                    }}
+                    className='w-full rounded-lg bg-theme-tertiary/50 p-3 text-left'
+                  >
+                    {memo.chapterPath?.length || memo.tocPath ? (
+                      <p className='mb-1 text-xs font-medium text-teal-700 dark:text-teal-300'>
+                        {memoTocDisplayText(memo.tocPath, memo.chapterPath)}
+                      </p>
+                    ) : (
+                      <p className='mb-1 text-xs text-theme-secondary'>
+                        목차 미연결
+                      </p>
+                    )}
+                    <p className='line-clamp-3 whitespace-pre-wrap text-sm text-theme-primary'>
+                      {memo.content}
+                    </p>
+                  </button>
+                )}
+              />
+              <div className='mt-4 flex flex-col gap-2 border-t border-theme-tertiary pt-4'>
+                {userUid === resolved.user_id ? (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setEditingMemo(null)
+                      setIsMemoModalOpen(true)
+                    }}
+                    className='flex w-full items-center justify-center gap-2 rounded-lg bg-accent-theme px-4 py-2 text-white transition-colors hover:bg-accent-theme-secondary'
+                  >
+                    <Plus className='h-4 w-4' />
+                    <span>메모 추가하기</span>
+                  </button>
+                ) : null}
               </div>
             </>
           )}
@@ -704,6 +797,7 @@ export default function BookJournalHubPage({
           }}
           bookId={resolved.id}
           bookTitle={book.title}
+          tocOutline={book.tocOutline}
           existingQuote={editingQuote}
         />
 
@@ -766,6 +860,37 @@ export default function BookJournalHubPage({
           bookId={resolved.id}
           existingQuestions={questions}
           tocOutline={book?.tocOutline}
+        />
+
+        <MemoModal
+          isOpen={isMemoModalOpen}
+          onClose={() => {
+            setIsMemoModalOpen(false)
+            setEditingMemo(null)
+          }}
+          bookId={resolved.id}
+          bookTitle={book.title}
+          tocOutline={book.tocOutline}
+          existingMemo={editingMemo}
+          onSave={async (data) => {
+            if (!userUid || !resolved) return
+            if (editingMemo) {
+              await MemoService.updateMemo(editingMemo.id, {
+                content: data.content,
+                isPublic: data.isPublic,
+                chapterPath: data.chapterPath?.length ? data.chapterPath : [],
+                tocPath: data.tocPath || "",
+              })
+            } else {
+              await MemoService.createMemo({
+                ...data,
+                user_id: userUid,
+                bookId: resolved.id,
+              })
+            }
+            const updated = await MemoService.getBookMemos(resolved.id)
+            setMemos(updated)
+          }}
         />
 
         <ConfirmModal

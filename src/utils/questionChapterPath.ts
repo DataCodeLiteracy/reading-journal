@@ -8,6 +8,18 @@ export function chapterPathToDisplayText(chapterPath: string[] | undefined): str
   return chapterPath.join(" › ")
 }
 
+/** 메모용 — 목차 번호(path)를 앞에 붙여 표시 */
+export function memoTocDisplayText(
+  tocPath: string | undefined,
+  chapterPath: string[] | undefined,
+): string {
+  const path = tocPath?.trim() ?? ""
+  const titles = chapterPathToDisplayText(chapterPath)
+  if (path && titles) return `${path} · ${titles}`
+  if (path) return path
+  return titles
+}
+
 /** 저장용 — 빈 입력은 「전체」 */
 export function displayTextToChapterPath(text: string): string[] {
   const trimmed = text.trim()
@@ -42,8 +54,16 @@ export type TocPickerOption = {
   chapterPath: string[]
 }
 
+type TocPickerOptionsOpts = {
+  /** true면 라벨에 `1.1 제목`처럼 path 번호 포함 */
+  showPath?: boolean
+}
+
 /** 목차 선택 드롭다운 옵션 (depth 들여쓰기) */
-export function buildTocPickerOptions(entries: BookTocEntry[]): TocPickerOption[] {
+export function buildTocPickerOptions(
+  entries: BookTocEntry[],
+  opts?: TocPickerOptionsOpts,
+): TocPickerOption[] {
   const sorted = sortBookTocEntries(entries).filter(
     (e) => normalizeBookTocPath(e.path) && e.title.trim(),
   )
@@ -51,9 +71,10 @@ export function buildTocPickerOptions(entries: BookTocEntry[]): TocPickerOption[
     const norm = normalizeBookTocPath(entry.path)!
     const depth = norm.split(".").length
     const indent = depth > 1 ? "\u3000".repeat(depth - 1) : ""
+    const title = entry.title.trim()
     return {
       value: norm,
-      label: `${indent}${entry.title.trim()}`,
+      label: opts?.showPath ? `${indent}${norm} ${title}` : `${indent}${title}`,
       chapterPath: buildChapterPathFromTocPath(sorted, norm),
     }
   })

@@ -1210,7 +1210,7 @@ export default function BookDetailPageClient({
                 <div className='min-w-0 flex-1 flex flex-col justify-center py-0.5'>
                   <h3 className='font-semibold text-theme-primary'>기록</h3>
                   <p className='mt-1 text-sm text-theme-secondary leading-snug'>
-                    독서 질문, 구절, 완독 후 리뷰와 서평
+                    질문, 구절, 메모, 리뷰, 서평
                   </p>
                 </div>
                 <div className='flex w-9 shrink-0 items-center justify-center self-stretch'>

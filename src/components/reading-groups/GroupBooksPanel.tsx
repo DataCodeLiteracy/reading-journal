@@ -8,7 +8,10 @@ import { AlertCircle, CalendarDays, Pencil, Plus, Search, Trash2 } from "lucide-
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
+import { BookTocViewModal } from "@/components/BookTocViewModal"
 import Select, { type SelectOption } from "@/components/Select"
+import GroupTocBadge from "@/components/reading-groups/GroupTocBadge"
+import { queryKeys } from "@/lib/queryKeys"
 import { BookService } from "@/services/bookService"
 import { CanonicalBookService } from "@/services/canonicalBookService"
 import {
@@ -19,6 +22,7 @@ import {
 import { ReadingGroupService } from "@/services/readingGroupService"
 import { ReadingSessionService } from "@/services/readingSessionService"
 import type { Book } from "@/types/book"
+import type { BookTocEntry } from "@/types/bookToc"
 import type { CanonicalBook } from "@/types/canonicalBook"
 import type {
   GroupBook,
@@ -138,6 +142,10 @@ export default function GroupBooksPanel({
     href: string
     title: string
   } | null>(null)
+  const [tocModal, setTocModal] = useState<{
+    title: string
+    entries: BookTocEntry[]
+  } | null>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000)
@@ -170,6 +178,25 @@ export default function GroupBooksPanel({
     () => new Set(books.map((book) => book.canonical_book_id)),
     [books],
   )
+
+  const canonicalIdsKey = useMemo(() => {
+    const ids = [...existingCanonicalIds].filter(Boolean).sort()
+    return ids.join(",")
+  }, [existingCanonicalIds])
+
+  const tocOutlinesQuery = useQuery({
+    queryKey: queryKeys.readingGroups.canonicalTocOutlines(
+      groupId,
+      canonicalIdsKey,
+    ),
+    queryFn: () =>
+      CanonicalBookService.getTocOutlinesByIds(
+        canonicalIdsKey ? canonicalIdsKey.split(",") : [],
+      ),
+    enabled: Boolean(canonicalIdsKey),
+    staleTime: 60_000,
+  })
+  const tocByCanonical = tocOutlinesQuery.data ?? {}
 
   const refresh = async () => {
     await Promise.all([onChangedAction(), userBooksQuery.refetch()])
@@ -564,21 +591,33 @@ export default function GroupBooksPanel({
                             <Pencil className="h-4 w-4" aria-hidden />
                           </button>
                         ) : null}
-                        <div className="relative h-28 w-[4.7rem] overflow-hidden rounded-md bg-theme-secondary shadow-sm">
-                          {book.cover_url ? (
-                            <Image
-                              src={book.cover_url}
-                              alt={`${book.title} 표지`}
-                              fill
-                              sizes="75px"
-                              className="object-cover"
-                              unoptimized
+                        <div className="flex w-[4.7rem] flex-col gap-1.5">
+                          <div className="relative h-28 w-full overflow-hidden rounded-md bg-theme-secondary shadow-sm">
+                            {book.cover_url ? (
+                              <Image
+                                src={book.cover_url}
+                                alt={`${book.title} 표지`}
+                                fill
+                                sizes="75px"
+                                className="object-cover"
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center px-2 text-center text-xs text-theme-secondary">
+                                표지 없음
+                              </div>
+                            )}
+                          </div>
+                          {tocByCanonical[book.canonical_book_id]?.length ? (
+                            <GroupTocBadge
+                              onOpenAction={() =>
+                                setTocModal({
+                                  title: book.title,
+                                  entries: tocByCanonical[book.canonical_book_id]!,
+                                })
+                              }
                             />
-                          ) : (
-                            <div className="flex h-full items-center justify-center px-2 text-center text-xs text-theme-secondary">
-                              표지 없음
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                         <div className="min-w-0">
                           <h4 className="line-clamp-2 font-semibold text-theme-primary">
@@ -611,7 +650,7 @@ export default function GroupBooksPanel({
                         <div className="col-span-2 flex min-w-0 flex-col gap-2">
                           <div className="flex min-w-0 items-center gap-2">
                             {isOwner ? (
-                              <div className="min-w-0 flex-1">
+                              <div className="w-[100px] shrink-0">
                                 <Select
                                   value={displayStatus}
                                   onChangeAction={(status) =>
@@ -622,12 +661,13 @@ export default function GroupBooksPanel({
                                     busyId === book.id ||
                                     displayStatus === "completed"
                                   }
-                                  variant="compact"
+                                  variant="toolbar"
+                                  triggerClassName="rounded-md px-2 text-xs"
                                   aria-label={`${book.title} 상태`}
                                 />
                               </div>
                             ) : (
-                              <span className="flex h-8 min-w-0 flex-1 items-center justify-center truncate rounded-md bg-theme-secondary px-2 text-xs font-medium text-theme-secondary">
+                              <span className="flex h-10 w-[100px] shrink-0 items-center justify-center truncate rounded-md bg-theme-secondary px-1 text-xs font-medium text-theme-secondary">
                                 {
                                   STATUS_SECTIONS.find(
                                     (item) => item.status === displayStatus,
@@ -645,7 +685,7 @@ export default function GroupBooksPanel({
                                   }),
                                 )
                               }
-                              className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-theme-tertiary bg-theme-primary px-3 text-xs font-semibold text-theme-primary transition-colors hover:bg-theme-secondary"
+                              className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-md bg-slate-700 px-3 text-xs font-semibold text-white sm:text-sm dark:bg-slate-200 dark:text-slate-900"
                               aria-label={`${book.title} 독서 노트 보기`}
                             >
                               기록
@@ -1025,6 +1065,12 @@ export default function GroupBooksPanel({
         confirmButtonColor="bg-accent-theme"
         confirmButtonHoverColor="hover:bg-accent-theme-secondary"
         showSubtitle={false}
+      />
+
+      <BookTocViewModal
+        open={Boolean(tocModal)}
+        onClose={() => setTocModal(null)}
+        entries={tocModal?.entries ?? []}
       />
     </div>
   )

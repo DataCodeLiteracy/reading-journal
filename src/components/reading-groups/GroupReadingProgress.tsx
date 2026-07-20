@@ -7,13 +7,17 @@ import { useQuery } from "@tanstack/react-query"
 import { BookOpen, RefreshCw, Timer } from "lucide-react"
 import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
-import Select, { type SelectOption } from "@/components/Select"
 import GroupMemberName from "@/components/reading-groups/GroupMemberName"
+import GroupTocBadge from "@/components/reading-groups/GroupTocBadge"
+import { BookTocViewModal } from "@/components/BookTocViewModal"
+import Select, { type SelectOption } from "@/components/Select"
 import { useAuth } from "@/contexts/AuthContext"
+import { queryKeys } from "@/lib/queryKeys"
 import { BookService } from "@/services/bookService"
 import { CanonicalBookService } from "@/services/canonicalBookService"
 import { registerUserBook } from "@/services/bookRegistrationService"
 import { UserService } from "@/services/userService"
+import type { BookTocEntry } from "@/types/bookToc"
 import type {
   GroupBook,
   GroupMeeting,
@@ -31,6 +35,7 @@ import {
   effectiveAssignmentEndMs,
 } from "@/utils/readingSessionAttribution"
 import { groupReadingNotesPath } from "@/utils/groupReadingNotesUrl"
+import { rereadCountNumberClass } from "@/utils/rereadCountStyle"
 
 interface GroupReadingProgressProps {
   groupId: string
@@ -109,6 +114,10 @@ export default function GroupReadingProgress({
   } | null>(null)
   const [timerBusy, setTimerBusy] = useState(false)
   const [timerError, setTimerError] = useState<string | null>(null)
+  const [tocModal, setTocModal] = useState<{
+    title: string
+    entries: BookTocEntry[]
+  } | null>(null)
 
   const userBooksQuery = useQuery({
     queryKey: ["group-reading-progress", "user-library", userUid],
@@ -129,6 +138,32 @@ export default function GroupReadingProgress({
     () => new Map(books.map((book) => [book.id, book])),
     [books],
   )
+
+  const canonicalIdsKey = useMemo(() => {
+    const ids = [
+      ...new Set(
+        books
+          .map((book) => book.canonical_book_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ].sort()
+    return ids.join(",")
+  }, [books])
+
+  const tocOutlinesQuery = useQuery({
+    queryKey: queryKeys.readingGroups.canonicalTocOutlines(
+      groupId,
+      canonicalIdsKey,
+    ),
+    queryFn: () =>
+      CanonicalBookService.getTocOutlinesByIds(
+        canonicalIdsKey ? canonicalIdsKey.split(",") : [],
+      ),
+    enabled: Boolean(canonicalIdsKey),
+    staleTime: 60_000,
+  })
+  const tocByCanonical = tocOutlinesQuery.data ?? {}
+
   const assignmentsByMeeting = useMemo(() => {
     const map = new Map<string, MeetingBookAssignment[]>()
     assignments.forEach((assignment) => {
@@ -264,6 +299,51 @@ export default function GroupReadingProgress({
     }
   }, [activeMemberUserIds])
 
+  const selectedMeetingCanonicalIds = useMemo(() => {
+    const list = assignmentsByMeeting.get(selectedMeetingId) ?? []
+    return [
+      ...new Set(
+        list
+          .map((item) => item.canonical_book_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ].sort()
+  }, [assignmentsByMeeting, selectedMeetingId])
+
+  const memberRereadQuery = useQuery({
+    queryKey: [
+      "group-reading-progress",
+      "reread-counts",
+      selectedMeetingId,
+      selectedMeetingCanonicalIds.join(","),
+      activeMemberUserIds.join(","),
+    ],
+    queryFn: async () => {
+      const counts: Record<string, number> = {}
+      await Promise.all(
+        activeMemberUserIds.map(async (memberUserId) => {
+          const userBooks = await BookService.getUserBooks(memberUserId)
+          let total = 0
+          for (const book of userBooks) {
+            if (
+              book.canonicalBookId &&
+              selectedMeetingCanonicalIds.includes(book.canonicalBookId)
+            ) {
+              total += book.rereadCount ?? 0
+            }
+          }
+          counts[memberUserId] = total
+        }),
+      )
+      return counts
+    },
+    enabled:
+      Boolean(selectedMeetingId) &&
+      selectedMeetingCanonicalIds.length > 0 &&
+      activeMemberUserIds.length > 0,
+    staleTime: 30_000,
+  })
+
   if (!selectedMeeting || !periodAssignment) {
     return (
       <section
@@ -326,6 +406,7 @@ export default function GroupReadingProgress({
         member.display_name,
       isOwner: member.role === "owner",
       seconds: totalsByUser.get(member.user_id!) ?? 0,
+      rereadCount: memberRereadQuery.data?.[member.user_id!] ?? 0,
     }))
     .sort(
       (left, right) =>
@@ -564,21 +645,35 @@ export default function GroupReadingProgress({
                 aria-label={`${title} 독서 노트 보기`}
               />
               <div className="pointer-events-none relative z-10 flex gap-3">
-                <div className="relative h-20 w-[3.4rem] shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
-                  {coverUrl ? (
-                    <Image
-                      src={coverUrl}
-                      alt={`${title} 표지`}
-                      fill
-                      sizes="54px"
-                      className="object-cover"
-                      unoptimized
+                <div className="flex w-[3.4rem] shrink-0 flex-col gap-1.5">
+                  <div className="relative h-20 w-full overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
+                    {coverUrl ? (
+                      <Image
+                        src={coverUrl}
+                        alt={`${title} 표지`}
+                        fill
+                        sizes="54px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-theme-secondary">
+                        <BookOpen className="h-5 w-5" aria-hidden />
+                      </div>
+                    )}
+                  </div>
+                  {tocByCanonical[assignment.canonical_book_id]?.length ? (
+                    <GroupTocBadge
+                      className="pointer-events-auto relative z-20"
+                      onOpenAction={() =>
+                        setTocModal({
+                          title,
+                          entries:
+                            tocByCanonical[assignment.canonical_book_id]!,
+                        })
+                      }
                     />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-theme-secondary">
-                      <BookOpen className="h-5 w-5" aria-hidden />
-                    </div>
-                  )}
+                  ) : null}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 font-semibold text-theme-primary">
@@ -611,7 +706,8 @@ export default function GroupReadingProgress({
         참여자별 누적 순위
       </h3>
       <p className="mt-1 text-xs text-theme-secondary">
-        참여자를 누르면 책별 독서 시간을 볼 수 있습니다.
+        참여자를 누르면 책별 독서 시간을 볼 수 있습니다. 회독은 이 회차 책의
+        완독 횟수 합계입니다.
       </p>
       {rankings.length ? (
         <ol className="mt-2 space-y-2">
@@ -633,8 +729,17 @@ export default function GroupReadingProgress({
                     nameClassName="truncate font-medium text-theme-primary"
                   />
                 </span>
-                <span className="shrink-0 text-sm font-semibold text-theme-primary">
-                  {formatDuration(ranking.seconds)}
+                <span className="flex shrink-0 flex-col items-end gap-0.5 text-sm font-semibold text-theme-primary">
+                  <span>{formatDuration(ranking.seconds)}</span>
+                  <span className="text-[11px] font-medium text-theme-secondary">
+                    회독{" "}
+                    <span
+                      className={`font-semibold ${rereadCountNumberClass(ranking.rereadCount)}`}
+                    >
+                      {ranking.rereadCount}
+                    </span>
+                    회
+                  </span>
                 </span>
               </button>
             </li>
@@ -766,6 +871,12 @@ export default function GroupReadingProgress({
         confirmButtonColor="bg-accent-theme"
         confirmButtonHoverColor="hover:bg-accent-theme-secondary"
         showSubtitle={false}
+      />
+
+      <BookTocViewModal
+        open={Boolean(tocModal)}
+        onClose={() => setTocModal(null)}
+        entries={tocModal?.entries ?? []}
       />
     </section>
   )

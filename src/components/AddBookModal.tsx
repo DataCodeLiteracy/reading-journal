@@ -353,7 +353,7 @@ export default function AddBookModal({
           <div>
             <p className="mb-1 text-xs font-semibold text-theme-secondary">필수</p>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              책 제목 *
+              책 제목 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -436,7 +436,7 @@ export default function AddBookModal({
 
           <div>
             <label className="mb-0.5 block text-sm font-medium text-theme-primary">
-              상태 *
+              상태 <span className="text-red-500">*</span>
             </label>
             <Select<Book["status"]>
               value={status}

@@ -17,6 +17,10 @@ export interface Quote {
   thoughts?: string // 해당 구절에 대한 느낌/생각
   generalThoughts?: string // 구절과 무관하게 책을 읽다가 느낀 점
   page?: number // 구절이 있는 페이지 (숫자)
+  /** 목차 path 기반 표시용 경로 (예: ["1장", "1절"]). 없으면 미연결 */
+  chapterPath?: string[]
+  /** 정규화된 목차 path (예: "1.2"). 목차 미연결 시 생략 */
+  tocPath?: string
   isPublic: boolean // 공개 여부
   likesCount: number // 좋아요 수 (캐시된 값)
   commentsCount: number // 댓글 수 (캐시된 값)

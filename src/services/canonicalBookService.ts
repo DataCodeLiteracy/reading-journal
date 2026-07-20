@@ -264,4 +264,18 @@ export class CanonicalBookService {
       tocOutline: tocOutline?.length ? tocOutline : undefined,
     })
   }
+
+  /** canonical id → 목차 항목 (없으면 빈 배열) */
+  static async getTocOutlinesByIds(
+    ids: string[],
+  ): Promise<Record<string, BookTocEntry[]>> {
+    const unique = [...new Set(ids.filter(Boolean))]
+    const pairs = await Promise.all(
+      unique.map(async (id) => {
+        const book = await this.getById(id)
+        return [id, book?.tocOutline?.length ? book.tocOutline : []] as const
+      }),
+    )
+    return Object.fromEntries(pairs)
+  }
 }

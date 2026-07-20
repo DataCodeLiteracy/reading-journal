@@ -46,20 +46,27 @@ function CoverQuickLink({
   href,
   icon: Icon,
   label,
+  emphasized = false,
 }: {
   href: string
   icon: typeof ListTree
   label: string
+  /** 등록·완료 등 강조 상태 */
+  emphasized?: boolean
 }) {
   return (
     <Link
       href={href}
-      className='group flex w-full items-center gap-1.5 rounded-md border border-theme-tertiary/70 bg-theme-tertiary/40 px-2 py-1.5 text-[11px] font-medium text-theme-secondary transition-all hover:border-accent-theme/55 hover:bg-accent-theme/10 hover:text-accent-theme active:scale-[0.99]'
+      className={
+        emphasized
+          ? "group flex w-full items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/12 px-2 py-1.5 text-[11px] font-semibold text-emerald-700 transition-all hover:border-emerald-500/60 hover:bg-emerald-500/20 active:scale-[0.99] dark:text-emerald-300"
+          : "group flex w-full items-center gap-1.5 rounded-md border border-theme-tertiary/70 bg-theme-tertiary/40 px-2 py-1.5 text-[11px] font-medium text-theme-secondary transition-all hover:border-accent-theme/55 hover:bg-accent-theme/10 hover:text-accent-theme active:scale-[0.99]"
+      }
     >
-      <Icon className='h-3.5 w-3.5 shrink-0' aria-hidden />
-      <span className='min-w-0 flex-1 truncate text-left'>{label}</span>
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
       <ChevronRight
-        className='h-3 w-3 shrink-0 opacity-40 group-hover:translate-x-px group-hover:opacity-100'
+        className="h-3 w-3 shrink-0 opacity-40 group-hover:translate-x-px group-hover:opacity-100"
         aria-hidden
       />
     </Link>
@@ -345,6 +352,7 @@ export default function BookDetailHeroCard({
                 href={withReturnQuery(`${bookBasePath}/toc`, bookBasePath)}
                 icon={ListTree}
                 label='목차'
+                emphasized={(book.tocOutline?.length ?? 0) > 0}
               />
               <CoverQuickLink
                 href={`${bookBasePath}/pre-reading?return=${encodeURIComponent(bookBasePath)}`}

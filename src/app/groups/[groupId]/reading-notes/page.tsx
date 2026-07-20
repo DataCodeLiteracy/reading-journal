@@ -325,8 +325,29 @@ export default function GroupReadingNotesPage() {
     })
   }
 
-  const openCreateForPersonalBook = (personalBook: Book) => {
-    setTargetBook(personalBook)
+  const openCreateForPersonalBook = async (
+    personalBook: Book,
+    canonicalBookId?: string,
+  ) => {
+    let bookWithToc = personalBook
+    if (!(personalBook.tocOutline?.length ?? 0)) {
+      const cid = personalBook.canonicalBookId || canonicalBookId
+      if (cid) {
+        const canonical = await CanonicalBookService.getById(cid)
+        if (canonical?.tocOutline?.length) {
+          bookWithToc = {
+            ...personalBook,
+            tocOutline: canonical.tocOutline,
+            canonicalBookId: personalBook.canonicalBookId || canonical.id,
+          }
+        }
+      } else {
+        const refreshed = await BookService.getBook(personalBook.id)
+        if (refreshed?.tocOutline?.length) bookWithToc = refreshed
+      }
+    }
+
+    setTargetBook(bookWithToc)
     setFabError(null)
     if (activeType === "quote") setQuoteModalOpen(true)
     else if (activeType === "question") setQuestionModalOpen(true)
@@ -364,7 +385,14 @@ export default function GroupReadingNotesPage() {
       { linkToCanonicalId: canonical.id },
     )
     await userBooksQuery.refetch()
-    return created
+    return created.tocOutline?.length
+      ? created
+      : {
+          ...created,
+          ...(canonical.tocOutline?.length
+            ? { tocOutline: canonical.tocOutline }
+            : {}),
+        }
   }
 
   const startCreateForGroupBook = async (groupBook: GroupBook) => {
@@ -374,7 +402,10 @@ export default function GroupReadingNotesPage() {
     try {
       const personalBook = await ensurePersonalBook(groupBook)
       setBookPickerOpen(false)
-      openCreateForPersonalBook(personalBook)
+      await openCreateForPersonalBook(
+        personalBook,
+        groupBook.canonical_book_id,
+      )
     } catch (error) {
       setFabError(
         error instanceof Error
@@ -677,6 +708,7 @@ export default function GroupReadingNotesPage() {
             }}
             bookId={targetBook.id}
             bookTitle={targetBook.title}
+            tocOutline={targetBook.tocOutline}
           />
           <QuestionAddModal
             isOpen={questionModalOpen}

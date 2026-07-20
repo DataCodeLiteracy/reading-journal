@@ -14,6 +14,8 @@ export interface BookQuestion {
   user_id?: string // 질문 작성자 ID (공개 질문의 경우 필요)
   questionText: string
   chapterPath: string[] // 최대 5단계 깊이: ["5부", "1장", "1절", "1항", "1목"]
+  /** 정규화된 목차 path (예: "1.2"). 목차 미연결·선택 안 함 시 생략 */
+  tocPath?: string
   /** 질문이 겨냥하는 초점(고정 목록, questionType과 별개) */
   questionFocus?: QuestionFocusKind
   /** 이 질문을 떠올린 맥락·이유 */

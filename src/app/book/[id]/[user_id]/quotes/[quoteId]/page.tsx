@@ -169,6 +169,7 @@ export default function QuoteDetailPage({
         }}
         bookId={resolvedParams!.id}
         bookTitle={book.title}
+        tocOutline={book.tocOutline}
         existingQuote={quote}
       />
 

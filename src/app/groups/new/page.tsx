@@ -142,7 +142,7 @@ export default function NewReadingGroupPage() {
         >
           <div>
             <label htmlFor="group-name" className="mb-2 block text-sm font-semibold text-theme-primary">
-              모임 이름 <span className="text-red-600" aria-hidden>*</span>
+              모임 이름 <span className="text-red-500" aria-hidden>*</span>
             </label>
             <input
               id="group-name"
