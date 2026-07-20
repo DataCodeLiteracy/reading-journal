@@ -64,6 +64,7 @@ export default function MemosPage() {
     queryKey: queryKeys.user.books(userUid),
     queryFn: () => BookService.getUserBooks(userUid!),
     enabled: Boolean(isLoggedIn && userUid),
+    staleTime: 30_000,
   })
 
   const memosQuery = useQuery({

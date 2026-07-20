@@ -291,6 +291,7 @@ export default function GroupReadingNotesPage() {
     queryKey: queryKeys.user.books(userUid),
     queryFn: () => BookService.getUserBooks(userUid!),
     enabled: Boolean(userUid),
+    staleTime: 30_000,
   })
 
   const booksByCanonical = useMemo(() => {

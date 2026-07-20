@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { BookOpen, RefreshCw, Timer } from "lucide-react"
 import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
@@ -94,6 +94,7 @@ export default function GroupReadingProgress({
   compact = false,
 }: GroupReadingProgressProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { userUid } = useAuth()
   const isGuardian = resolveMemberKind({ member_kind: memberKind }) === "guardian"
   const goReadLabel = isGuardian ? "자녀 읽어주러 가기" : "타이머 페이지로 이동"
@@ -120,9 +121,10 @@ export default function GroupReadingProgress({
   } | null>(null)
 
   const userBooksQuery = useQuery({
-    queryKey: ["group-reading-progress", "user-library", userUid],
+    queryKey: queryKeys.user.books(userUid),
     queryFn: () => BookService.getUserBooks(userUid!),
     enabled: Boolean(userUid),
+    staleTime: 30_000,
   })
   const booksByCanonical = useMemo(
     () =>
@@ -322,7 +324,11 @@ export default function GroupReadingProgress({
       const counts: Record<string, number> = {}
       await Promise.all(
         activeMemberUserIds.map(async (memberUserId) => {
-          const userBooks = await BookService.getUserBooks(memberUserId)
+          const userBooks = await queryClient.fetchQuery({
+            queryKey: queryKeys.user.books(memberUserId),
+            queryFn: () => BookService.getUserBooks(memberUserId),
+            staleTime: 30_000,
+          })
           let total = 0
           for (const book of userBooks) {
             if (

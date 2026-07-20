@@ -84,7 +84,11 @@ export default function GroupRecordSharesPanel({
     enabled: modalOpen,
     queryFn: async (): Promise<Candidate[]> => {
       const [ownBooks, quotes, critiques] = await Promise.all([
-        BookService.getUserBooks(userUid),
+        queryClient.fetchQuery({
+          queryKey: queryKeys.user.books(userUid),
+          queryFn: () => BookService.getUserBooks(userUid),
+          staleTime: 30_000,
+        }),
         QuoteService.getUserQuotes(userUid),
         CritiqueService.getUserCritiques(userUid),
       ])

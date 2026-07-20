@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { HelpCircle, Search, Filter, X, Globe, User, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
-import { RecordService, RecordContent } from "@/services/recordService"
+import { RecordContent } from "@/services/recordService"
 import {
   RECORD_PAGE_SIZE,
   countQuestionRecordsPage,
@@ -17,6 +17,7 @@ import RecordContentCard from "@/components/RecordContentCard"
 import RecordListLoading from "@/components/RecordListLoading"
 import Pagination from "@/components/Pagination"
 import Select, { type SelectOption } from "@/components/Select"
+import { useRecordAvailableBooks } from "@/hooks/useRecordAvailableBooks"
 import { queryKeys } from "@/lib/queryKeys"
 
 export default function QuestionsPage() {
@@ -33,12 +34,11 @@ export default function QuestionsPage() {
     }
   }, [isLoggedIn, loading, router])
 
-  const booksQuery = useQuery({
-    queryKey: queryKeys.record.availableBooks(userUid!, showOnlyMine),
-    queryFn: () => RecordService.getAvailableBooks(userUid!, showOnlyMine),
-    enabled: Boolean(isLoggedIn && userUid),
-    staleTime: 30_000,
-  })
+  const booksQuery = useRecordAvailableBooks(
+    userUid,
+    showOnlyMine,
+    Boolean(isLoggedIn && userUid),
+  )
 
   const myOwnedBookIds = useMemo(() => {
     if (!showOnlyMine || selectedBookId) return undefined

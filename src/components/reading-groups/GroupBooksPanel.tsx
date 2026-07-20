@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, CalendarDays, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
@@ -120,6 +120,7 @@ export default function GroupBooksPanel({
   onChangedAction,
 }: Props) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const isGuardian = resolveMemberKind({ member_kind: memberKind }) === "guardian"
   const goReadLabel = isGuardian ? "자녀 읽어주러 가기" : "타이머 시작하러 가기"
   const goReadConfirmText = isGuardian ? "읽어주러 가기" : "책 상세로 이동"
@@ -153,9 +154,10 @@ export default function GroupBooksPanel({
   }, [])
 
   const userBooksQuery = useQuery({
-    queryKey: ["group-books", "user-library", userUid],
+    queryKey: queryKeys.user.books(userUid),
     queryFn: () => BookService.getUserBooks(userUid),
     enabled: Boolean(userUid),
+    staleTime: 30_000,
   })
   const userBooks = userBooksQuery.data ?? []
   const booksByCanonical = useMemo(
@@ -281,7 +283,11 @@ export default function GroupBooksPanel({
   const addNewBookToLibraryAndGroup = async (
     input: Omit<Book, "id" | "user_id">,
   ) => {
-    const latestBooks = await BookService.getUserBooks(userUid)
+    const latestBooks = await queryClient.fetchQuery({
+      queryKey: queryKeys.user.books(userUid),
+      queryFn: () => BookService.getUserBooks(userUid),
+      staleTime: 30_000,
+    })
     const check = await checkBookRegistration(userUid, latestBooks, input, {
       autoLinkEdition: true,
     })

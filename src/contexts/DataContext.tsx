@@ -20,6 +20,7 @@ import {
 } from "@/services/timePatternService"
 import { useAuth } from "./AuthContext"
 import { queryKeys } from "@/lib/queryKeys"
+import { syncUserLibraryCaches } from "@/lib/userLibraryCache"
 
 export type UserDashboardData = {
   books: Book[]
@@ -90,8 +91,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const data = dashboardQuery.data
 
   useEffect(() => {
+    if (!userUid || !dashboardQuery.data) return
+    syncUserLibraryCaches(queryClient, userUid, {
+      books: dashboardQuery.data.books,
+      sessions: dashboardQuery.data.sessions,
+      statistics: dashboardQuery.data.statistics,
+    })
+  }, [userUid, dashboardQuery.dataUpdatedAt, dashboardQuery.data, queryClient])
+
+  useEffect(() => {
     if (!isLoggedIn || !userUid) {
       queryClient.removeQueries({ queryKey: ["userDashboard"] })
+      queryClient.removeQueries({ queryKey: ["userBooks"] })
+      queryClient.removeQueries({ queryKey: ["readingSessions"] })
+      queryClient.removeQueries({ queryKey: ["userLibraryCounts"] })
     }
   }, [isLoggedIn, userUid, queryClient])
 
@@ -105,7 +118,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       queryKey: queryKeys.user.libraryRoot(userUid),
     })
     void queryClient.invalidateQueries({
-      queryKey: queryKeys.user.libraryCounts(userUid),
+      queryKey: queryKeys.user.books(userUid),
     })
   }, [userUid, isLoggedIn, queryClient])
 
@@ -131,48 +144,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [userUid, queryClient])
 
-  const updateBook = useCallback(
-    (bookId: string, updatedBook: Book) => {
+  const patchDashboardBooks = useCallback(
+    (updater: (books: Book[]) => Book[]) => {
       if (!userUid) return
+      const old = queryClient.getQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+      )
+      if (!old) return
+      const books = updater(old.books)
       queryClient.setQueryData<UserDashboardData>(
         queryKeys.user.dashboard(userUid),
-        (old) =>
-          old
-            ? {
-                ...old,
-                books: old.books.map((b) =>
-                  b.id === bookId ? updatedBook : b
-                ),
-              }
-            : old
+        { ...old, books },
+      )
+      syncUserLibraryCaches(queryClient, userUid, { books })
+    },
+    [queryClient, userUid],
+  )
+
+  const updateBook = useCallback(
+    (bookId: string, updatedBook: Book) => {
+      patchDashboardBooks((books) =>
+        books.map((b) => (b.id === bookId ? updatedBook : b)),
       )
     },
-    [queryClient, userUid]
+    [patchDashboardBooks],
   )
 
   const addBook = useCallback(
     (book: Book) => {
-      if (!userUid) return
-      queryClient.setQueryData<UserDashboardData>(
-        queryKeys.user.dashboard(userUid),
-        (old) => (old ? { ...old, books: [book, ...old.books] } : old)
-      )
+      patchDashboardBooks((books) => [book, ...books])
     },
-    [queryClient, userUid]
+    [patchDashboardBooks],
   )
 
   const removeBook = useCallback(
     (bookId: string) => {
-      if (!userUid) return
-      queryClient.setQueryData<UserDashboardData>(
-        queryKeys.user.dashboard(userUid),
-        (old) =>
-          old
-            ? { ...old, books: old.books.filter((b) => b.id !== bookId) }
-            : old
-      )
+      patchDashboardBooks((books) => books.filter((b) => b.id !== bookId))
     },
-    [queryClient, userUid]
+    [patchDashboardBooks],
   )
 
   const updateTimePatterns = useCallback(() => {
@@ -195,25 +204,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const endMs = new Date(session.endTime).getTime()
       const readTouch = Number.isFinite(endMs) ? new Date(endMs) : new Date()
       const now = new Date()
+      const old = queryClient.getQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+      )
+      if (!old) return
+      const books = old.books.map((b) =>
+        b.id === session.bookId
+          ? {
+              ...b,
+              last_read_at: readTouch,
+              updated_at: now,
+            }
+          : b,
+      )
+      const sessions = [session, ...old.sessions]
       queryClient.setQueryData<UserDashboardData>(
         queryKeys.user.dashboard(userUid),
-        (old) =>
-          old
-            ? {
-                ...old,
-                sessions: [session, ...old.sessions],
-                books: old.books.map((b) =>
-                  b.id === session.bookId
-                    ? {
-                        ...b,
-                        last_read_at: readTouch,
-                        updated_at: now,
-                      }
-                    : b,
-                ),
-              }
-            : old,
+        { ...old, sessions, books },
       )
+      syncUserLibraryCaches(queryClient, userUid, { books, sessions })
       const snap = queryClient.getQueryData<UserDashboardData>(
         queryKeys.user.dashboard(userUid)
       )
@@ -248,16 +257,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const removeReadingSession = useCallback(
     async (sessionId: string) => {
       if (!userUid) return
+      const old = queryClient.getQueryData<UserDashboardData>(
+        queryKeys.user.dashboard(userUid),
+      )
+      if (!old) return
+      const sessions = old.sessions.filter((s) => s.id !== sessionId)
       queryClient.setQueryData<UserDashboardData>(
         queryKeys.user.dashboard(userUid),
-        (old) =>
-          old
-            ? {
-                ...old,
-                sessions: old.sessions.filter((s) => s.id !== sessionId),
-              }
-            : old
+        { ...old, sessions },
       )
+      syncUserLibraryCaches(queryClient, userUid, { sessions })
       const snap = queryClient.getQueryData<UserDashboardData>(
         queryKeys.user.dashboard(userUid)
       )
@@ -299,6 +308,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         queryKeys.user.dashboard(userUid),
         (old) => (old ? { ...old, books } : old)
       )
+      syncUserLibraryCaches(queryClient, userUid, { books })
     },
     [queryClient, userUid]
   )
@@ -321,6 +331,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         queryKeys.user.dashboard(userUid),
         (old) => (old ? { ...old, sessions } : old)
       )
+      syncUserLibraryCaches(queryClient, userUid, { sessions })
     },
     [queryClient, userUid]
   )

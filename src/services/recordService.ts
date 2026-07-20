@@ -334,6 +334,15 @@ export class RecordService {
     showOnlyMine: boolean = false
   ): Promise<Book[]> {
     try {
+      if (showOnlyMine && userUid) {
+        const myBooks = await BookService.getUserBooks(userUid)
+        return [...myBooks].sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+          return dateB - dateA
+        })
+      }
+
       const allPublicBooks = await ApiClient.queryDocuments<Book>(
         "books",
         [["isBookPublic", "==", true]],
@@ -342,18 +351,8 @@ export class RecordService {
         400
       )
 
-      let books: Book[] = [...allPublicBooks]
-
-      if (showOnlyMine && userUid) {
-        const myBooks = await BookService.getUserBooks(userUid)
-        books = [...books, ...myBooks]
-        const bookIds = new Set(books.map((b) => b.id))
-        books = Array.from(bookIds).map((id) => books.find((b) => b.id === id)!)
-      }
-
-      // 중복 제거 및 정렬
       const uniqueBooks = Array.from(
-        new Map(books.map((b) => [b.id, b])).values()
+        new Map(allPublicBooks.map((b) => [b.id, b])).values()
       )
       uniqueBooks.sort((a, b) => {
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0

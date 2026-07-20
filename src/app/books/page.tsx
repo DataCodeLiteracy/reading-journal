@@ -36,6 +36,7 @@ import {
 import type { CanonicalBook } from "@/types/canonicalBook"
 import { ApiError } from "@/lib/apiClient"
 import { queryKeys } from "@/lib/queryKeys"
+import { deriveLibraryCounts } from "@/lib/userLibraryCache"
 import {
   BookDetailRouteSkeleton,
   BooksLibraryPageSkeleton,
@@ -155,22 +156,7 @@ function BooksPageContent() {
 
   useBodyScrollLock(isNavigating)
 
-  const countsQuery = useQuery({
-    queryKey: queryKeys.user.libraryCounts(userUid!),
-    queryFn: async () => {
-      const uid = userUid!
-      const [total, reading, completed, want, onHoldCount] = await Promise.all([
-        BookService.countUserBooksTotal(uid),
-        BookService.countUserBooksByStatus(uid, "reading"),
-        BookService.countUserBooksByStatus(uid, "completed"),
-        BookService.countUserBooksByStatus(uid, "want-to-read"),
-        BookService.countUserBooksByStatus(uid, "on-hold"),
-      ])
-      return { total, reading, completed, want, onHold: onHoldCount }
-    },
-    enabled: Boolean(userUid),
-    staleTime: 30_000,
-  })
+  const libraryCounts = useMemo(() => deriveLibraryCounts(allBooks), [allBooks])
 
   const PAGE_SIZE = 10
 
@@ -249,12 +235,12 @@ function BooksPageContent() {
 
   const totalCountsByTab: Record<LibraryTab, number> = useMemo(
     () => ({
-      reading: countsQuery.data?.reading ?? 0,
-      "want-to-read": countsQuery.data?.want ?? 0,
-      completed: countsQuery.data?.completed ?? 0,
-      "on-hold": countsQuery.data?.onHold ?? 0,
+      reading: libraryCounts.reading,
+      "want-to-read": libraryCounts.want,
+      completed: libraryCounts.completed,
+      "on-hold": libraryCounts.onHold,
     }),
-    [countsQuery.data],
+    [libraryCounts],
   )
 
   const getTabDisplayCount = (tab: LibraryTab) => {
@@ -263,6 +249,10 @@ function BooksPageContent() {
     }
     return totalCountsByTab[tab]
   }
+
+  const hasServerListFilters = Boolean(
+    levelFilter || categoryFilter || toReadThisYearFilter || titlePrefix,
+  )
 
   const tabCountQuery = useQuery({
     queryKey: queryKeys.user.libraryTabCount(
@@ -280,7 +270,7 @@ function BooksPageContent() {
         toReadThisYear: toReadThisYearFilter === "yes" ? true : undefined,
         titlePrefix,
       }),
-    enabled: Boolean(userUid) && !isLocalSearchMode,
+    enabled: Boolean(userUid) && !isLocalSearchMode && hasServerListFilters,
     staleTime: 15_000,
   })
 
@@ -367,7 +357,9 @@ function BooksPageContent() {
     : (booksPageQuery.data?.items ?? [])
   const totalFilteredCount = isLocalSearchMode
     ? localFiltered.total
-    : (tabCountQuery.data ?? 0)
+    : hasServerListFilters
+      ? (tabCountQuery.data ?? 0)
+      : totalCountsByTab[activeTab]
   const totalPages = Math.max(1, Math.ceil(totalFilteredCount / PAGE_SIZE))
 
   const librarySortOptions = useMemo((): SelectOption<
@@ -431,7 +423,7 @@ function BooksPageContent() {
     }
   }, [currentPage, totalPages])
 
-  const getTotalBooks = () => countsQuery.data?.total ?? 0
+  const getTotalBooks = () => libraryCounts.total
 
   // URL ?tab= 에서 탭 복원 (전체 보기 등에서 진입 시)
   useEffect(() => {
@@ -529,9 +521,6 @@ function BooksPageContent() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.user.libraryRoot(userUid),
       })
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.user.libraryCounts(userUid),
-      })
       setIsAddBookModalOpen(false)
     } catch (error) {
       console.error("finishRegisterBook error:", error)
@@ -619,9 +608,6 @@ function BooksPageContent() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.user.libraryRoot(userUid),
       })
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.user.libraryCounts(userUid),
-      })
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -649,9 +635,6 @@ function BooksPageContent() {
       removeBook(bookToDelete.id)
       void queryClient.invalidateQueries({
         queryKey: queryKeys.user.libraryRoot(userUid),
-      })
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.user.libraryCounts(userUid),
       })
     } catch (error) {
       if (error instanceof ApiError) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
   User,
@@ -29,6 +29,7 @@ export default function UserProfilePage({
   params: Promise<{ user_id: string }>
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [resolvedParams, setResolvedParams] = useState<{
     user_id: string
   } | null>(null)
@@ -61,7 +62,11 @@ export default function UserProfilePage({
   const booksQuery = useQuery({
     queryKey: queryKeys.publicUser.books(uid!),
     queryFn: async () => {
-      const books = await BookService.getUserBooks(uid!)
+      const books = await queryClient.ensureQueryData({
+        queryKey: queryKeys.user.books(uid!),
+        queryFn: () => BookService.getUserBooks(uid!),
+        staleTime: 60_000,
+      })
       return books.filter((book) => book.status === "completed")
     },
     enabled: Boolean(uid) && statsPublic,
