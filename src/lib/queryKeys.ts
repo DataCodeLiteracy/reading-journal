@@ -131,6 +131,9 @@ export const queryKeys = {
       ["readingGroups", "mine", uid] as const,
     detail: (groupId: string) =>
       ["readingGroups", "detail", groupId] as const,
+    /** 독서 노트 페이지용 (모임 상세와 queryFn 결과가 달라 키를 분리) */
+    notesContext: (groupId: string) =>
+      ["readingGroups", "notesContext", groupId] as const,
     members: (groupId: string) =>
       ["readingGroups", groupId, "members"] as const,
     books: (groupId: string) =>

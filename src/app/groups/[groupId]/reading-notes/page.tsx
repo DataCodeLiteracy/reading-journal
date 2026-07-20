@@ -114,7 +114,7 @@ export default function GroupReadingNotesPage() {
   }, [searchParams])
 
   const detailQuery = useQuery({
-    queryKey: [...queryKeys.readingGroups.detail(groupId), userUid],
+    queryKey: [...queryKeys.readingGroups.notesContext(groupId), userUid],
     enabled: Boolean(groupId && userUid),
     queryFn: async () => {
       const [group, membership] = await Promise.all([
@@ -131,7 +131,7 @@ export default function GroupReadingNotesPage() {
         ReadingGroupService.getGroupMeetings(groupId),
         ReadingGroupService.getGroupMeetingBookAssignments(groupId),
       ])
-      return { group, members, books, meetings, assignments }
+      return { group, membership, members, books, meetings, assignments }
     },
   })
 

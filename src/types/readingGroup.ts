@@ -234,6 +234,8 @@ export type GroupReadingNoteType = "quote" | "question" | "review" | "critique"
 export interface GroupReadingNoteItem {
   id: string
   recordType: GroupReadingNoteType
+  /** 카드 배지 문구 — 구절/질문은 세부 유형, 없으면 기록 유형명 */
+  badgeLabel: string
   userId: string
   displayName: string
   groupBookId: string

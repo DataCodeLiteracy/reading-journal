@@ -1,5 +1,10 @@
 import type { Firestore, Timestamp } from "firebase-admin/firestore"
 import {
+  questionFocusLabel,
+  quoteHighlightLabel,
+} from "@/constants/readingMeta"
+import {
+  GROUP_READING_NOTE_TYPE_LABEL,
   GROUP_READING_NOTES_PAGE_SIZE,
   GROUP_READING_NOTES_PREVIEW_SIZE,
 } from "@/lib/groupReadingNotesConstants"
@@ -215,9 +220,13 @@ async function notesForMemberBooks(
       quotesSnap?.docs.forEach((doc) => {
         const quote = doc.data()
         if (!isVisible(Boolean(quote.isPublic), userId, viewerUserId)) return
+        const kindLabel = quoteHighlightLabel(
+          typeof quote.highlightKind === "string" ? quote.highlightKind : undefined,
+        )
         items.push({
           id: `quote:${doc.id}`,
           recordType: "quote",
+          badgeLabel: kindLabel || GROUP_READING_NOTE_TYPE_LABEL.quote,
           userId,
           displayName,
           groupBookId: groupBook.id,
@@ -236,9 +245,15 @@ async function notesForMemberBooks(
       questionsSnap?.docs.forEach((doc) => {
         const question = doc.data()
         if (!isVisible(Boolean(question.isPublic), userId, viewerUserId)) return
+        const focusLabel = questionFocusLabel(
+          typeof question.questionFocus === "string"
+            ? question.questionFocus
+            : undefined,
+        )
         items.push({
           id: `question:${doc.id}`,
           recordType: "question",
+          badgeLabel: focusLabel || GROUP_READING_NOTE_TYPE_LABEL.question,
           userId,
           displayName,
           groupBookId: groupBook.id,
@@ -260,6 +275,7 @@ async function notesForMemberBooks(
         items.push({
           id: `critique:${doc.id}`,
           recordType: "critique",
+          badgeLabel: GROUP_READING_NOTE_TYPE_LABEL.critique,
           userId,
           displayName,
           groupBookId: groupBook.id,
@@ -283,6 +299,7 @@ async function notesForMemberBooks(
         items.push({
           id: `review:${book.id}`,
           recordType: "review",
+          badgeLabel: GROUP_READING_NOTE_TYPE_LABEL.review,
           userId,
           displayName,
           groupBookId: groupBook.id,

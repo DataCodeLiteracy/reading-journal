@@ -244,10 +244,30 @@ export default function ReadingGroupDetailPage() {
     },
   })
 
+  // 독서 노트 페이지가 같은 키로 불완전한 캐시를 남긴 경우 다시 불러옴
+  useEffect(() => {
+    if (
+      !browseDetailQuery.data?.group.is_member ||
+      detailQuery.isFetching ||
+      detailQuery.isError
+    ) {
+      return
+    }
+    if (detailQuery.data && !detailQuery.data.membership) {
+      void detailQuery.refetch()
+    }
+  }, [
+    browseDetailQuery.data?.group.is_member,
+    detailQuery.data,
+    detailQuery.isFetching,
+    detailQuery.isError,
+    detailQuery.refetch,
+  ])
+
   const memberDetailLoading =
     Boolean(browseDetailQuery.data?.group.is_member) &&
-    (detailQuery.isLoading ||
-      (detailQuery.isFetching && !detailQuery.data?.membership))
+    !detailQuery.data?.membership &&
+    !detailQuery.isError
   if (loading || browseDetailQuery.isLoading || memberDetailLoading) {
     return <DetailSkeleton />
   }
@@ -284,30 +304,7 @@ export default function ReadingGroupDetailPage() {
   ) {
     return <PublicGroupDetail detail={browseDetailQuery.data} />
   }
-  if (!detailQuery.data?.membership) {
-    if (browseDetailQuery.data?.group.is_member && !detailQuery.isFetching) {
-      return (
-        <main className="min-h-screen bg-theme-gradient pb-24">
-          <div className="container mx-auto max-w-xl px-4 py-16 text-center">
-            <Users className="mx-auto mb-4 h-10 w-10 text-theme-secondary" aria-hidden />
-            <h1 className="mb-2 text-xl font-bold text-theme-primary">
-              모임을 열 수 없습니다
-            </h1>
-            <p className="mb-5 text-sm text-theme-secondary" role="alert">
-              이 독서모임을 볼 수 있는 활동 멤버가 아닙니다.
-            </p>
-            <Link
-              href="/record?view=groups"
-              className="inline-flex rounded-lg bg-accent-theme px-4 py-2 text-sm font-semibold text-white"
-            >
-              내 독서모임으로
-            </Link>
-          </div>
-        </main>
-      )
-    }
-    return null
-  }
+  if (!detailQuery.data?.membership) return null
 
   const {
     group,

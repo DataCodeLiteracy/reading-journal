@@ -43,7 +43,7 @@ export default function GroupReadingNoteCard({
         <span
           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${GROUP_READING_NOTE_TYPE_BADGE[item.recordType]}`}
         >
-          {GROUP_READING_NOTE_TYPE_LABEL[item.recordType]}
+          {item.badgeLabel || GROUP_READING_NOTE_TYPE_LABEL[item.recordType]}
         </span>
         {!item.isPublic ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-theme-secondary px-2 py-0.5 text-[11px] text-theme-secondary">
@@ -110,7 +110,7 @@ export default function GroupReadingNoteCard({
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${GROUP_READING_NOTE_TYPE_BADGE[item.recordType]}`}
             >
-              {GROUP_READING_NOTE_TYPE_LABEL[item.recordType]}
+              {item.badgeLabel || GROUP_READING_NOTE_TYPE_LABEL[item.recordType]}
             </span>
             {!item.isPublic ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-theme-secondary px-2 py-0.5 text-[11px] text-theme-secondary">

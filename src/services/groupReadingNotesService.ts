@@ -2,6 +2,11 @@ import { BookService } from "@/services/bookService"
 import { CritiqueService } from "@/services/critiqueService"
 import { QuestionService } from "@/services/questionService"
 import { QuoteService } from "@/services/quoteService"
+import {
+  questionFocusLabel,
+  quoteHighlightLabel,
+} from "@/constants/readingMeta"
+import { GROUP_READING_NOTE_TYPE_LABEL } from "@/lib/groupReadingNotesConstants"
 import type { Book } from "@/types/book"
 import type {
   GroupBook,
@@ -60,9 +65,11 @@ async function notesForMemberBooks(
 
       quotes.forEach((quote) => {
         if (!isVisible(Boolean(quote.isPublic), userId, viewerUserId)) return
+        const kindLabel = quoteHighlightLabel(quote.highlightKind)
         items.push({
           id: `quote:${quote.id}`,
           recordType: "quote",
+          badgeLabel: kindLabel || GROUP_READING_NOTE_TYPE_LABEL.quote,
           userId,
           displayName,
           groupBookId: groupBook.id,
@@ -80,9 +87,11 @@ async function notesForMemberBooks(
 
       questions.forEach((question) => {
         if (!isVisible(Boolean(question.isPublic), userId, viewerUserId)) return
+        const focusLabel = questionFocusLabel(question.questionFocus)
         items.push({
           id: `question:${question.id}`,
           recordType: "question",
+          badgeLabel: focusLabel || GROUP_READING_NOTE_TYPE_LABEL.question,
           userId,
           displayName,
           groupBookId: groupBook.id,
@@ -103,6 +112,7 @@ async function notesForMemberBooks(
         items.push({
           id: `critique:${critique.id}`,
           recordType: "critique",
+          badgeLabel: GROUP_READING_NOTE_TYPE_LABEL.critique,
           userId,
           displayName,
           groupBookId: groupBook.id,
@@ -125,6 +135,7 @@ async function notesForMemberBooks(
         items.push({
           id: `review:${book.id}`,
           recordType: "review",
+          badgeLabel: GROUP_READING_NOTE_TYPE_LABEL.review,
           userId,
           displayName,
           groupBookId: groupBook.id,

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { NotebookPen } from "lucide-react"
+import { ChevronRight, NotebookPen } from "lucide-react"
 import GroupReadingNoteCard from "@/components/reading-groups/GroupReadingNoteCard"
 import {
   GROUP_READING_NOTE_TYPE_LABEL,
@@ -10,7 +10,7 @@ import {
 } from "@/lib/groupReadingNotesConstants"
 import { queryKeys } from "@/lib/queryKeys"
 import { GroupReadingNotesApiService } from "@/services/groupReadingNotesApiService"
-import type { GroupMember, GroupReadingNoteType } from "@/types/readingGroup"
+import type { GroupMember } from "@/types/readingGroup"
 import { groupReadingNotesPath } from "@/utils/groupReadingNotesUrl"
 
 type Props = {
@@ -50,35 +50,42 @@ export default function GroupReadingNotesPreview({
     (member) => member.status === "active" && member.user_id,
   )
 
-  const moreHref = (type: GroupReadingNoteType) =>
-    groupReadingNotesPath(groupId, {
-      type,
-      meeting: meetingId,
-      book: groupBookId,
-      member: memberUserId,
-    })
+  const notesHref = groupReadingNotesPath(groupId, {
+    meeting: meetingId,
+    book: groupBookId,
+    member: memberUserId,
+  })
 
   return (
     <section
       className="rounded-xl bg-theme-tertiary p-4 sm:p-5"
       aria-labelledby="reading-notes-preview-heading"
     >
-      <div className="mb-4 flex items-start gap-2">
-        <NotebookPen
-          className="mt-0.5 h-5 w-5 shrink-0 text-accent-theme"
-          aria-hidden
-        />
-        <div>
-          <h2
-            id="reading-notes-preview-heading"
-            className="font-semibold text-theme-primary"
+      <div className="mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <NotebookPen
+              className="h-5 w-5 shrink-0 text-accent-theme"
+              aria-hidden
+            />
+            <h2
+              id="reading-notes-preview-heading"
+              className="font-semibold text-theme-primary"
+            >
+              독서 노트
+            </h2>
+          </div>
+          <Link
+            href={notesHref}
+            className="inline-flex shrink-0 items-center gap-0.5 rounded-lg bg-accent-theme px-3 py-1.5 text-[11px] font-semibold text-white"
           >
-            독서 노트
-          </h2>
-          <p className="mt-1 text-xs text-theme-secondary">
-            모임원이 같은 책에 남긴 구절·질문·리뷰·서평을 함께 볼 수 있어요.
-          </p>
+            더보기 & 기록하기
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
         </div>
+        <p className="mt-1 text-[11px] text-theme-secondary">
+          모임원이 같은 책에 남긴 구절·질문·리뷰·서평을 함께 볼 수 있어요.
+        </p>
       </div>
 
       {previewQuery.isLoading ? (
@@ -97,22 +104,12 @@ export default function GroupReadingNotesPreview({
             const label = GROUP_READING_NOTE_TYPE_LABEL[recordType]
             return (
               <div key={recordType}>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-theme-primary">
-                    {label}
-                    <span className="ml-1.5 text-xs font-normal text-theme-secondary">
-                      {total}건
-                    </span>
-                  </h3>
-                  {total > 0 ? (
-                    <Link
-                      href={moreHref(recordType)}
-                      className="shrink-0 text-xs font-semibold text-accent-theme hover:underline"
-                    >
-                      더보기
-                    </Link>
-                  ) : null}
-                </div>
+                <h3 className="mb-2 text-sm font-semibold text-theme-primary">
+                  {label}
+                  <span className="ml-1.5 text-xs font-normal text-theme-secondary">
+                    {total}건
+                  </span>
+                </h3>
                 {items.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-theme-tertiary px-4 py-3 text-center text-xs text-theme-secondary">
                     아직 {label} 기록이 없습니다.
