@@ -30,8 +30,10 @@ import {
   calculateHalfOpenOverlapSeconds,
   effectiveAssignmentEndMs,
 } from "@/utils/readingSessionAttribution"
+import { groupReadingNotesPath } from "@/utils/groupReadingNotesUrl"
 
 interface GroupReadingProgressProps {
+  groupId: string
   meetings: GroupMeeting[]
   assignments: MeetingBookAssignment[]
   books: GroupBook[]
@@ -41,6 +43,7 @@ interface GroupReadingProgressProps {
   memberKind?: "participant" | "guardian"
   onRefetch?: () => void | Promise<unknown>
   isRefreshing?: boolean
+  compact?: boolean
 }
 
 function formatDuration(seconds: number) {
@@ -73,6 +76,7 @@ function assignmentPeriodMs(assignment: MeetingBookAssignment) {
 }
 
 export default function GroupReadingProgress({
+  groupId,
   meetings,
   assignments,
   books,
@@ -82,6 +86,7 @@ export default function GroupReadingProgress({
   memberKind,
   onRefetch,
   isRefreshing = false,
+  compact = false,
 }: GroupReadingProgressProps) {
   const router = useRouter()
   const { userUid } = useAuth()
@@ -430,9 +435,12 @@ export default function GroupReadingProgress({
     ? groupDateKey(periodAssignment.stopped_at, timeZone)
     : undefined
 
+  const sectionPad = compact ? "p-3 sm:p-4" : "p-4 sm:p-5"
+  const sectionGap = compact ? "mt-4" : "mt-5"
+
   return (
     <section
-      className="rounded-xl bg-theme-tertiary p-4 sm:p-5"
+      className={`rounded-xl bg-theme-tertiary ${sectionPad}`}
       aria-labelledby="reading-progress-heading"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -518,13 +526,11 @@ export default function GroupReadingProgress({
         </div>
       </div>
 
-      <h3 className="mt-5 text-sm font-semibold text-theme-primary">
+      <h3 className={`${sectionGap} text-sm font-semibold text-theme-primary`}>
         회차 책 {selectedAssignments.length}권
       </h3>
       <p className="mt-1 text-xs text-theme-secondary">
-        {isGuardian
-          ? "책을 누르면 자녀 읽어주기(책 상세) 페이지로 이동할 수 있습니다."
-          : "책을 누르면 타이머(책 상세) 페이지로 이동할 수 있습니다."}
+        책을 누르면 독서 노트를 보거나, 타이머로 이동할 수 있습니다.
       </p>
       <ul className="mt-2 space-y-2">
         {selectedAssignments.map((assignment) => {
@@ -540,14 +546,24 @@ export default function GroupReadingProgress({
             )
             .reduce((total, item) => total + displayedSeconds(item), 0)
           return (
-            <li key={assignment.id}>
+            <li
+              key={assignment.id}
+              className="relative rounded-lg bg-theme-secondary p-3"
+            >
               <button
                 type="button"
-                onClick={() => openTimerConfirm(assignment)}
-                disabled={!userUid || timerBusy}
-                className="flex w-full gap-3 rounded-lg bg-theme-secondary p-3 text-left transition-colors hover:bg-theme-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-theme disabled:opacity-50"
-                aria-label={`${title} ${isGuardian ? "자녀 읽어주기" : "타이머"} 페이지로 이동`}
-              >
+                onClick={() =>
+                  router.push(
+                    groupReadingNotesPath(groupId, {
+                      meeting: selectedMeeting?.id,
+                      book: assignment.group_book_id,
+                    }),
+                  )
+                }
+                className="absolute inset-x-0 top-0 z-0 h-[calc(100%-3.25rem)] rounded-t-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-theme"
+                aria-label={`${title} 독서 노트 보기`}
+              />
+              <div className="pointer-events-none relative z-10 flex gap-3">
                 <div className="relative h-20 w-[3.4rem] shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
                   {coverUrl ? (
                     <Image
@@ -575,13 +591,23 @@ export default function GroupReadingProgress({
                     누적 {formatDuration(bookSeconds)}
                   </p>
                 </div>
-              </button>
+              </div>
+              <div className="relative z-10 mt-2">
+                <button
+                  type="button"
+                  onClick={() => openTimerConfirm(assignment)}
+                  disabled={!userUid || timerBusy}
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
+                >
+                  {isGuardian ? "자녀 읽어주러 가기" : "타이머 시작"}
+                </button>
+              </div>
             </li>
           )
         })}
       </ul>
 
-      <h3 className="mt-5 text-sm font-semibold text-theme-primary">
+      <h3 className={`${sectionGap} text-sm font-semibold text-theme-primary`}>
         참여자별 누적 순위
       </h3>
       <p className="mt-1 text-xs text-theme-secondary">

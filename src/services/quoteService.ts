@@ -133,7 +133,7 @@ export class QuoteService {
           thoughts: item.thoughts?.trim() || undefined,
           generalThoughts: item.generalThoughts?.trim() || undefined,
           page: item.page,
-          isPublic: item.isPublic ?? false,
+          isPublic: item.isPublic ?? true,
         })
         success++
       } catch (e) {

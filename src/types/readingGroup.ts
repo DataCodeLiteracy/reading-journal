@@ -228,6 +228,26 @@ export interface BrowsableGroupMeeting {
   agenda?: string
 }
 
+/** 모임 책에 연결된 개인 독서 기록 (구절·질문·리뷰·서평) */
+export type GroupReadingNoteType = "quote" | "question" | "review" | "critique"
+
+export interface GroupReadingNoteItem {
+  id: string
+  recordType: GroupReadingNoteType
+  userId: string
+  displayName: string
+  groupBookId: string
+  canonicalBookId: string
+  bookTitle: string
+  personalBookId: string
+  meetingId?: string
+  title: string
+  excerpt: string
+  isPublic: boolean
+  createdAt: Date
+  detailHref: string
+}
+
 export interface BrowsableMeetingBookAssignment {
   id: string
   meeting_id: string

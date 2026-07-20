@@ -74,7 +74,7 @@ export default function QuoteJsonUploadModal({
           thoughts: thoughtPoint ?? (o.thoughts != null ? String(o.thoughts) : undefined),
           generalThoughts: generalPart ?? (o.generalThoughts != null ? String(o.generalThoughts) : undefined),
           page: typeof o.page === "number" && !Number.isNaN(o.page) ? o.page : undefined,
-          isPublic: Boolean(o.isPublic),
+          isPublic: typeof o.isPublic === "boolean" ? o.isPublic : true,
         })
       })
       if (errors.length > 0) {

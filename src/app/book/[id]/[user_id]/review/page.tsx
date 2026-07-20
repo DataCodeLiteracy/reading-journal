@@ -49,7 +49,7 @@ export default function ReviewPage({
 
   const [review, setReview] = useState("")
   const [rating, setRating] = useState(0)
-  const [isPublic, setIsPublic] = useState(false)
+  const [isPublic, setIsPublic] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [isReviewLiked, setIsReviewLiked] = useState(false)
@@ -86,7 +86,7 @@ export default function ReviewPage({
         setBook(bookData)
         setRating(bookData.rating)
         setReview(bookData.review || "")
-        setIsPublic(bookData.reviewIsPublic || false)
+        setIsPublic(bookData.review?.trim() ? Boolean(bookData.reviewIsPublic) : true)
         setReadingSessions(sessionsData)
 
         try {

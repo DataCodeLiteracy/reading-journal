@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -18,6 +18,7 @@ import GroupBooksPanel from "@/components/reading-groups/GroupBooksPanel"
 import GroupInfoPanel from "@/components/reading-groups/GroupInfoPanel"
 import GroupMeetingRecordsPanel from "@/components/reading-groups/GroupMeetingRecordsPanel"
 import GroupPostsPanel from "@/components/reading-groups/GroupPostsPanel"
+import GroupReadingNotesPreview from "@/components/reading-groups/GroupReadingNotesPreview"
 import GroupReadingProgress from "@/components/reading-groups/GroupReadingProgress"
 import GroupSchedulePanel from "@/components/reading-groups/GroupSchedulePanel"
 import PublicGroupDetail from "@/components/reading-groups/PublicGroupDetail"
@@ -38,6 +39,14 @@ import {
 type TabId = "home" | "schedule" | "books" | "records" | "info"
 type RecordsTabId = "meetings" | "posts"
 
+function isTabId(value: string | null): value is TabId {
+  return value === "home" || value === "schedule" || value === "books" || value === "records" || value === "info"
+}
+
+function isRecordsTabId(value: string | null): value is RecordsTabId {
+  return value === "meetings" || value === "posts"
+}
+
 const TABS = [
   { id: "home", label: "홈", icon: LayoutDashboard },
   { id: "schedule", label: "일정", icon: CalendarDays },
@@ -55,10 +64,10 @@ const STATUS_LABELS: Record<ReadingGroup["status"], string> = {
 function DetailSkeleton() {
   return (
     <div className="min-h-screen bg-theme-gradient pb-24">
-      <div className="container mx-auto max-w-4xl animate-pulse px-4 py-6">
-        <div className="mb-5 h-5 w-28 rounded bg-theme-tertiary" />
-        <div className="mb-5 h-40 rounded-xl bg-theme-tertiary" />
-        <div className="mb-5 h-12 rounded-lg bg-theme-tertiary" />
+      <div className="container mx-auto max-w-4xl animate-pulse px-3 py-4 sm:px-4 sm:py-6">
+        <div className="mb-4 h-5 w-28 rounded bg-theme-tertiary" />
+        <div className="mb-4 h-36 rounded-xl bg-theme-tertiary" />
+        <div className="mb-4 h-12 rounded-lg bg-theme-tertiary" />
         <div className="h-56 rounded-xl bg-theme-tertiary" />
       </div>
     </div>
@@ -158,6 +167,7 @@ function MeetingList({
 
 export default function ReadingGroupDetailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const params = useParams<{ groupId: string }>()
   const groupId = params.groupId
   const { isLoggedIn, loading, userUid, userData, user } = useAuth()
@@ -165,6 +175,13 @@ export default function ReadingGroupDetailPage() {
   const [activeRecordsTab, setActiveRecordsTab] = useState<RecordsTabId>("meetings")
   const [phaseNow, setPhaseNow] = useState(() => new Date())
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab")
+    const subParam = searchParams.get("sub")
+    if (isTabId(tabParam)) setActiveTab(tabParam)
+    if (isRecordsTabId(subParam)) setActiveRecordsTab(subParam)
+  }, [searchParams])
 
   useEffect(() => {
     if (!loading && !isLoggedIn) router.replace("/login")
@@ -228,7 +245,9 @@ export default function ReadingGroupDetailPage() {
   })
 
   const memberDetailLoading =
-    browseDetailQuery.data?.group.is_member && detailQuery.isLoading
+    Boolean(browseDetailQuery.data?.group.is_member) &&
+    (detailQuery.isLoading ||
+      (detailQuery.isFetching && !detailQuery.data?.membership))
   if (loading || browseDetailQuery.isLoading || memberDetailLoading) {
     return <DetailSkeleton />
   }
@@ -265,7 +284,30 @@ export default function ReadingGroupDetailPage() {
   ) {
     return <PublicGroupDetail detail={browseDetailQuery.data} />
   }
-  if (!detailQuery.data) return null
+  if (!detailQuery.data?.membership) {
+    if (browseDetailQuery.data?.group.is_member && !detailQuery.isFetching) {
+      return (
+        <main className="min-h-screen bg-theme-gradient pb-24">
+          <div className="container mx-auto max-w-xl px-4 py-16 text-center">
+            <Users className="mx-auto mb-4 h-10 w-10 text-theme-secondary" aria-hidden />
+            <h1 className="mb-2 text-xl font-bold text-theme-primary">
+              모임을 열 수 없습니다
+            </h1>
+            <p className="mb-5 text-sm text-theme-secondary" role="alert">
+              이 독서모임을 볼 수 있는 활동 멤버가 아닙니다.
+            </p>
+            <Link
+              href="/record?view=groups"
+              className="inline-flex rounded-lg bg-accent-theme px-4 py-2 text-sm font-semibold text-white"
+            >
+              내 독서모임으로
+            </Link>
+          </div>
+        </main>
+      )
+    }
+    return null
+  }
 
   const {
     group,
@@ -300,17 +342,17 @@ export default function ReadingGroupDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-theme-gradient pb-24">
-      <div className="container mx-auto max-w-4xl px-4 py-6">
+    <main className="min-h-screen bg-theme-gradient pb-20 sm:pb-24">
+      <div className="container mx-auto max-w-4xl px-3 py-4 sm:px-4 sm:py-6">
         <Link
           href="/record?view=groups"
-          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-theme-secondary hover:text-theme-primary"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-theme-secondary hover:text-theme-primary"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           내 독서모임
         </Link>
 
-        <header className="mb-5 rounded-xl border-card bg-theme-secondary p-5 shadow-sm sm:p-6">
+        <header className="mb-4 rounded-xl border-card bg-theme-secondary p-4 shadow-sm sm:mb-5 sm:p-5">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="mb-2 flex items-center gap-2">
@@ -342,7 +384,7 @@ export default function ReadingGroupDetailPage() {
         </header>
 
         <div
-          className="mb-5 grid grid-cols-5 overflow-hidden rounded-lg bg-theme-tertiary p-1"
+          className="mb-4 grid grid-cols-5 overflow-hidden rounded-lg bg-theme-tertiary p-1 sm:mb-5"
           role="tablist"
           aria-label="독서모임 메뉴"
         >
@@ -375,7 +417,7 @@ export default function ReadingGroupDetailPage() {
           id="group-tab-panel"
           role="tabpanel"
           aria-labelledby={`group-${activeTab}-tab`}
-          className="rounded-xl border-card bg-theme-secondary p-4 shadow-sm sm:p-6"
+          className="rounded-xl border-card bg-theme-secondary p-3 shadow-sm sm:p-5"
         >
           {activeTab === "home" && (
             <div>
@@ -417,8 +459,9 @@ export default function ReadingGroupDetailPage() {
                   )
                 })}
               </div>
-              <div className="mb-6">
+              <div className="mb-5 sm:mb-6">
                 <GroupReadingProgress
+                  groupId={groupId}
                   meetings={meetings}
                   assignments={assignments}
                   books={books}
@@ -467,8 +510,9 @@ export default function ReadingGroupDetailPage() {
           )}
 
           {activeTab === "records" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-5">
               <GroupReadingProgress
+                groupId={groupId}
                 meetings={meetings}
                 assignments={assignments}
                 books={books}
@@ -478,6 +522,12 @@ export default function ReadingGroupDetailPage() {
                 memberKind={membership.member_kind}
                 onRefetch={detailQuery.refetch}
                 isRefreshing={detailQuery.isFetching}
+                compact
+              />
+              <GroupReadingNotesPreview
+                groupId={groupId}
+                members={members}
+                viewerUserId={userUid}
               />
               <div
                 className="grid grid-cols-2 rounded-lg bg-theme-tertiary p-1"
@@ -496,7 +546,7 @@ export default function ReadingGroupDetailPage() {
                     aria-selected={activeRecordsTab === tab.id}
                     aria-controls="group-records-panel"
                     onClick={() => setActiveRecordsTab(tab.id)}
-                    className={`rounded-md px-2 py-2 text-xs font-semibold sm:text-sm ${
+                    className={`rounded-md px-1.5 py-2 text-[11px] font-semibold sm:px-2 sm:text-sm ${
                       activeRecordsTab === tab.id
                         ? "bg-theme-secondary text-theme-primary shadow-sm"
                         : "text-theme-secondary"

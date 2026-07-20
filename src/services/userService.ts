@@ -21,6 +21,60 @@ export class UserService {
     return await ApiClient.getDocument<User>("users", uid)
   }
 
+  static async updateUserProfile(
+    uid: string,
+    profile: Partial<
+      Pick<
+        User,
+        | "displayName"
+        | "phoneNumber"
+        | "birthYear"
+        | "gender"
+        | "bio"
+        | "region"
+      >
+    >,
+  ): Promise<void> {
+    await this.createOrUpdateUser({ uid, ...profile })
+  }
+
+  /** 로그인 시: 기존 유저는 lastLoginAt만, 신규는 Google 프로필 포함 생성 */
+  static async syncUserOnLogin(firebaseUser: {
+    uid: string
+    email: string | null
+    displayName: string | null
+    photoURL: string | null
+    emailVerified: boolean
+    phoneNumber: string | null
+  }): Promise<void> {
+    const existing = await this.getUser(firebaseUser.uid)
+
+    if (existing) {
+      await this.createOrUpdateUser({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        emailVerified: firebaseUser.emailVerified,
+        lastLoginAt: new Date(),
+        isActive: true,
+      })
+      return
+    }
+
+    await this.createOrUpdateUser({
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName,
+      photoURL: firebaseUser.photoURL,
+      emailVerified: firebaseUser.emailVerified,
+      phoneNumber: firebaseUser.phoneNumber,
+      lastLoginAt: new Date(),
+      isActive: true,
+      isAdmin: false,
+      levelDataMigrated: false,
+      created_at: new Date(),
+    })
+  }
+
   /** 관리자용: 전체 유저 목록 (users + 서재만 있는 user_id) */
   static async getAllUsersForAdmin(): Promise<
     { uid: string; displayName: string | null; email: string | null }[]

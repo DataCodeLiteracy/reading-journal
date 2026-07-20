@@ -22,6 +22,7 @@ import QuoteJsonUploadModal from "@/components/QuoteJsonUploadModal"
 import JsonUploadModal from "@/components/JsonUploadModal"
 import QuestionAddModal from "@/components/QuestionAddModal"
 import CritiqueCard from "@/components/CritiqueCard"
+import JournalPreviewList from "@/components/JournalPreviewList"
 import { QuestionService } from "@/services/questionService"
 import { QuoteService } from "@/services/quoteService"
 import { CritiqueService } from "@/services/critiqueService"
@@ -40,6 +41,28 @@ import {
   isPreReadNotesEmpty,
   preReadNotesJoinedBody,
 } from "@/utils/preReadNotes"
+
+const JOURNAL_PREVIEW_LIMIT = 3
+
+function sortByNewest<T extends { created_at?: Date | string | null }>(
+  items: T[],
+): T[] {
+  return [...items].sort((a, b) => {
+    const at =
+      a.created_at instanceof Date
+        ? a.created_at.getTime()
+        : a.created_at
+          ? new Date(a.created_at).getTime()
+          : 0
+    const bt =
+      b.created_at instanceof Date
+        ? b.created_at.getTime()
+        : b.created_at
+          ? new Date(b.created_at).getTime()
+          : 0
+    return bt - at
+  })
+}
 
 export default function BookJournalHubPage({
   params,
@@ -295,39 +318,21 @@ export default function BookJournalHubPage({
             </div>
           ) : (
             <>
-              <div className='space-y-3 divide-y divide-theme-tertiary first:pt-0'>
-                {[...questions]
-                  .sort((a, b) => {
-                    const at =
-                      a.created_at instanceof Date
-                        ? a.created_at.getTime()
-                        : a.created_at
-                          ? new Date(a.created_at).getTime()
-                          : 0
-                    const bt =
-                      b.created_at instanceof Date
-                        ? b.created_at.getTime()
-                        : b.created_at
-                          ? new Date(b.created_at).getTime()
-                          : 0
-                    return bt - at
-                  })
-                  .slice(0, 3)
-                  .map((question) => (
-                    <div key={question.id} className='pt-3 first:pt-0'>
-                      <QuestionCard
-                        question={question}
-                        showChapterPath={true}
-                        showActions={false}
-                        detailHref={withReturnQuery(
-                          `${base}/questions/${question.id}`,
-                          `${base}/journal`,
-                        )}
-                      />
-                    </div>
-                  ))}
-              </div>
-              <div className='flex flex-col gap-2 pt-4'>
+              <JournalPreviewList
+                items={sortByNewest(questions).slice(0, JOURNAL_PREVIEW_LIMIT)}
+                renderItem={(question) => (
+                  <QuestionCard
+                    question={question}
+                    showChapterPath={true}
+                    showActions={false}
+                    detailHref={withReturnQuery(
+                      `${base}/questions/${question.id}`,
+                      `${base}/journal`,
+                    )}
+                  />
+                )}
+              />
+              <div className='mt-4 flex flex-col gap-2 border-t border-theme-tertiary pt-4'>
                 <button
                   type='button'
                   onClick={() => setIsQuestionAddModalOpen(true)}
@@ -407,37 +412,21 @@ export default function BookJournalHubPage({
               </div>
             </div>
           ) : (
-            <div className='space-y-3 divide-y divide-theme-tertiary first:pt-0'>
-              {[...quotes]
-                .sort((a, b) => {
-                  const at =
-                    a.created_at instanceof Date
-                      ? a.created_at.getTime()
-                      : a.created_at
-                        ? new Date(a.created_at).getTime()
-                        : 0
-                  const bt =
-                    b.created_at instanceof Date
-                      ? b.created_at.getTime()
-                      : b.created_at
-                        ? new Date(b.created_at).getTime()
-                        : 0
-                  return bt - at
-                })
-                .slice(0, 3)
-                .map((quote) => (
-                  <div key={quote.id} className='pt-3 first:pt-0'>
-                    <QuoteCard
-                      quote={quote}
-                      bookTitle={book.title}
-                      detailHref={withReturnQuery(
-                        `${base}/quotes/${quote.id}`,
-                        journalPath,
-                      )}
-                    />
-                  </div>
-                ))}
-              <div className='flex flex-col gap-2 pt-2'>
+            <>
+              <JournalPreviewList
+                items={sortByNewest(quotes).slice(0, JOURNAL_PREVIEW_LIMIT)}
+                renderItem={(quote) => (
+                  <QuoteCard
+                    quote={quote}
+                    bookTitle={book.title}
+                    detailHref={withReturnQuery(
+                      `${base}/quotes/${quote.id}`,
+                      journalPath,
+                    )}
+                  />
+                )}
+              />
+              <div className='mt-4 flex flex-col gap-2 border-t border-theme-tertiary pt-4'>
                 <button
                   type='button'
                   onClick={() => {
@@ -460,7 +449,7 @@ export default function BookJournalHubPage({
                   <ChevronRight className='h-4 w-4' />
                 </button>
               </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -651,9 +640,9 @@ export default function BookJournalHubPage({
                 </button>
               </div>
             ) : (
-              <div className='space-y-3 divide-y divide-theme-tertiary first:pt-0'>
+              <div className='space-y-3'>
                 {critiques.map((critique) => (
-                  <div key={critique.id} className='pt-3 first:pt-0'>
+                  <div key={critique.id}>
                     <CritiqueCard
                       critique={critique}
                       bookTitle={book.title}

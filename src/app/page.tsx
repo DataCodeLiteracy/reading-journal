@@ -41,7 +41,7 @@ const WEEKLY_RECAP_STORAGE_KEY = "weeklyRecapShown_"
 
 export default function Home() {
   const router = useRouter()
-  const { user, loading, isLoggedIn, userUid } = useAuth()
+  const { user, userData, loading, isLoggedIn, userUid } = useAuth()
   const { settings } = useSettings()
   const {
     allBooks,
@@ -213,7 +213,7 @@ export default function Home() {
           </p>
           {user && (
             <p className='text-sm text-theme-tertiary mt-1'>
-              안녕하세요, {user.displayName || "사용자"}님!
+              안녕하세요, {userData?.displayName?.trim() || user?.displayName || "사용자"}님!
             </p>
           )}
         </header>

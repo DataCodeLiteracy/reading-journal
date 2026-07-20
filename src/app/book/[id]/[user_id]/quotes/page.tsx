@@ -436,9 +436,9 @@ export default function BookQuotesPage({
           </div>
         ) : (
           <>
-            <div className='space-y-3 divide-y divide-theme-tertiary'>
+            <div className='space-y-3'>
               {paginatedQuotes.map((quote) => (
-                <div key={quote.id} className='pt-3 first:pt-0'>
+                <div key={quote.id}>
                   <QuoteCard
                     quote={quote}
                     bookTitle={book.title}

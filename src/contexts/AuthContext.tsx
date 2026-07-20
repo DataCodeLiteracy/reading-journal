@@ -24,6 +24,7 @@ interface AuthContextType {
   isLoggedIn: boolean
   userUid: string | null
   signOut: () => Promise<void>
+  refreshUserData: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   userUid: null,
   signOut: async () => {},
+  refreshUserData: async () => {},
 })
 
 export const useAuth = () => {
@@ -54,6 +56,48 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userUid, setUserUid] = useState<string | null>(null)
 
+  const loadUserDataFromFirestore = async (
+    firebaseUser: FirebaseUser,
+  ): Promise<User | null> => {
+    const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
+    if (!userDoc.exists()) return null
+
+    const existingData = userDoc.data() as Record<string, unknown>
+    const isAdmin = existingData.isAdmin === true
+
+    return {
+      ...existingData,
+      uid: firebaseUser.uid,
+      email: (existingData.email as string | null) ?? firebaseUser.email ?? null,
+      displayName: (existingData.displayName as string | null) ?? null,
+      photoURL:
+        (existingData.photoURL as string | null) ??
+        firebaseUser.photoURL ??
+        null,
+      emailVerified: firebaseUser.emailVerified ?? false,
+      phoneNumber: (existingData.phoneNumber as string | null) ?? null,
+      birthYear: (existingData.birthYear as number | null | undefined) ?? null,
+      gender:
+        (existingData.gender as User["gender"] | null | undefined) ?? null,
+      bio: (existingData.bio as string | null | undefined) ?? null,
+      region: (existingData.region as string | null | undefined) ?? null,
+      lastLoginAt: new Date(),
+      updated_at: new Date(),
+      isAdmin,
+    } as User
+  }
+
+  const refreshUserData = async () => {
+    const firebaseUser = auth.currentUser
+    if (!firebaseUser) return
+    try {
+      const data = await loadUserDataFromFirestore(firebaseUser)
+      if (data) setUserData(data)
+    } catch (error) {
+      console.error("Error refreshing user data:", error)
+    }
+  }
+
   useEffect(() => {
     const storedIsLoggedIn = localStorage.getItem("isLoggedIn") === "true"
     const storedUserUid = localStorage.getItem("userUid")
@@ -74,22 +118,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
           if (userDoc.exists()) {
-            const existingData = userDoc.data() as Record<string, unknown>
-            // isAdmin: 문서에 명시적으로 true로 저장된 경우만 true, 그 외는 false (필드 없음/undefined 방지)
-            const isAdmin = existingData && existingData.isAdmin === true
-            const updatedUserData: User = {
-              ...existingData,
-              uid: firebaseUser.uid,
-              email: firebaseUser.email ?? null,
-              displayName: firebaseUser.displayName ?? null,
-              photoURL: firebaseUser.photoURL ?? null,
-              emailVerified: firebaseUser.emailVerified ?? false,
-              phoneNumber: firebaseUser.phoneNumber ?? null,
-              lastLoginAt: new Date(),
-              updated_at: new Date(),
-              isAdmin,
-            } as User
-            setUserData(updatedUserData)
+            const data = await loadUserDataFromFirestore(firebaseUser)
+            if (data) setUserData(data)
           } else {
             // 사용자 문서가 없으면 기본값으로 생성
             const defaultUserData: User = {
@@ -151,7 +181,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, userData, loading, isLoggedIn, userUid, signOut }}
+      value={{ user, userData, loading, isLoggedIn, userUid, signOut, refreshUserData }}
     >
       {children}
     </AuthContext.Provider>

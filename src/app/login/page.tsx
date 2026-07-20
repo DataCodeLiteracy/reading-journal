@@ -7,11 +7,9 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from "firebase/auth"
-import { doc, setDoc, getDoc } from "firebase/firestore"
-import { auth, googleProvider, db } from "@/lib/firebase"
+import { auth, googleProvider } from "@/lib/firebase"
 import { useRouter } from "next/navigation"
 import { BookOpen, LogIn, LogOut, User as UserIcon } from "lucide-react"
-import { User } from "@/types/user"
 import { UserService } from "@/services/userService"
 import { LoginAuthSkeleton } from "@/components/skeletons"
 
@@ -43,18 +41,7 @@ export default function LoginPage() {
 
   const saveUserToFirestore = async (firebaseUser: FirebaseUser) => {
     try {
-      const userData: User = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-        emailVerified: firebaseUser.emailVerified,
-        phoneNumber: firebaseUser.phoneNumber,
-        lastLoginAt: new Date(),
-        isActive: true,
-      }
-
-      await UserService.createOrUpdateUser(userData)
+      await UserService.syncUserOnLogin(firebaseUser)
     } catch (error) {}
   }
 

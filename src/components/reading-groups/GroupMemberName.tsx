@@ -20,7 +20,7 @@ export default function GroupMemberName({
     <span className={`relative inline-flex min-w-0 max-w-full items-center ${className}`}>
       <span className={nameClassName}>{name}</span>
       <span
-        className="pointer-events-none absolute -right-1.5 -top-1 text-accent-theme"
+        className="pointer-events-none absolute -right-2 -top-1 text-accent-theme"
         aria-hidden
         title="모임장"
       >

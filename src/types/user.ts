@@ -1,5 +1,7 @@
 import { AppDate } from "./firebase"
 
+export type UserGender = "male" | "female" | "other" | "prefer_not_to_say"
+
 export interface User {
   uid: string
   email: string | null
@@ -7,6 +9,13 @@ export interface User {
   photoURL: string | null
   emailVerified: boolean
   phoneNumber: string | null
+  /** 출생 연도 (한국 나이 계산용) */
+  birthYear?: number | null
+  gender?: UserGender | null
+  /** 한 줄 소개 */
+  bio?: string | null
+  /** 거주 지역 (예: 서울, 경기) */
+  region?: string | null
   lastLoginAt: Date
   isActive: boolean
   isAdmin?: boolean

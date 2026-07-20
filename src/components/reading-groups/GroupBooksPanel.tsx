@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { AlertCircle, CalendarDays, Plus, Search, Trash2 } from "lucide-react"
+import { AlertCircle, CalendarDays, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import AddBookModal from "@/components/AddBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
@@ -33,6 +33,7 @@ import {
   inclusiveReadingDateRange,
 } from "@/utils/readingGroupDates"
 import { resolveMemberKind } from "@/utils/groupMemberLabels"
+import { groupReadingNotesPath } from "@/utils/groupReadingNotesUrl"
 
 type Props = {
   groupId: string
@@ -553,13 +554,17 @@ export default function GroupBooksPanel({
                         key={book.id}
                         className="relative grid min-w-0 grid-cols-[4.7rem_minmax(0,1fr)] gap-3 rounded-xl bg-theme-tertiary p-3"
                       >
-                        <button
-                          type="button"
-                          onClick={() => openEdit(book)}
-                          className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-theme"
-                          aria-label={`${book.title} 모임 책 정보 보기`}
-                        />
-                        <div className="pointer-events-none relative z-10 h-28 w-[4.7rem] overflow-hidden rounded-md bg-theme-secondary shadow-sm">
+                        {isOwner ? (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(book)}
+                            className="absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-md bg-theme-secondary/90 text-theme-secondary shadow-sm transition-colors hover:bg-theme-primary hover:text-theme-primary"
+                            aria-label={`${book.title} 모임 책 정보 수정`}
+                          >
+                            <Pencil className="h-4 w-4" aria-hidden />
+                          </button>
+                        ) : null}
+                        <div className="relative h-28 w-[4.7rem] overflow-hidden rounded-md bg-theme-secondary shadow-sm">
                           {book.cover_url ? (
                             <Image
                               src={book.cover_url}
@@ -575,7 +580,7 @@ export default function GroupBooksPanel({
                             </div>
                           )}
                         </div>
-                        <div className="pointer-events-none relative z-10 min-w-0">
+                        <div className="min-w-0">
                           <h4 className="line-clamp-2 font-semibold text-theme-primary">
                             {book.title}
                           </h4>
@@ -603,46 +608,63 @@ export default function GroupBooksPanel({
                             </p>
                           )}
                         </div>
-                        <div className="relative z-20 col-span-2 flex min-w-0 gap-2">
-                          {isOwner ? (
-                            <div className="w-[4.7rem] shrink-0">
-                              <Select
-                              value={displayStatus}
-                                onChangeAction={(status) =>
-                                  void changeStatus(book, status)
+                        <div className="col-span-2 flex min-w-0 flex-col gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            {isOwner ? (
+                              <div className="min-w-0 flex-1">
+                                <Select
+                                  value={displayStatus}
+                                  onChangeAction={(status) =>
+                                    void changeStatus(book, status)
+                                  }
+                                  options={statusOptionsFor(book)}
+                                  disabled={
+                                    busyId === book.id ||
+                                    displayStatus === "completed"
+                                  }
+                                  variant="compact"
+                                  aria-label={`${book.title} 상태`}
+                                />
+                              </div>
+                            ) : (
+                              <span className="flex h-8 min-w-0 flex-1 items-center justify-center truncate rounded-md bg-theme-secondary px-2 text-xs font-medium text-theme-secondary">
+                                {
+                                  STATUS_SECTIONS.find(
+                                    (item) => item.status === displayStatus,
+                                  )?.label
                                 }
-                                options={statusOptionsFor(book)}
-                                disabled={
-                                  busyId === book.id ||
-                                  displayStatus === "completed"
-                                }
-                                variant="compact"
-                                aria-label={`${book.title} 상태`}
-                              />
-                            </div>
-                          ) : (
-                            <span className="flex h-8 w-[4.7rem] shrink-0 items-center justify-center truncate rounded-md bg-theme-secondary px-2 text-xs font-medium text-theme-secondary">
-                              {
-                                STATUS_SECTIONS.find(
-                                  (item) => item.status === displayStatus,
-                                )?.label
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(
+                                  groupReadingNotesPath(groupId, {
+                                    meeting: assignment?.meeting_id,
+                                    book: book.id,
+                                  }),
+                                )
                               }
-                            </span>
-                          )}
+                              className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-theme-tertiary bg-theme-primary px-3 text-xs font-semibold text-theme-primary transition-colors hover:bg-theme-secondary"
+                              aria-label={`${book.title} 독서 노트 보기`}
+                            >
+                              기록
+                            </button>
+                          </div>
                           {ownBook ? (
                             <button
                               type="button"
                               onClick={() => handleTimerPageMove(book, ownBook)}
-                              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white"
+                              className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white sm:text-sm"
                             >
-                              {goReadLabel}
+                              {isGuardian ? "자녀 읽어주러 가기" : "타이머 시작"}
                             </button>
                           ) : (
                             <button
                               type="button"
                               onClick={() => void addToMyLibrary(book)}
                               disabled={busyId === book.id}
-                              className="h-8 min-w-0 flex-1 rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50"
+                              className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                             >
                               {busyId === book.id
                                 ? "추가 중…"

@@ -22,7 +22,7 @@ export interface BookQuestion {
   difficulty: Difficulty
   order: number // 같은 목차 내 정렬 순서
   thoughtHint?: string // JSON 보고서의 thought_hint (생각 힌트)
-  isPublic?: boolean // 공개 여부 (기본값: false)
+  isPublic?: boolean // 공개 여부 (기본값: true)
   /** 읽기 준비·읽는 중·읽은 뒤 구분(필터·통계용, 없으면 기존과 동일) */
   readingPhase?: "pre" | "during" | "post"
   likesCount?: number // 좋아요 수 (캐시된 값)
@@ -43,7 +43,7 @@ export interface QuestionAnswer {
   answerText?: string // 텍스트 답변 (오디오만 있을 수도 있음)
   audioUrl?: string // Firebase Storage URL
   audioTranscript?: string // STT로 변환된 텍스트
-  isPublic?: boolean // 공개 여부 (기본값: false)
+  isPublic?: boolean // 공개 여부 (기본값: true)
   likesCount?: number // 좋아요 수 (캐시된 값)
   commentsCount?: number // 댓글 수 (캐시된 값)
   created_at?: Date

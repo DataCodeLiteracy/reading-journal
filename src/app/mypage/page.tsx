@@ -162,9 +162,9 @@ export default function MyPage() {
           <p className='text-theme-secondary text-sm'>
             내 정보와 설정을 관리해보세요
           </p>
-          {user && (
+          {userData && (
             <p className='text-sm text-theme-tertiary mt-1'>
-              {user.displayName || user.email}님
+              {userData.displayName?.trim() || user?.email || "사용자"}님
             </p>
           )}
         </header>
@@ -296,6 +296,25 @@ export default function MyPage() {
 
         {/* 메뉴 카드들 */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-3 mb-4'>
+          <button
+            onClick={() => router.push("/mypage/profile")}
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
+          >
+            <div className='flex items-center gap-3'>
+              <div className='p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg'>
+                <User className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+              </div>
+              <div>
+                <h3 className='font-semibold text-theme-primary mb-1'>
+                  프로필 정보
+                </h3>
+                <p className='text-xs text-theme-secondary'>
+                  이름, 전화번호, 출생 연도 등
+                </p>
+              </div>
+            </div>
+          </button>
+
           <button
             onClick={() => router.push("/mypage/settings")}
             className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'

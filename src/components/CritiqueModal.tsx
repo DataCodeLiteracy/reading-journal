@@ -29,7 +29,7 @@ export default function CritiqueModal({
 }: CritiqueModalProps) {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
-  const [isPublic, setIsPublic] = useState(false)
+  const [isPublic, setIsPublic] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const savingRef = useRef(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
@@ -43,7 +43,7 @@ export default function CritiqueModal({
       } else {
         setTitle("")
         setContent("")
-        setIsPublic(false)
+        setIsPublic(true)
       }
       setIsSaving(false)
       savingRef.current = false
@@ -90,7 +90,7 @@ export default function CritiqueModal({
   const handleClose = () => {
     setTitle("")
     setContent("")
-    setIsPublic(false)
+    setIsPublic(true)
     onClose()
   }
 
@@ -98,7 +98,7 @@ export default function CritiqueModal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop p-4'>
-      <div className='modal-legacy-panel rounded-xl border border-slate-200/90 bg-white dark:border-slate-600/80 dark:bg-gray-800 w-full max-w-3xl max-h-[90vh] flex flex-col'>
+      <div className='modal-legacy-panel rounded-xl border border-slate-200/90 bg-white dark:border-slate-600/80 dark:bg-gray-800 w-full max-w-3xl max-h-[calc(min(85dvh,100dvh-2rem)-105px)] sm:max-h-[calc(min(90dvh,100dvh-2rem)-105px)] flex min-h-0 flex-col overflow-hidden'>
         {/* 헤더 */}
         <div className='flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>
           <div className='flex-1 min-w-0'>
@@ -126,7 +126,7 @@ export default function CritiqueModal({
         <form
           id='critique-modal-form'
           onSubmit={handleSubmit}
-          className='flex-1 overflow-y-auto p-4 sm:p-6 min-h-0'
+          className='flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 min-h-0'
         >
           <div className='space-y-4'>
             {/* 제목 (선택사항) */}

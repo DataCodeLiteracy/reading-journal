@@ -153,6 +153,26 @@ export const queryKeys = {
       ["readingGroups", groupId, "recordShareCandidates", uid] as const,
     attributions: (groupId: string) =>
       ["readingGroups", groupId, "attributions"] as const,
+    readingNotes: (groupId: string) =>
+      ["readingGroups", groupId, "readingNotes"] as const,
+    readingNotesPreview: (groupId: string, filterKey: string) =>
+      ["readingGroups", groupId, "readingNotes", "preview", filterKey] as const,
+    readingNotesPage: (
+      groupId: string,
+      type: string,
+      filterKey: string,
+      sort: string,
+      page: number,
+    ) =>
+      [
+        "readingGroups",
+        groupId,
+        "readingNotes",
+        type,
+        filterKey,
+        sort,
+        page,
+      ] as const,
     sessionAttributions: (readingSessionId: string) =>
       ["readingGroups", "sessions", readingSessionId, "attributions"] as const,
   },

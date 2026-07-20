@@ -29,7 +29,7 @@ export default function NewCritiquePage({
 
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
-  const [isPublic, setIsPublic] = useState(false)
+  const [isPublic, setIsPublic] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
