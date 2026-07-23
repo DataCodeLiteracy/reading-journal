@@ -37,8 +37,7 @@ import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import WeeklyRecapModal, { DaySummary } from "@/components/WeeklyRecapModal"
 import { HomePageSkeleton } from "@/components/skeletons"
 
-const WEEKLY_RECAP_STORAGE_KEY = "weeklyRecapShown_"
-
+// UI 확인용으로 localStorage 스킵 중. 되돌릴 때: "weeklyRecapShown_" + lastWeekISO
 export default function Home() {
   const router = useRouter()
   const { user, userData, loading, isLoggedIn, userUid } = useAuth()
@@ -87,12 +86,11 @@ export default function Home() {
     )
   }, [allBooks, allReadingSessions])
 
-  // 지난주 독서 요약: 해당 주차에 대해 확인(닫기)한 적 없으면 월~일 중 첫 접속 시 표시. 확인 시 localStorage에 저장해 재표시 안 함.
+  // TODO: UI 확인용 — 확인 여부 무시하고 무조건 표시. 확인 후 원래 로직(localStorage)으로 되돌릴 것.
   useEffect(() => {
     if (!userUid || !userDataInitialized) return
 
     const lastWeekISO = getLastWeekISOStringKST()
-    if (typeof window !== "undefined" && localStorage.getItem(WEEKLY_RECAP_STORAGE_KEY + lastWeekISO)) return
 
     if (weeklyRecapLoadRef.current === lastWeekISO) return
     weeklyRecapLoadRef.current = lastWeekISO
@@ -123,7 +121,8 @@ export default function Home() {
         .sort()
         .map((date) => {
           const items = byDate[date].map(({ bookId, duration }) => ({
-            bookTitle: allBooks.find((b) => b.id === bookId)?.title ?? "알 수 없는 책",
+            bookTitle:
+              allBooks.find((b) => b.id === bookId)?.title ?? "알 수 없는 책",
             duration,
           }))
           return {
@@ -155,10 +154,7 @@ export default function Home() {
   ])
 
   const handleCloseRecapModal = () => {
-    const lastWeekISO = getLastWeekISOStringKST()
-    if (typeof window !== "undefined") {
-      localStorage.setItem(WEEKLY_RECAP_STORAGE_KEY + lastWeekISO, "1")
-    }
+    // UI 확인용: 닫아도 localStorage에 저장하지 않음 → 새로고침 시 다시 등장
     setShowRecapModal(false)
     setRecapData(null)
   }
