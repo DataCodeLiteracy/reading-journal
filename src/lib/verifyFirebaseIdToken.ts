@@ -4,7 +4,7 @@
  */
 export async function verifyFirebaseIdToken(
   idToken: string
-): Promise<{ uid: string } | null> {
+): Promise<{ uid: string; email?: string } | null> {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
   if (!apiKey || !idToken) return null
 
@@ -19,8 +19,11 @@ export async function verifyFirebaseIdToken(
 
   if (!res.ok) return null
   const data = (await res.json()) as {
-    users?: Array<{ localId?: string }>
+    users?: Array<{ localId?: string; email?: string }>
   }
-  const uid = data.users?.[0]?.localId
-  return uid ? { uid } : null
+  const user = data.users?.[0]
+  const uid = user?.localId
+  if (!uid) return null
+  const email = user?.email?.trim()
+  return email ? { uid, email } : { uid }
 }

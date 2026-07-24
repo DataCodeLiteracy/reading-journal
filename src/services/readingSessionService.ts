@@ -9,6 +9,13 @@ export class ReadingSessionService {
     )
   }
 
+  private static warnFocusLevelSync(sessionId: string, error: unknown) {
+    console.warn(
+      `ReadingSessionService: focus-level 동기화 실패 (sessionId: "${sessionId}")`,
+      error,
+    )
+  }
+
   /**
    * 기존 귀속을 지운 뒤 현재 세션 상태로 다시 계산합니다.
    * 보호자→자녀 이중 귀속을 위해 Admin API로 동기화합니다.
@@ -26,6 +33,30 @@ export class ReadingSessionService {
     const result = (await response.json()) as { error?: string }
     if (!response.ok) {
       throw new Error(result.error ?? "그룹 독서 귀속 동기화에 실패했습니다.")
+    }
+  }
+
+  /**
+   * focus-level 「독서」 활동에 세션을 upsert/delete 동기화합니다.
+   * 실패해도 독서 세션 저장은 유지합니다 (best-effort).
+   */
+  static async syncFocusLevelSession(
+    sessionId: string,
+    op: "upsert" | "delete",
+  ): Promise<void> {
+    const { getClientIdToken } = await import("@/lib/getClientIdToken")
+    const idToken = await getClientIdToken()
+    const response = await fetch("/api/focus-level/sync-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, sessionId, op }),
+    })
+    const result = (await response.json().catch(() => ({}))) as {
+      error?: string
+      skipped?: boolean
+    }
+    if (!response.ok) {
+      throw new Error(result.error ?? "focus-level 동기화에 실패했습니다.")
     }
   }
 
@@ -52,6 +83,11 @@ export class ReadingSessionService {
       } catch (error) {
         this.warnAttributionSync(sessionId, error)
       }
+    }
+    try {
+      await this.syncFocusLevelSession(sessionId, "upsert")
+    } catch (error) {
+      this.warnFocusLevelSync(sessionId, error)
     }
     return sessionId
   }
@@ -180,6 +216,11 @@ export class ReadingSessionService {
         } catch (error) {
           this.warnAttributionSync(sessionId, error)
         }
+        try {
+          await this.syncFocusLevelSession(sessionId, "upsert")
+        } catch (error) {
+          this.warnFocusLevelSync(sessionId, error)
+        }
       }
     } catch (error) {
       throw error
@@ -194,6 +235,12 @@ export class ReadingSessionService {
         sessionId,
       )
       if (session) {
+        // focus-level 동기화는 세션 문서가 남아 있을 때 소유권 검증이 가능하므로 삭제 전에 호출
+        try {
+          await this.syncFocusLevelSession(sessionId, "delete")
+        } catch (error) {
+          this.warnFocusLevelSync(sessionId, error)
+        }
         await ReadingGroupService.deleteReadingAttributionsBySession(
           sessionId,
           session.user_id,
