@@ -391,10 +391,18 @@ export default function GroupReadingProgress({
       ),
     )
   }
-  const totalSeconds = selectedAttributions.reduce(
-    (total, item) => total + displayedSeconds(item),
-    0,
-  )
+  const totalSeconds = (() => {
+    // 보호자→자녀 이중 귀속 시 같은 세션이 두 줄로 잡히므로 세션·배정 단위로 한 번만 합산
+    const seen = new Set<string>()
+    let total = 0
+    for (const item of selectedAttributions) {
+      const key = `${item.reading_session_id}__${item.meeting_book_assignment_id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      total += displayedSeconds(item)
+    }
+    return total
+  })()
   const totalsByUser = new Map<string, number>()
   selectedAttributions.forEach((item) => {
     totalsByUser.set(
@@ -413,12 +421,44 @@ export default function GroupReadingProgress({
       isOwner: member.role === "owner",
       seconds: totalsByUser.get(member.user_id!) ?? 0,
       rereadCount: memberRereadQuery.data?.[member.user_id!] ?? 0,
+      kind: "participant" as const,
+      readsForName: null as string | null,
     }))
     .sort(
       (left, right) =>
         right.seconds - left.seconds || left.name.localeCompare(right.name, "ko"),
     )
-  const detailRanking = rankings.find((ranking) => ranking.id === detailMemberId)
+  const guardianRankings = activeMembers
+    .filter((member) => resolveMemberKind(member) === "guardian")
+    .map((member) => {
+      const child = member.reads_for_user_id
+        ? activeMembers.find((m) => m.user_id === member.reads_for_user_id)
+        : undefined
+      const childName = child
+        ? (child.user_id ? userDisplayNames[child.user_id] : "") ||
+          child.display_name
+        : null
+      return {
+        id: member.id,
+        userId: member.user_id!,
+        name:
+          (member.user_id ? userDisplayNames[member.user_id] : "") ||
+          member.display_name,
+        isOwner: member.role === "owner",
+        seconds: totalsByUser.get(member.user_id!) ?? 0,
+        rereadCount: 0,
+        kind: "guardian" as const,
+        readsForName: childName,
+      }
+    })
+    .sort(
+      (left, right) =>
+        right.seconds - left.seconds || left.name.localeCompare(right.name, "ko"),
+    )
+  const detailRanking =
+    rankings.find((ranking) => ranking.id === detailMemberId) ??
+    guardianRankings.find((ranking) => ranking.id === detailMemberId)
+  const detailIsGuardian = detailRanking?.kind === "guardian"
 
   const isSelectedCurrent = selectedMeeting.id === currentMeeting?.id
   const meetingOptions: SelectOption[] = orderedMeetings.map((meeting) => ({
@@ -713,7 +753,8 @@ export default function GroupReadingProgress({
       </h3>
       <p className="mt-1 text-xs text-theme-secondary">
         참여자를 누르면 책별 독서 시간을 볼 수 있습니다. 회독은 이 회차 책의
-        완독 횟수 합계입니다.
+        완독 횟수 합계입니다. 보호자가 읽어준 시간은 연결된 자녀에게도
+        반영됩니다.
       </p>
       {rankings.length ? (
         <ol className="mt-2 space-y-2">
@@ -757,28 +798,82 @@ export default function GroupReadingProgress({
         </p>
       )}
 
+      <h3 className={`${sectionGap} text-sm font-semibold text-theme-primary`}>
+        보호자 · 읽어준 시간
+      </h3>
+      <p className="mt-1 text-xs text-theme-secondary">
+        보호자를 누르면 책별로 얼마나 읽어줬는지 볼 수 있습니다.
+      </p>
+      {guardianRankings.length ? (
+        <ul className="mt-2 space-y-2">
+          {guardianRankings.map((ranking) => (
+            <li key={ranking.id}>
+              <button
+                type="button"
+                onClick={() => setDetailMemberId(ranking.id)}
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg bg-theme-secondary px-3 py-2 text-left transition-colors hover:bg-theme-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-theme"
+                aria-label={`${ranking.name} 책별 읽어준 시간 보기`}
+              >
+                <span className="min-w-0">
+                  <span className="flex min-w-0 items-center gap-2 text-sm text-theme-primary">
+                    <GroupMemberName
+                      name={ranking.name}
+                      isOwner={ranking.isOwner}
+                      nameClassName="truncate font-medium text-theme-primary"
+                    />
+                  </span>
+                  {ranking.readsForName ? (
+                    <span className="mt-0.5 block truncate text-[11px] text-theme-secondary">
+                      → {ranking.readsForName}에게 읽어줌
+                    </span>
+                  ) : (
+                    <span className="mt-0.5 block truncate text-[11px] text-theme-tertiary">
+                      연결된 자녀 없음
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 text-sm font-semibold text-theme-primary">
+                  {formatDuration(ranking.seconds)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-theme-secondary">
+          등록된 보호자가 없습니다.
+        </p>
+      )}
+
       <FormModalFrame
         isOpen={Boolean(detailRanking)}
         onClose={() => setDetailMemberId(null)}
         title={
           detailRanking
-            ? `${detailRanking.name} · ${selectedMeeting.sequence}회`
+            ? detailIsGuardian
+              ? `${detailRanking.name} · 읽어준 시간`
+              : `${detailRanking.name} · ${selectedMeeting.sequence}회`
             : "책별 독서 시간"
         }
       >
         {detailRanking && (
-          <div className="space-y-4">
-            <div className="rounded-lg bg-theme-tertiary p-3">
-              <p className="text-xs text-theme-secondary">회차 전체 누적</p>
+          <div className="flex max-h-[min(68dvh,36rem)] flex-col gap-3">
+            <div className="shrink-0 rounded-lg bg-theme-tertiary p-3">
+              <p className="text-xs text-theme-secondary">
+                {detailIsGuardian ? "이 회차 읽어준 누적" : "회차 전체 누적"}
+              </p>
               <p className="mt-1 text-lg font-bold text-theme-primary">
                 {formatDuration(detailRanking.seconds)}
               </p>
               <p className="mt-1 text-xs text-theme-secondary">
                 {selectedMeeting.sequence}회 · {selectedMeeting.title}
+                {detailIsGuardian && detailRanking.readsForName
+                  ? ` · ${detailRanking.readsForName}에게`
+                  : ""}
               </p>
             </div>
 
-            <ul className="space-y-2">
+            <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-0.5">
               {selectedAssignments.map((assignment) => {
                 const book = booksById.get(assignment.group_book_id)
                 const coverUrl =
@@ -833,7 +928,13 @@ export default function GroupReadingProgress({
               })}
             </ul>
 
-            <div className="flex justify-end">
+            {selectedAssignments.length === 0 ? (
+              <p className="text-sm text-theme-secondary">
+                이 회차에 배정된 책이 없습니다.
+              </p>
+            ) : null}
+
+            <div className="flex shrink-0 justify-end border-t border-theme-tertiary pt-3">
               <button
                 type="button"
                 onClick={() => setDetailMemberId(null)}
