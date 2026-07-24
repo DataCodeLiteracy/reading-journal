@@ -44,6 +44,7 @@ export class ReadingSessionService {
     sessionId: string,
     op: "upsert" | "delete",
   ): Promise<void> {
+    console.info("[focus-level sync] start", { sessionId, op })
     const { getClientIdToken } = await import("@/lib/getClientIdToken")
     const idToken = await getClientIdToken()
     const response = await fetch("/api/focus-level/sync-session", {
@@ -54,7 +55,15 @@ export class ReadingSessionService {
     const result = (await response.json().catch(() => ({}))) as {
       error?: string
       skipped?: boolean
+      ok?: boolean
+      focusSessionId?: string | null
+      op?: string
     }
+    console.info("[focus-level sync] response", {
+      sessionId,
+      status: response.status,
+      result,
+    })
     if (!response.ok) {
       throw new Error(result.error ?? "focus-level 동기화에 실패했습니다.")
     }

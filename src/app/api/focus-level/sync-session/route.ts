@@ -41,6 +41,21 @@ export async function POST(request: Request) {
 
     const ingestUrl = process.env.FOCUS_LEVEL_INGEST_URL?.trim()
     const ingestSecret = process.env.FOCUS_LEVEL_INGEST_SECRET?.trim()
+    console.info("[focus-level/sync-session] request", {
+      uid: verified.uid,
+      hasEmail: Boolean(verified.email),
+      op,
+      sessionId,
+      hasIngestUrl: Boolean(ingestUrl),
+      hasIngestSecret: Boolean(ingestSecret),
+      ingestHost: (() => {
+        try {
+          return ingestUrl ? new URL(ingestUrl).host : null
+        } catch {
+          return "invalid-url"
+        }
+      })(),
+    })
     if (!ingestUrl || !ingestSecret) {
       console.warn(
         "[focus-level/sync-session] FOCUS_LEVEL_INGEST_URL 또는 FOCUS_LEVEL_INGEST_SECRET 미설정 — 건너뜀",
@@ -50,6 +65,9 @@ export async function POST(request: Request) {
 
     const email = verified.email?.trim().toLowerCase()
     if (!email) {
+      console.warn("[focus-level/sync-session] email missing from ID token", {
+        uid: verified.uid,
+      })
       return NextResponse.json(
         { error: "계정 이메일을 확인할 수 없습니다. Google 로그인 계정이 필요합니다." },
         { status: 400 },
@@ -162,12 +180,26 @@ export async function POST(request: Request) {
       ok?: boolean
     }
     if (!upstream.ok) {
-      console.error("[focus-level/sync-session] upsert upstream:", result)
+      console.error("[focus-level/sync-session] upsert upstream:", {
+        status: upstream.status,
+        result,
+        email,
+        sessionId,
+        bookTitle: book.title,
+        durationSeconds,
+      })
       return NextResponse.json(
         { error: result.error ?? "focus-level 동기화에 실패했습니다." },
         { status: upstream.status >= 400 ? upstream.status : 502 },
       )
     }
+    console.info("[focus-level/sync-session] upsert ok", {
+      sessionId,
+      email,
+      bookTitle: book.title,
+      durationSeconds,
+      result,
+    })
     return NextResponse.json({ ok: true, ...result })
   } catch (error) {
     console.error("[focus-level/sync-session]", error)
