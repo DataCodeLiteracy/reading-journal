@@ -46,7 +46,10 @@ export class UserMigrationService {
           }
 
           // 레벨 데이터 계산 (보너스 경험치 포함)
-          const bonusExperience = (stat.totalLikesReceived || 0) * 10 + (stat.totalCommentsWritten || 0) * 5
+          const bonusExperience =
+            (stat.totalLikesReceived || 0) * 10 +
+            (stat.totalCommentsWritten || 0) * 5 +
+            (stat.transcriptionBonusExp || 0)
           const levelInfo = calculateLevelInfo(
             stat.totalReadingTime || 0,
             bonusExperience
@@ -111,7 +114,10 @@ export class UserMigrationService {
       }
 
       // 레벨 데이터 계산 (보너스 경험치 포함)
-      const bonusExperience = (stats.totalLikesReceived || 0) * 10 + (stats.totalCommentsWritten || 0) * 5
+      const bonusExperience =
+        (stats.totalLikesReceived || 0) * 10 +
+        (stats.totalCommentsWritten || 0) * 5 +
+        (stats.transcriptionBonusExp || 0)
       const levelInfo = calculateLevelInfo(
         stats.totalReadingTime || 0,
         bonusExperience

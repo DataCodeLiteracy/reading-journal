@@ -48,15 +48,13 @@ export default function FormModalFrame({
         onClick={interactionLocked ? undefined : onClose}
       />
       <div
-        className={`${shellClass} modal-dialog-surface relative z-10 min-w-0 max-h-[calc(82dvh-50px)] overflow-y-auto rounded-xl p-4 sm:max-h-[calc(90vh-50px)] sm:p-6 ${
-          interactionLocked ? "overflow-hidden" : ""
-        }`}
+        className={`${shellClass} modal-dialog-surface relative z-10 flex min-h-0 min-w-0 max-h-[calc(82dvh-50px)] flex-col overflow-hidden rounded-xl p-0 sm:max-h-[calc(90vh-50px)]`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"
         aria-busy={interactionLocked || undefined}
       >
-        <div className="mb-3 flex items-center justify-between gap-2 sm:mb-4">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-theme-tertiary/60 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {headerStart}
             <h2
@@ -77,7 +75,9 @@ export default function FormModalFrame({
             <X className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-6 sm:py-4">
+          {children}
+        </div>
         {interactionLocked && lockOverlay}
       </div>
     </div>

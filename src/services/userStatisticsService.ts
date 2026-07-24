@@ -5,6 +5,7 @@ import {
   calculateLevelInfo,
   readingTimeToExperience,
   calculateLevel,
+  roundExperience,
 } from "@/utils/experienceSystem"
 import { getKoreaDate, getKoreaDateFromISO } from "@/utils/timeUtils"
 import { UserService } from "./userService"
@@ -274,7 +275,8 @@ export class UserStatisticsService {
         const existingStats = await this.getUserStatistics(user_id)
         const bonusExp = this.calculateBonusExperience(
           existingStats?.totalLikesReceived || 0,
-          existingStats?.totalCommentsWritten || 0
+          existingStats?.totalCommentsWritten || 0,
+          existingStats?.transcriptionBonusExp || 0
         )
         const levelInfo = calculateLevelInfo(0, bonusExp)
 
@@ -409,7 +411,8 @@ export class UserStatisticsService {
       const existingStats = await this.getUserStatistics(user_id)
       const bonusExp = this.calculateBonusExperience(
         existingStats?.totalLikesReceived || 0,
-        existingStats?.totalCommentsWritten || 0
+        existingStats?.totalCommentsWritten || 0,
+        existingStats?.transcriptionBonusExp || 0
       )
 
       // 레벨 및 경험치 계산
@@ -571,17 +574,22 @@ export class UserStatisticsService {
   }
 
   /**
-   * 보너스 경험치 계산 (좋아요, 댓글 기반)
-   * 좋아요 1개 = 10 EXP, 댓글 1개 = 5 EXP
+   * 보너스 경험치 계산 (좋아요, 댓글, 필사)
+   * 좋아요 1개 = 10 EXP, 댓글 1개 = 5 EXP, 필사는 누적 transcriptionBonusExp
    */
   static calculateBonusExperience(
     totalLikesReceived: number,
-    totalCommentsWritten: number
+    totalCommentsWritten: number,
+    transcriptionBonusExp: number = 0
   ): number {
     const LIKE_EXP = 10 // 좋아요 1개당 경험치
     const COMMENT_EXP = 5 // 댓글 1개당 경험치
 
-    return totalLikesReceived * LIKE_EXP + totalCommentsWritten * COMMENT_EXP
+    return roundExperience(
+      totalLikesReceived * LIKE_EXP +
+        totalCommentsWritten * COMMENT_EXP +
+        Math.max(0, transcriptionBonusExp)
+    )
   }
 
   /**
@@ -595,17 +603,18 @@ export class UserStatisticsService {
     totalCommentsWritten?: number
   ): Promise<{ level: number; experience: number }> {
     try {
-      // 기존 통계에서 좋아요/댓글 수 가져오기 (제공되지 않은 경우)
-      let likes = totalLikesReceived
-      let comments = totalCommentsWritten
+      const existingStats = await this.getUserStatistics(user_id)
+      const likes =
+        totalLikesReceived ?? existingStats?.totalLikesReceived ?? 0
+      const comments =
+        totalCommentsWritten ?? existingStats?.totalCommentsWritten ?? 0
+      const transcriptionBonus = existingStats?.transcriptionBonusExp || 0
 
-      if (likes === undefined || comments === undefined) {
-        const existingStats = await this.getUserStatistics(user_id)
-        likes = likes ?? existingStats?.totalLikesReceived ?? 0
-        comments = comments ?? existingStats?.totalCommentsWritten ?? 0
-      }
-
-      const bonusExp = this.calculateBonusExperience(likes, comments)
+      const bonusExp = this.calculateBonusExperience(
+        likes,
+        comments,
+        transcriptionBonus
+      )
       const levelInfo = calculateLevelInfo(totalReadingTime, bonusExp)
 
       // 통계 업데이트
@@ -660,7 +669,8 @@ export class UserStatisticsService {
 
       const bonusExp = this.calculateBonusExperience(
         stats.totalLikesReceived || 0,
-        stats.totalCommentsWritten || 0
+        stats.totalCommentsWritten || 0,
+        stats.transcriptionBonusExp || 0
       )
       const levelInfo = calculateLevelInfo(
         stats.totalReadingTime || 0,
@@ -706,7 +716,7 @@ export class UserStatisticsService {
       if (stats.lastWeeklyBonusWeek === currentWeek) return null
 
       const bonusExp = goalHours * 20
-      const newExperience = (stats.experience ?? 0) + bonusExp
+      const newExperience = roundExperience((stats.experience ?? 0) + bonusExp)
       const newLevel = calculateLevel(newExperience)
 
       await this.createOrUpdateUserStatistics(user_id, {
@@ -723,6 +733,59 @@ export class UserStatisticsService {
       return { bonusExp }
     } catch (error) {
       console.error("UserStatisticsService.addWeeklyGoalBonus error:", error)
+      return null
+    }
+  }
+
+  /**
+   * 타자 필사 성공 보너스 EXP 지급.
+   * transcriptionBonusExp에 누적한 뒤 통합 레벨을 재계산한다.
+   */
+  static async addTranscriptionBonus(
+    user_id: string,
+    gainedExp: number
+  ): Promise<{ level: number; experience: number; gainedExp: number } | null> {
+    try {
+      const amount = roundExperience(Math.max(0, gainedExp))
+      if (amount <= 0) return null
+
+      const stats = await this.getUserStatistics(user_id)
+      if (!stats) return null
+
+      const transcriptionBonusExp = roundExperience(
+        (stats.transcriptionBonusExp || 0) + amount
+      )
+      const bonusExp = this.calculateBonusExperience(
+        stats.totalLikesReceived || 0,
+        stats.totalCommentsWritten || 0,
+        transcriptionBonusExp
+      )
+      const levelInfo = calculateLevelInfo(
+        stats.totalReadingTime || 0,
+        bonusExp
+      )
+
+      await this.createOrUpdateUserStatistics(user_id, {
+        transcriptionBonusExp,
+        experience: levelInfo.experience,
+        level: levelInfo.level,
+      })
+
+      await ApiClient.updateDocument<Partial<User>>("users", user_id, {
+        experience: levelInfo.experience,
+        level: levelInfo.level,
+      })
+
+      return {
+        level: levelInfo.level,
+        experience: levelInfo.experience,
+        gainedExp: amount,
+      }
+    } catch (error) {
+      console.error(
+        "UserStatisticsService.addTranscriptionBonus error:",
+        error
+      )
       return null
     }
   }

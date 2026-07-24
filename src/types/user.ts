@@ -60,6 +60,8 @@ export interface UserStatistics {
   // 소셜 상호작용 통계 (보너스 경험치 계산용)
   totalLikesReceived?: number // 내 콘텐츠가 받은 총 좋아요 수
   totalCommentsWritten?: number // 내가 작성한 총 댓글 수
+  /** 타자 필사 성공으로 쌓인 보너스 경험치 (리셋되지 않도록 별도 누적) */
+  transcriptionBonusExp?: number
   // 프로필 공개 설정
   isProfilePublic?: boolean // 프로필 공개 여부 (기본값: true)
   /** 유저별 주간 독서 목표 (시간). 미설정 시 5 */

@@ -3,14 +3,20 @@
  * 독서 시간을 경험치로 변환하고 레벨을 계산합니다.
  */
 
-// 1초 독서 = 1 경험치 (필요시 조정 가능)
-export const READING_TIME_TO_EXP_RATIO = 1
+/** 1초 독서 = 0.5 EXP → 1분 = 30 EXP */
+export const READING_TIME_TO_EXP_RATIO = 0.5
 
 // 레벨업에 필요한 경험치 계산 함수
 // 레벨 N에 도달하려면: baseExp * (level - 1) * levelMultiplier
 // 조정: 레벨 100이 약 2만 5천~3만 시간 분량(독서 시간 + 좋아요/댓글 보너스)이 되도록 설정
 const BASE_EXP = 800 // 기본 경험치 (레벨 1->2에 필요한 경험치)
 const LEVEL_MULTIPLIER = 1.1 // 레벨이 올라갈수록 필요한 경험치 증가율
+
+/** 저장용: 소수점 한 자리로 반올림 (예: 3.5, 4.5) */
+export function roundExperience(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.round(value * 10) / 10
+}
 
 /**
  * 특정 레벨에 도달하기 위해 필요한 총 경험치 계산
@@ -85,12 +91,14 @@ export function getLevelProgress(
 }
 
 /**
- * 독서 시간(초)을 경험치로 변환
+ * 독서 시간(초)을 경험치로 변환 (소수 1자리)
  * @param readingTimeSeconds 독서 시간 (초)
  * @returns 경험치
  */
 export function readingTimeToExperience(readingTimeSeconds: number): number {
-  return Math.floor(readingTimeSeconds * READING_TIME_TO_EXP_RATIO)
+  return roundExperience(
+    Math.max(0, readingTimeSeconds) * READING_TIME_TO_EXP_RATIO
+  )
 }
 
 /**
@@ -113,7 +121,7 @@ export function calculateLevelInfo(
   bonusExperience: number = 0
 ) {
   const readingExp = readingTimeToExperience(totalReadingTime)
-  const totalExperience = readingExp + bonusExperience
+  const totalExperience = roundExperience(readingExp + bonusExperience)
   const level = calculateLevel(totalExperience)
   const expToNextLevel = getExpToNextLevel(level)
   const progress = getLevelProgress(totalExperience, level)
@@ -122,7 +130,7 @@ export function calculateLevelInfo(
     level,
     experience: totalExperience,
     readingExperience: readingExp,
-    bonusExperience,
+    bonusExperience: roundExperience(bonusExperience),
     expToNextLevel,
     progress,
     expRequiredForCurrentLevel: getExpRequiredForLevel(level),
@@ -143,4 +151,3 @@ export interface LevelInfo {
   expRequiredForCurrentLevel: number
   expRequiredForNextLevel: number
 }
-

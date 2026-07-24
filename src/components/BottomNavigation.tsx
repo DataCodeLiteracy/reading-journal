@@ -60,7 +60,7 @@ export default function BottomNavigation() {
   }
 
   return (
-    <nav className='fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme-tertiary z-50 safe-area-inset-bottom'>
+    <nav className='fixed bottom-0 left-0 right-0 bg-theme-secondary border-t border-theme-tertiary z-50 safe-area-inset-bottom print:hidden'>
       <div className='container mx-auto'>
         <div className='flex items-center justify-around py-2'>
           {navigationItems.map((item) => {

@@ -22,6 +22,7 @@ import { User as UserType, UserStatistics } from "@/types/user"
 import { Book } from "@/types/book"
 import { PublicProfilePageSkeleton } from "@/components/skeletons"
 import { queryKeys } from "@/lib/queryKeys"
+import { formatDisplayExperienceString } from "@/utils/experienceUtils"
 
 export default function UserProfilePage({
   params,
@@ -192,7 +193,7 @@ export default function UserProfilePage({
                 <div>
                   <p className='text-xs text-theme-secondary mb-1'>총 경험치</p>
                   <p className='text-2xl font-bold text-theme-primary'>
-                    {(userStats.experience || 0).toLocaleString()} EXP
+                    {formatDisplayExperienceString(userStats.experience || 0)} EXP
                   </p>
                 </div>
               </div>

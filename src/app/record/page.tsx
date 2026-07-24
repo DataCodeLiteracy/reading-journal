@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   BookOpenText,
   HelpCircle,
+  PenLine,
   PenSquare,
   Plus,
   Star,
@@ -29,6 +30,14 @@ const RECORD_LINKS = [
     icon: PenSquare,
     color: "text-blue-600 dark:text-blue-400",
     background: "bg-blue-100 dark:bg-blue-900/20",
+  },
+  {
+    href: "/record/transcription",
+    title: "필사하기",
+    description: "A4 손필사 · 타자 기억 필사",
+    icon: PenLine,
+    color: "text-rose-600 dark:text-rose-400",
+    background: "bg-rose-100 dark:bg-rose-900/20",
   },
   {
     href: "/record/questions",
