@@ -125,7 +125,8 @@ export default function BookDetailPageClient({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [successModalTitle, setSuccessModalTitle] = useState("")
-  const [successModalMessage, setSuccessModalMessage] = useState("")
+  const [successModalBookTitle, setSuccessModalBookTitle] = useState("")
+  const [successModalLines, setSuccessModalLines] = useState<string[]>([])
   const [isHoldUpdating, setIsHoldUpdating] = useState(false)
   const [ambientTrackId, setAmbientTrackId] = useState(
     READING_TIMER_DEFAULT_AMBIENT_ID,
@@ -674,9 +675,11 @@ export default function BookDetailPageClient({
       }
 
       setSuccessModalTitle("완독 처리 완료")
-      setSuccessModalMessage(
-        `"${book?.title}" 책을 완독한 책으로 표시했습니다. ${newRereadNumber}회독이 기록되었습니다.`,
-      )
+      setSuccessModalBookTitle(book?.title ?? "")
+      setSuccessModalLines([
+        "책을 완독한 책으로 표시했습니다.",
+        `${newRereadNumber}회독이 기록되었습니다.`,
+      ])
       setIsSuccessModalOpen(true)
     } catch (error) {
       console.error("[완독하기] 에러 발생:", error)
@@ -771,9 +774,11 @@ export default function BookDetailPageClient({
 
       // 성공 모달 표시
       setSuccessModalTitle("다시 읽기 시작")
-      setSuccessModalMessage(
-        `"${book?.title}" 책을 다시 읽기로 변경했습니다. 새로운 회독이 시작되었습니다.`
-      )
+      setSuccessModalBookTitle(book?.title ?? "")
+      setSuccessModalLines([
+        "책을 다시 읽기로 변경했습니다.",
+        "새로운 회독이 시작되었습니다.",
+      ])
       setIsSuccessModalOpen(true)
     } catch (error) {
       console.error("[다시 읽기] 에러 발생:", error)
@@ -1663,7 +1668,8 @@ export default function BookDetailPageClient({
           isOpen={isSuccessModalOpen}
           onClose={() => setIsSuccessModalOpen(false)}
           title={successModalTitle}
-          message={successModalMessage}
+          bookTitle={successModalBookTitle}
+          lines={successModalLines}
         />
 
         {/* 책 삭제 확인 모달 */}
