@@ -5,7 +5,9 @@
 export async function verifyFocusLevelIdToken(
   idToken: string,
 ): Promise<{ uid: string; email?: string } | null> {
-  const apiKey = process.env.NEXT_PUBLIC_FOCUS_LEVEL_FIREBASE_API_KEY
+  const apiKey =
+    process.env.NEXT_PUBLIC_FOCUS_LEVEL_FIREBASE_API_KEY ||
+    process.env.NEXT_PUBLIC_FOCUS_LEVEL_API_KEY
   if (!apiKey || !idToken) return null
 
   const res = await fetch(

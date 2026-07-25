@@ -12,7 +12,9 @@ const FOCUS_LEVEL_APP_NAME = "focus-level"
 
 function focusLevelFirebaseConfig() {
   return {
-    apiKey: process.env.NEXT_PUBLIC_FOCUS_LEVEL_FIREBASE_API_KEY,
+    apiKey:
+      process.env.NEXT_PUBLIC_FOCUS_LEVEL_FIREBASE_API_KEY ||
+      process.env.NEXT_PUBLIC_FOCUS_LEVEL_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FOCUS_LEVEL_AUTH_DOMAIN,
     projectId: process.env.NEXT_PUBLIC_FOCUS_LEVEL_PROJECT_ID,
     storageBucket: process.env.NEXT_PUBLIC_FOCUS_LEVEL_STORAGE_BUCKET,
