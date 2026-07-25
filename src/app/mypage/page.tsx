@@ -333,6 +333,25 @@ export default function MyPage() {
           </button>
 
           <button
+            onClick={() => router.push("/mypage/focus-level")}
+            className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
+          >
+            <div className='flex items-center gap-3'>
+              <div className='p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg'>
+                <Settings className='h-5 w-5 text-indigo-600 dark:text-indigo-400' />
+              </div>
+              <div>
+                <h3 className='font-semibold text-theme-primary mb-1'>
+                  나혼자만레벨업 연동
+                </h3>
+                <p className='text-xs text-theme-secondary'>
+                  독서 시간을 focus-level 활동에 동기화
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <button
             onClick={() => router.push("/mypage/statistics")}
             className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
           >
