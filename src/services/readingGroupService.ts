@@ -19,10 +19,12 @@ import type {
   CreateGroupReadingAttributionInput,
   CreateGroupRecordShareInput,
   CreateMeetingBookAssignmentInput,
+  CreateMeetingBookRecommendationInput,
   CreateReadingGroupInput,
   BrowsableReadingGroup,
   BrowsableReadingGroupDetail,
   GroupBook,
+  GroupCurrentMeetingSummary,
   GroupMeeting,
   GroupMember,
   GroupPost,
@@ -30,6 +32,7 @@ import type {
   GroupReadingAttribution,
   GroupRecordShare,
   MeetingBookAssignment,
+  MeetingBookRecommendation,
   MeetingRecord,
   ReadingGroup,
   UpdateGroupBookInput,
@@ -41,6 +44,7 @@ import type {
   UpdateGroupReadingAttributionInput,
   UpdateGroupRecordShareInput,
   UpdateMeetingBookAssignmentInput,
+  UpdateMeetingBookRecommendationInput,
   UpdateReadingGroupInput,
   UpsertMeetingRecordInput,
 } from "@/types/readingGroup"
@@ -51,6 +55,7 @@ const COLLECTIONS = {
   books: "readingGroupBooks",
   meetings: "readingGroupMeetings",
   assignments: "readingGroupMeetingBookAssignments",
+  recommendations: "readingGroupMeetingBookRecommendations",
   meetingRecords: "readingGroupMeetingRecords",
   posts: "readingGroupPosts",
   comments: "readingGroupPostComments",
@@ -63,6 +68,7 @@ const CASCADE_COLLECTIONS = [
   COLLECTIONS.books,
   COLLECTIONS.meetings,
   COLLECTIONS.assignments,
+  COLLECTIONS.recommendations,
   COLLECTIONS.meetingRecords,
   COLLECTIONS.posts,
   COLLECTIONS.comments,
@@ -534,6 +540,9 @@ export class ReadingGroupService {
     await batch.commit()
   }
 
+  /**
+   * 모임 책 삭제. 회차에 배정된(공식 모임 책으로 정해진) 책은 삭제할 수 없습니다.
+   */
   static async deleteGroupBook(groupBookId: string): Promise<void> {
     const groupBook = await this.requireDocument<GroupBook>(
       COLLECTIONS.books,
@@ -549,11 +558,238 @@ export class ReadingGroupService {
     )
     if (!assignments.empty) {
       throw new ApiError(
-        "회차에 연결된 책은 삭제할 수 없습니다. 먼저 연결된 회차를 수정해 주세요.",
+        "회차에 배정된 모임 책은 삭제할 수 없습니다. 함께 보면 좋은 책으로 바꾸거나, 먼저 회차 배정을 해제해 주세요.",
         "GROUP_BOOK_IN_USE",
       )
     }
     await ApiClient.deleteDocument(COLLECTIONS.books, groupBookId)
+  }
+
+  /**
+   * 모임 책을 삭제한 뒤 선택한 회차의 «함께 보면 좋은 책»으로 등록합니다.
+   * 회차 배정이 있으면 삭제와 같은 조건으로 함께 해제합니다.
+   */
+  static async convertGroupBookToRecommendation(
+    groupBookId: string,
+    input: {
+      meeting_id: string
+      recommended_by_user_id: string
+      recommended_by_display_name: string
+      note?: string
+    },
+  ): Promise<string> {
+    const groupBook = await this.requireDocument<GroupBook>(
+      COLLECTIONS.books,
+      groupBookId,
+      "그룹 책",
+    )
+    const meeting = await this.requireDocument<GroupMeeting>(
+      COLLECTIONS.meetings,
+      input.meeting_id,
+      "모임 회차",
+    )
+    if (meeting.group_id !== groupBook.group_id) {
+      throw new ApiError(
+        "회차가 해당 독서모임에 속하지 않습니다.",
+        "INVALID_GROUP_MEETING",
+      )
+    }
+    if (meeting.status === "completed") {
+      throw new ApiError(
+        "완료된 회차에는 책을 추천할 수 없습니다.",
+        "COMPLETED_MEETING_LOCKED",
+      )
+    }
+
+    const assignmentDocs = await this.getRemovableAssignmentDocsForGroupBook(
+      groupBook,
+    )
+    const existing = await this.getMeetingBookRecommendations(
+      groupBook.group_id,
+      input.meeting_id,
+    )
+    if (
+      existing.some(
+        (item) =>
+          item.canonical_book_id === groupBook.canonical_book_id &&
+          item.recommended_by_user_id === input.recommended_by_user_id,
+      )
+    ) {
+      throw new ApiError(
+        "이미 이 회차에 추천한 책입니다.",
+        "RECOMMENDATION_ALREADY_EXISTS",
+      )
+    }
+
+    const recommendationRef = doc(collection(db, COLLECTIONS.recommendations))
+    const batch = writeBatch(db)
+    assignmentDocs.forEach((assignmentDoc) => batch.delete(assignmentDoc.ref))
+    batch.delete(doc(db, COLLECTIONS.books, groupBookId))
+    const clean = (value: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(value).filter(([, item]) => item !== undefined),
+      )
+    batch.set(
+      recommendationRef,
+      clean({
+        meeting_id: input.meeting_id,
+        canonical_book_id: groupBook.canonical_book_id,
+        title: groupBook.title.trim(),
+        author: groupBook.author?.trim() || undefined,
+        cover_url: groupBook.cover_url?.trim() || undefined,
+        recommended_by_user_id: input.recommended_by_user_id,
+        recommended_by_display_name: input.recommended_by_display_name.trim(),
+        note:
+          input.note?.trim() ||
+          groupBook.selected_reason?.trim() ||
+          undefined,
+        group_id: groupBook.group_id,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+      }),
+    )
+    await batch.commit()
+    return recommendationRef.id
+  }
+
+  /**
+   * «함께 보면 좋은 책»을 모임 책장 공식 책으로 올립니다.
+   * 같은 판본이 이미 책장에 있으면 추천만 제거하고, 같은 회차의 동일 판본 추천도 함께 정리합니다.
+   */
+  static async convertRecommendationToGroupBook(
+    recommendationId: string,
+    input?: { selected_reason?: string },
+  ): Promise<string> {
+    const recommendation = await this.requireDocument<MeetingBookRecommendation>(
+      COLLECTIONS.recommendations,
+      recommendationId,
+      "추천 책",
+    )
+    const meeting = await this.requireDocument<GroupMeeting>(
+      COLLECTIONS.meetings,
+      recommendation.meeting_id,
+      "모임 회차",
+    )
+    if (meeting.status === "completed") {
+      throw new ApiError(
+        "완료된 회차의 추천은 모임 책으로 바꿀 수 없습니다.",
+        "COMPLETED_MEETING_LOCKED",
+      )
+    }
+
+    const existingBooks = await ApiClient.queryDocuments<GroupBook>(
+      COLLECTIONS.books,
+      [
+        ["group_id", "==", recommendation.group_id],
+        ["canonical_book_id", "==", recommendation.canonical_book_id],
+      ],
+      undefined,
+      "asc",
+      1,
+    )
+    const sameMeetingRecommendations = await this.getMeetingBookRecommendations(
+      recommendation.group_id,
+      recommendation.meeting_id,
+    )
+    const recommendationsToRemove = sameMeetingRecommendations.filter(
+      (item) => item.canonical_book_id === recommendation.canonical_book_id,
+    )
+
+    if (existingBooks.length > 0) {
+      if (recommendationsToRemove.length === 0) {
+        return existingBooks[0].id
+      }
+      const batch = writeBatch(db)
+      recommendationsToRemove.forEach((item) =>
+        batch.delete(doc(db, COLLECTIONS.recommendations, item.id)),
+      )
+      await batch.commit()
+      return existingBooks[0].id
+    }
+
+    const bookRef = doc(collection(db, COLLECTIONS.books))
+    const batch = writeBatch(db)
+    const clean = (value: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(value).filter(([, item]) => item !== undefined),
+      )
+    const selectedReason =
+      input?.selected_reason?.trim() ||
+      recommendation.note?.trim() ||
+      undefined
+    batch.set(
+      bookRef,
+      clean({
+        canonical_book_id: recommendation.canonical_book_id,
+        title: recommendation.title.trim(),
+        author: recommendation.author?.trim() || undefined,
+        cover_url: recommendation.cover_url?.trim() || undefined,
+        selected_reason: selectedReason,
+        status: "planned",
+        group_id: recommendation.group_id,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+      }),
+    )
+    recommendationsToRemove.forEach((item) =>
+      batch.delete(doc(db, COLLECTIONS.recommendations, item.id)),
+    )
+    await batch.commit()
+
+    try {
+      await this.syncGroupBookToMemberLibraries(
+        recommendation.group_id,
+        recommendation.canonical_book_id,
+      )
+    } catch (error) {
+      console.warn(
+        "ReadingGroupService: 추천→모임 책 전환 후 멤버 서재 동기화 실패",
+        error,
+      )
+    }
+    return bookRef.id
+  }
+
+  private static async getRemovableAssignmentDocsForGroupBook(
+    groupBook: GroupBook,
+  ) {
+    const assignments = await getDocs(
+      query(
+        collection(db, COLLECTIONS.assignments),
+        where("group_id", "==", groupBook.group_id),
+        where("group_book_id", "==", groupBook.id),
+      ),
+    )
+    if (assignments.empty) return []
+
+    for (const assignmentDoc of assignments.docs) {
+      const assignment = assignmentDoc.data() as MeetingBookAssignment
+      const meeting = await this.requireDocument<GroupMeeting>(
+        COLLECTIONS.meetings,
+        assignment.meeting_id,
+        "모임 회차",
+      )
+      if (meeting.status === "completed") {
+        throw new ApiError(
+          "완료된 회차에 배정된 책은 삭제하거나 추천으로 바꿀 수 없습니다.",
+          "COMPLETED_ASSIGNMENT_LOCKED",
+        )
+      }
+      const attributions = await getDocs(
+        query(
+          collection(db, COLLECTIONS.attributions),
+          where("group_id", "==", groupBook.group_id),
+          where("meeting_book_assignment_id", "==", assignmentDoc.id),
+        ),
+      )
+      if (!attributions.empty) {
+        throw new ApiError(
+          "누적된 독서 시간이 있는 책은 삭제하거나 추천으로 바꿀 수 없습니다.",
+          "ASSIGNMENT_HAS_READING_TIME",
+        )
+      }
+    }
+    return assignments.docs
   }
 
   static createMeeting(
@@ -578,6 +814,40 @@ export class ReadingGroupService {
       "scheduled_at",
       "asc",
     )
+  }
+
+  /** 완료·취소되지 않은 회차 중 가장 빠른 회차를 현재 진행 회차로 봅니다. */
+  static pickCurrentMeeting(
+    meetings: GroupMeeting[],
+  ): GroupMeeting | null {
+    return (
+      [...meetings]
+        .filter(
+          (meeting) =>
+            meeting.status !== "completed" &&
+            meeting.status !== "cancelled" &&
+            meeting.status !== "draft",
+        )
+        .sort((left, right) => left.sequence - right.sequence)[0] ?? null
+    )
+  }
+
+  static toCurrentMeetingSummary(
+    meeting: GroupMeeting,
+  ): GroupCurrentMeetingSummary {
+    return {
+      sequence: meeting.sequence,
+      title: meeting.title,
+      ends_at: meeting.ended_at ?? meeting.scheduled_at,
+    }
+  }
+
+  static async getGroupCurrentMeetingSummary(
+    groupId: string,
+  ): Promise<GroupCurrentMeetingSummary | null> {
+    const meetings = await this.getGroupMeetings(groupId)
+    const current = this.pickCurrentMeeting(meetings)
+    return current ? this.toCurrentMeetingSummary(current) : null
   }
 
   static getGroupMeetingBookAssignments(
@@ -711,6 +981,13 @@ export class ReadingGroupService {
         where("meeting_id", "==", meetingId),
       ),
     )
+    const recommendations = await getDocs(
+      query(
+        collection(db, COLLECTIONS.recommendations),
+        where("group_id", "==", meeting.group_id),
+        where("meeting_id", "==", meetingId),
+      ),
+    )
     const attributions = await getDocs(
       query(
         collection(db, COLLECTIONS.attributions),
@@ -724,7 +1001,7 @@ export class ReadingGroupService {
         "MEETING_HAS_READING_TIME",
       )
     }
-    if (assignments.size > 498) {
+    if (assignments.size + recommendations.size > 498) {
       throw new ApiError(
         "연결된 과제와 회차 기록이 너무 많아 단일 배치로 삭제할 수 없습니다.",
         "CASCADE_BATCH_LIMIT",
@@ -732,6 +1009,7 @@ export class ReadingGroupService {
     }
     const batch = writeBatch(db)
     assignments.docs.forEach((assignment) => batch.delete(assignment.ref))
+    recommendations.docs.forEach((item) => batch.delete(item.ref))
     // MeetingRecord의 문서 ID는 meetingId이므로 조회 없이 함께 지워도 안전합니다.
     batch.delete(doc(db, COLLECTIONS.meetingRecords, meetingId))
     batch.delete(doc(db, COLLECTIONS.meetings, meeting.id))
@@ -898,6 +1176,154 @@ export class ReadingGroupService {
       throw new ApiError("완료된 회차의 배정은 삭제할 수 없습니다.", "COMPLETED_ASSIGNMENT_LOCKED")
     }
     await ApiClient.deleteDocument(COLLECTIONS.assignments, assignmentId)
+  }
+
+  static getGroupMeetingBookRecommendations(
+    groupId: string,
+  ): Promise<MeetingBookRecommendation[]> {
+    return ApiClient.queryDocuments<MeetingBookRecommendation>(
+      COLLECTIONS.recommendations,
+      [["group_id", "==", groupId]],
+    ).then((items) =>
+      [...items].sort(
+        (left, right) =>
+          new Date(left.created_at ?? 0).getTime() -
+          new Date(right.created_at ?? 0).getTime(),
+      ),
+    )
+  }
+
+  static getMeetingBookRecommendations(
+    groupId: string,
+    meetingId: string,
+  ): Promise<MeetingBookRecommendation[]> {
+    return ApiClient.queryDocuments<MeetingBookRecommendation>(
+      COLLECTIONS.recommendations,
+      [
+        ["group_id", "==", groupId],
+        ["meeting_id", "==", meetingId],
+      ],
+    ).then((items) =>
+      [...items].sort(
+        (left, right) =>
+          new Date(left.created_at ?? 0).getTime() -
+          new Date(right.created_at ?? 0).getTime(),
+      ),
+    )
+  }
+
+  static async createMeetingBookRecommendation(
+    groupId: string,
+    input: CreateMeetingBookRecommendationInput,
+  ): Promise<string> {
+    const meeting = await this.requireDocument<GroupMeeting>(
+      COLLECTIONS.meetings,
+      input.meeting_id,
+      "모임 회차",
+    )
+    if (meeting.group_id !== groupId) {
+      throw new ApiError(
+        "회차가 해당 독서모임에 속하지 않습니다.",
+        "INVALID_GROUP_MEETING",
+      )
+    }
+    if (meeting.status === "completed") {
+      throw new ApiError(
+        "완료된 회차에는 책을 추천할 수 없습니다.",
+        "COMPLETED_MEETING_LOCKED",
+      )
+    }
+    if (!input.canonical_book_id?.trim() || !input.title?.trim()) {
+      throw new ApiError("추천할 책 정보가 올바르지 않습니다.", "INVALID_RECOMMENDATION")
+    }
+    const [assignments, existing] = await Promise.all([
+      this.getMeetingBookAssignments(groupId, input.meeting_id),
+      this.getMeetingBookRecommendations(groupId, input.meeting_id),
+    ])
+    if (
+      assignments.some(
+        (assignment) => assignment.canonical_book_id === input.canonical_book_id,
+      )
+    ) {
+      throw new ApiError(
+        "이미 이 회차의 공식 배정 책입니다.",
+        "RECOMMENDATION_IS_ASSIGNMENT",
+      )
+    }
+    if (
+      existing.some(
+        (item) =>
+          item.canonical_book_id === input.canonical_book_id &&
+          item.recommended_by_user_id === input.recommended_by_user_id,
+      )
+    ) {
+      throw new ApiError(
+        "이미 이 회차에 추천한 책입니다.",
+        "RECOMMENDATION_ALREADY_EXISTS",
+      )
+    }
+
+    return ApiClient.createDocumentWithAutoId(COLLECTIONS.recommendations, {
+      meeting_id: input.meeting_id,
+      canonical_book_id: input.canonical_book_id,
+      title: input.title.trim(),
+      ...(input.author?.trim() ? { author: input.author.trim() } : {}),
+      ...(input.cover_url?.trim() ? { cover_url: input.cover_url.trim() } : {}),
+      recommended_by_user_id: input.recommended_by_user_id,
+      recommended_by_display_name: input.recommended_by_display_name.trim(),
+      ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+      group_id: groupId,
+    })
+  }
+
+  static async updateMeetingBookRecommendation(
+    recommendationId: string,
+    requesterUserId: string,
+    input: UpdateMeetingBookRecommendationInput,
+  ): Promise<void> {
+    const recommendation = await this.requireDocument<MeetingBookRecommendation>(
+      COLLECTIONS.recommendations,
+      recommendationId,
+      "추천 책",
+    )
+    if (recommendation.recommended_by_user_id !== requesterUserId) {
+      throw new ApiError(
+        "본인이 추천한 책만 수정할 수 있습니다.",
+        "RECOMMENDATION_UPDATE_FORBIDDEN",
+      )
+    }
+    const meeting = await this.requireDocument<GroupMeeting>(
+      COLLECTIONS.meetings,
+      recommendation.meeting_id,
+      "모임 회차",
+    )
+    if (meeting.status === "completed") {
+      throw new ApiError(
+        "완료된 회차의 추천은 수정할 수 없습니다.",
+        "COMPLETED_MEETING_LOCKED",
+      )
+    }
+    await ApiClient.updateDocument(COLLECTIONS.recommendations, recommendationId, {
+      note: input.note?.trim() || undefined,
+    })
+  }
+
+  static async deleteMeetingBookRecommendation(
+    recommendationId: string,
+    requesterUserId: string,
+  ): Promise<void> {
+    const recommendation = await this.requireDocument<MeetingBookRecommendation>(
+      COLLECTIONS.recommendations,
+      recommendationId,
+      "추천 책",
+    )
+    if (recommendation.recommended_by_user_id !== requesterUserId) {
+      throw new ApiError(
+        "본인이 추천한 책만 삭제할 수 있습니다.",
+        "RECOMMENDATION_DELETE_FORBIDDEN",
+      )
+    }
+    await ApiClient.deleteDocument(COLLECTIONS.recommendations, recommendationId)
   }
 
   private static async getMeetingCompletionData(

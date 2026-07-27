@@ -123,6 +123,22 @@ export interface MeetingBookAssignment extends ReadingGroupDocument {
   notes?: string
 }
 
+/**
+ * 회차 공식 배정과 별개로, 멤버가 추천한 «함께 보면 좋은 책»입니다.
+ * 같은 회차에 같은 판본을 여러 명이 추천할 수 있습니다.
+ */
+export interface MeetingBookRecommendation extends ReadingGroupDocument {
+  group_id: string
+  meeting_id: string
+  canonical_book_id: string
+  title: string
+  author?: string
+  cover_url?: string
+  recommended_by_user_id: string
+  recommended_by_display_name: string
+  note?: string
+}
+
 export interface MeetingRecord extends ReadingGroupDocument {
   group_id: string
   meeting_id: string
@@ -201,6 +217,16 @@ export interface BrowsableReadingGroup {
   default_location?: string
   active_member_count: number
   is_member: boolean
+  /** 완료·취소되지 않은 진행(또는 예정) 회차 요약입니다. */
+  current_meeting?: GroupCurrentMeetingSummary
+}
+
+/** 목록 카드용 현재 회차 요약 */
+export interface GroupCurrentMeetingSummary {
+  sequence: number
+  title: string
+  /** 회차 종료 시각(`ended_at`, 없으면 `scheduled_at`) */
+  ends_at: string
 }
 
 export interface BrowsableGroupBook {
@@ -363,6 +389,22 @@ export type UpdateMeetingBookAssignmentInput = Partial<
     MeetingBookAssignment,
     "id" | "group_id" | "meeting_id" | "created_at" | "updated_at"
   >
+>
+
+export type CreateMeetingBookRecommendationInput = Omit<
+  MeetingBookRecommendation,
+  | "id"
+  | "group_id"
+  | "created_at"
+  | "updated_at"
+  | "recommended_by_user_id"
+  | "recommended_by_display_name"
+> & {
+  recommended_by_user_id: string
+  recommended_by_display_name: string
+}
+export type UpdateMeetingBookRecommendationInput = Partial<
+  Pick<MeetingBookRecommendation, "note">
 >
 
 export type CreateMeetingRecordInput = Omit<

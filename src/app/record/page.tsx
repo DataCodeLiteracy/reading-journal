@@ -1,11 +1,17 @@
 "use client"
 
-import { FormEvent, Suspense, useEffect, useState } from "react"
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import {
   BookOpenText,
+  CalendarDays,
   HelpCircle,
   PenLine,
   PenSquare,
@@ -19,7 +25,11 @@ import FormModalFrame from "@/components/FormModalFrame"
 import { useAuth } from "@/contexts/AuthContext"
 import { queryKeys } from "@/lib/queryKeys"
 import { ReadingGroupService } from "@/services/readingGroupService"
-import type { GroupMemberKind, ReadingGroup } from "@/types/readingGroup"
+import type {
+  GroupCurrentMeetingSummary,
+  GroupMemberKind,
+  ReadingGroup,
+} from "@/types/readingGroup"
 import { GROUP_MEMBER_KIND_LABELS } from "@/utils/groupMemberLabels"
 
 const RECORD_LINKS = [
@@ -79,6 +89,38 @@ const STATUS_LABELS: Record<ReadingGroup["status"], string> = {
   archived: "종료",
 }
 
+function formatMeetingEndsAt(value: string, timeZone: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone,
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date)
+}
+
+const groupCardMetaClass =
+  "text-xs font-medium leading-none"
+const groupCardMetaRowClass = "mt-1.5 flex items-center gap-1.5 text-xs font-medium leading-none"
+
+function GroupMeetingSummaryLine({
+  meeting,
+  timeZone,
+}: {
+  meeting?: GroupCurrentMeetingSummary
+  timeZone: string
+}) {
+  if (!meeting) return null
+  return (
+    <p className={`${groupCardMetaRowClass} text-emerald-700 dark:text-emerald-400`}>
+      <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="leading-none">
+        {meeting.sequence}회 · {formatMeetingEndsAt(meeting.ends_at, timeZone)}
+      </span>
+    </p>
+  )
+}
+
 function ActivityHubSkeleton() {
   return (
     <div className="min-h-screen bg-theme-gradient pb-24">
@@ -128,6 +170,24 @@ function ActivityHub() {
     queryFn: () => ReadingGroupService.browseGroups(),
     enabled: Boolean(userUid && view === "groups"),
   })
+
+  const myMeetingQueries = useQueries({
+    queries: (groupsQuery.data ?? []).map((group) => ({
+      queryKey: queryKeys.readingGroups.currentMeeting(group.id),
+      queryFn: () =>
+        ReadingGroupService.getGroupCurrentMeetingSummary(group.id),
+      enabled: Boolean(userUid && view === "groups"),
+      staleTime: 60_000,
+    })),
+  })
+
+  const myMeetingByGroupId = useMemo(() => {
+    const map = new Map<string, GroupCurrentMeetingSummary | null>()
+    ;(groupsQuery.data ?? []).forEach((group, index) => {
+      map.set(group.id, myMeetingQueries[index]?.data ?? null)
+    })
+    return map
+  }, [groupsQuery.data, myMeetingQueries])
 
   const joinMutation = useMutation({
     mutationFn: () =>
@@ -321,21 +381,34 @@ function ActivityHub() {
                       <p className="mb-3 line-clamp-2 text-sm text-theme-secondary">
                         {group.description || "모임 소개가 아직 없습니다."}
                       </p>
-                      <p className="text-xs text-theme-secondary">
+                      <p className={`${groupCardMetaClass} text-sky-700 dark:text-sky-400`}>
                         참여 대상:{" "}
                         {group.audience_levels.length
                           ? group.audience_levels.join(", ")
                           : "전체"}
                       </p>
-                      <p className="mt-1 flex items-center gap-1 text-xs text-theme-secondary">
-                        <Users className="h-3.5 w-3.5" aria-hidden />
-                        활동 멤버{" "}
-                        {browseQuery.isLoading
-                          ? "확인 중..."
-                          : browseById.has(group.id)
-                            ? `${browseById.get(group.id)!.active_member_count}명`
-                            : "확인 불가"}
+                      <p
+                        className={`${groupCardMetaRowClass} text-amber-700 dark:text-amber-400`}
+                      >
+                        <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span className="leading-none">
+                          활동 멤버{" "}
+                          {browseQuery.isLoading
+                            ? "확인 중..."
+                            : browseById.has(group.id)
+                              ? `${browseById.get(group.id)!.active_member_count}명`
+                              : "확인 불가"}
+                        </span>
                       </p>
+                      <GroupMeetingSummaryLine
+                        meeting={
+                          myMeetingByGroupId.get(group.id) ??
+                          browseById.get(group.id)?.current_meeting
+                        }
+                        timeZone={
+                          browseById.get(group.id)?.time_zone ?? group.time_zone
+                        }
+                      />
                     </Link>
                   ))}
                 </div>
@@ -410,16 +483,24 @@ function ActivityHub() {
                         <p className="mb-3 line-clamp-2 text-sm text-theme-secondary">
                           {group.description || "모임 소개가 아직 없습니다."}
                         </p>
-                        <p className="text-xs text-theme-secondary">
+                        <p className={`${groupCardMetaClass} text-sky-700 dark:text-sky-400`}>
                           참여 대상:{" "}
                           {group.audience_levels.length
                             ? group.audience_levels.join(", ")
                             : "전체"}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 text-xs text-theme-secondary">
-                          <Users className="h-3.5 w-3.5" aria-hidden />
-                          활동 멤버 {group.active_member_count}명
+                        <p
+                          className={`${groupCardMetaRowClass} text-amber-700 dark:text-amber-400`}
+                        >
+                          <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          <span className="leading-none">
+                            활동 멤버 {group.active_member_count}명
+                          </span>
                         </p>
+                        <GroupMeetingSummaryLine
+                          meeting={group.current_meeting}
+                          timeZone={group.time_zone}
+                        />
                       </Link>
                     ))}
                   </div>

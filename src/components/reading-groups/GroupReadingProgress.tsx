@@ -24,6 +24,7 @@ import type {
   GroupMember,
   GroupReadingAttribution,
   MeetingBookAssignment,
+  MeetingBookRecommendation,
 } from "@/types/readingGroup"
 import { resolveMemberKind } from "@/utils/groupMemberLabels"
 import {
@@ -41,6 +42,7 @@ interface GroupReadingProgressProps {
   groupId: string
   meetings: GroupMeeting[]
   assignments: MeetingBookAssignment[]
+  recommendations?: MeetingBookRecommendation[]
   books: GroupBook[]
   attributions: GroupReadingAttribution[]
   members: GroupMember[]
@@ -84,6 +86,7 @@ export default function GroupReadingProgress({
   groupId,
   meetings,
   assignments,
+  recommendations = [],
   books,
   attributions,
   members,
@@ -107,9 +110,11 @@ export default function GroupReadingProgress({
     Record<string, string>
   >({})
   const [detailMemberId, setDetailMemberId] = useState<string | null>(null)
+  const [recommendationsOpen, setRecommendationsOpen] = useState(false)
   const [timerTarget, setTimerTarget] = useState<{
     title: string
-    assignment: MeetingBookAssignment
+    canonicalBookId: string
+    readingStartAt?: string
     href?: string
     needsLibraryAdd: boolean
   } | null>(null)
@@ -471,16 +476,18 @@ export default function GroupReadingProgress({
     timeZone,
   )
 
-  const openTimerConfirm = (assignment: MeetingBookAssignment) => {
+  const openTimerConfirm = (input: {
+    title: string
+    canonicalBookId: string
+    readingStartAt?: string
+  }) => {
     if (!userUid) return
-    const groupBook = booksById.get(assignment.group_book_id)
-    const title =
-      assignment.book_title_snapshot ?? groupBook?.title ?? "이 책"
-    const ownBook = booksByCanonical.get(assignment.canonical_book_id)
+    const ownBook = booksByCanonical.get(input.canonicalBookId)
     setTimerError(null)
     setTimerTarget({
-      title,
-      assignment,
+      title: input.title,
+      canonicalBookId: input.canonicalBookId,
+      readingStartAt: input.readingStartAt,
       href: ownBook ? `/book/${ownBook.id}/${userUid}` : undefined,
       needsLibraryAdd: !ownBook,
     })
@@ -488,7 +495,8 @@ export default function GroupReadingProgress({
 
   const confirmGoToTimer = async (target: {
     title: string
-    assignment: MeetingBookAssignment
+    canonicalBookId: string
+    readingStartAt?: string
     href?: string
     needsLibraryAdd: boolean
   }) => {
@@ -499,7 +507,7 @@ export default function GroupReadingProgress({
       let href = target.href
       if (!href) {
         const canonical = await CanonicalBookService.getById(
-          target.assignment.canonical_book_id,
+          target.canonicalBookId,
         )
         if (!canonical) {
           throw new Error("공유 판본 정보를 찾을 수 없습니다.")
@@ -544,7 +552,8 @@ export default function GroupReadingProgress({
   const timerConfirmMessage = (() => {
     if (!timerTarget) return ""
     const beforePeriod =
-      nowMs < new Date(timerTarget.assignment.reading_start_at).getTime()
+      timerTarget.readingStartAt &&
+      nowMs < new Date(timerTarget.readingStartAt).getTime()
     const pre =
       beforePeriod
         ? "읽기 기간 전에 시작한 타이머는 이 회차 누적에 반영되지 않고 전체 독서 시간에만 쌓입니다.\n\n"
@@ -736,7 +745,13 @@ export default function GroupReadingProgress({
               <div className="relative z-10 mt-2">
                 <button
                   type="button"
-                  onClick={() => openTimerConfirm(assignment)}
+                  onClick={() =>
+                    openTimerConfirm({
+                      title,
+                      canonicalBookId: assignment.canonical_book_id,
+                      readingStartAt: assignment.reading_start_at,
+                    })
+                  }
                   disabled={!userUid || timerBusy}
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                 >
@@ -747,6 +762,123 @@ export default function GroupReadingProgress({
           )
         })}
       </ul>
+
+      {(() => {
+        const meetingRecommendations = recommendations.filter(
+          (item) => item.meeting_id === selectedMeeting.id,
+        )
+        if (!meetingRecommendations.length) return null
+        const grouped = new Map<
+          string,
+          {
+            canonicalBookId: string
+            title: string
+            author?: string
+            coverUrl?: string
+            recommenders: string[]
+            note?: string
+          }
+        >()
+        meetingRecommendations.forEach((item) => {
+          const existing = grouped.get(item.canonical_book_id)
+          if (existing) {
+            if (!existing.recommenders.includes(item.recommended_by_display_name)) {
+              existing.recommenders.push(item.recommended_by_display_name)
+            }
+            return
+          }
+          grouped.set(item.canonical_book_id, {
+            canonicalBookId: item.canonical_book_id,
+            title: item.title,
+            author: item.author,
+            coverUrl: item.cover_url,
+            recommenders: [item.recommended_by_display_name],
+            note: item.note,
+          })
+        })
+        const groupedList = [...grouped.values()]
+        return (
+          <div className={sectionGap}>
+            <button
+              type="button"
+              onClick={() => setRecommendationsOpen((open) => !open)}
+              className="flex w-full items-center justify-between gap-3 rounded-lg bg-theme-secondary px-3 py-2.5 text-left transition-colors hover:bg-theme-primary/5"
+              aria-expanded={recommendationsOpen}
+            >
+              <span>
+                <span className="block text-sm font-semibold text-theme-primary">
+                  함께 보면 좋은 책
+                </span>
+                <span className="mt-0.5 block text-xs text-theme-secondary">
+                  멤버 추천 {groupedList.length}권
+                </span>
+              </span>
+              <span className="text-xs font-medium text-accent-theme">
+                {recommendationsOpen ? "접기" : "펼치기"}
+              </span>
+            </button>
+            {recommendationsOpen && (
+              <ul className="mt-2 space-y-2">
+                {groupedList.map((item) => (
+                  <li
+                    key={item.canonicalBookId}
+                    className="rounded-lg bg-theme-secondary p-3"
+                  >
+                    <div className="flex gap-3">
+                      <div className="relative h-20 w-[3.4rem] shrink-0 overflow-hidden rounded-md bg-theme-tertiary shadow-sm">
+                        {item.coverUrl ? (
+                          <Image
+                            src={item.coverUrl}
+                            alt={`${item.title} 표지`}
+                            fill
+                            sizes="54px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-theme-secondary">
+                            <BookOpen className="h-5 w-5" aria-hidden />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 font-semibold text-theme-primary">
+                          {item.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-sm text-theme-secondary">
+                          {item.author || "저자 미상"}
+                        </p>
+                        <p className="mt-2 text-xs text-theme-secondary">
+                          추천 · {item.recommenders.join(", ")}
+                        </p>
+                        {item.note && (
+                          <p className="mt-1 line-clamp-2 text-xs text-theme-secondary">
+                            {item.note}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openTimerConfirm({
+                          title: item.title,
+                          canonicalBookId: item.canonicalBookId,
+                          readingStartAt: periodAssignment.reading_start_at,
+                        })
+                      }
+                      disabled={!userUid || timerBusy}
+                      className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
+                    >
+                      {isGuardian ? "자녀 읽어주러 가기" : "타이머 시작"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+      })()}
 
       <h3 className={`${sectionGap} text-sm font-semibold text-theme-primary`}>
         참여자별 누적 순위
@@ -798,51 +930,49 @@ export default function GroupReadingProgress({
         </p>
       )}
 
-      <h3 className={`${sectionGap} text-sm font-semibold text-theme-primary`}>
-        보호자 · 읽어준 시간
-      </h3>
-      <p className="mt-1 text-xs text-theme-secondary">
-        보호자를 누르면 책별로 얼마나 읽어줬는지 볼 수 있습니다.
-      </p>
-      {guardianRankings.length ? (
-        <ul className="mt-2 space-y-2">
-          {guardianRankings.map((ranking) => (
-            <li key={ranking.id}>
-              <button
-                type="button"
-                onClick={() => setDetailMemberId(ranking.id)}
-                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg bg-theme-secondary px-3 py-2 text-left transition-colors hover:bg-theme-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-theme"
-                aria-label={`${ranking.name} 책별 읽어준 시간 보기`}
-              >
-                <span className="min-w-0">
-                  <span className="flex min-w-0 items-center gap-2 text-sm text-theme-primary">
-                    <GroupMemberName
-                      name={ranking.name}
-                      isOwner={ranking.isOwner}
-                      nameClassName="truncate font-medium text-theme-primary"
-                    />
+      {guardianRankings.length > 0 && (
+        <>
+          <h3 className={`${sectionGap} text-sm font-semibold text-theme-primary`}>
+            보호자 · 읽어준 시간
+          </h3>
+          <p className="mt-1 text-xs text-theme-secondary">
+            보호자를 누르면 책별로 얼마나 읽어줬는지 볼 수 있습니다.
+          </p>
+          <ul className="mt-2 space-y-2">
+            {guardianRankings.map((ranking) => (
+              <li key={ranking.id}>
+                <button
+                  type="button"
+                  onClick={() => setDetailMemberId(ranking.id)}
+                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg bg-theme-secondary px-3 py-2 text-left transition-colors hover:bg-theme-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-theme"
+                  aria-label={`${ranking.name} 책별 읽어준 시간 보기`}
+                >
+                  <span className="min-w-0">
+                    <span className="flex min-w-0 items-center gap-2 text-sm text-theme-primary">
+                      <GroupMemberName
+                        name={ranking.name}
+                        isOwner={ranking.isOwner}
+                        nameClassName="truncate font-medium text-theme-primary"
+                      />
+                    </span>
+                    {ranking.readsForName ? (
+                      <span className="mt-0.5 block truncate text-[11px] text-theme-secondary">
+                        → {ranking.readsForName}에게 읽어줌
+                      </span>
+                    ) : (
+                      <span className="mt-0.5 block truncate text-[11px] text-theme-tertiary">
+                        연결된 자녀 없음
+                      </span>
+                    )}
                   </span>
-                  {ranking.readsForName ? (
-                    <span className="mt-0.5 block truncate text-[11px] text-theme-secondary">
-                      → {ranking.readsForName}에게 읽어줌
-                    </span>
-                  ) : (
-                    <span className="mt-0.5 block truncate text-[11px] text-theme-tertiary">
-                      연결된 자녀 없음
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 text-sm font-semibold text-theme-primary">
-                  {formatDuration(ranking.seconds)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-2 text-sm text-theme-secondary">
-          등록된 보호자가 없습니다.
-        </p>
+                  <span className="shrink-0 text-sm font-semibold text-theme-primary">
+                    {formatDuration(ranking.seconds)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <FormModalFrame

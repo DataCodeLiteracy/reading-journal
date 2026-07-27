@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react"
+import ConfirmModal from "@/components/ConfirmModal"
 import {
   FormDatePicker,
   FormTimePicker,
@@ -172,6 +173,11 @@ export default function GroupSchedulePanel({
   const [phaseNow, setPhaseNow] = useState(() => new Date())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [confirmIntent, setConfirmIntent] = useState<
+    | { type: "delete"; meeting: GroupMeeting }
+    | { type: "complete"; meeting: GroupMeeting }
+    | null
+  >(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setPhaseNow(new Date()), 60_000)
@@ -322,35 +328,39 @@ export default function GroupSchedulePanel({
     }
   }
 
-  const removeMeeting = async (meeting: GroupMeeting) => {
-    if (!window.confirm(`${meeting.sequence}회차와 연결된 책 과제를 삭제할까요?`)) return
+  const removeMeeting = (meeting: GroupMeeting) => {
+    setConfirmIntent({ type: "delete", meeting })
+  }
+
+  const executeRemoveMeeting = async (meeting: GroupMeeting) => {
     setBusy(true)
     setError("")
     try {
       await ReadingGroupService.deleteMeeting(meeting.id)
       await onChangedAction()
+      setConfirmIntent(null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "회차를 삭제하지 못했습니다.")
+      setConfirmIntent(null)
     } finally {
       setBusy(false)
     }
   }
 
-  const completeMeeting = async (meeting: GroupMeeting) => {
-    if (
-      !window.confirm(
-        `${meeting.sequence}회차를 완료할까요?\n예정 날짜 전이라도 실제 오프라인 모임이 끝났다면 완료할 수 있으며, 배정 책도 완료 상태로 확정됩니다.`,
-      )
-    ) {
-      return
-    }
+  const completeMeeting = (meeting: GroupMeeting) => {
+    setConfirmIntent({ type: "complete", meeting })
+  }
+
+  const executeCompleteMeeting = async (meeting: GroupMeeting) => {
     setBusy(true)
     setError("")
     try {
       await ReadingGroupService.completeMeeting(meeting.id)
       await onChangedAction()
+      setConfirmIntent(null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "회차를 완료하지 못했습니다.")
+      setConfirmIntent(null)
     } finally {
       setBusy(false)
     }
@@ -778,6 +788,60 @@ export default function GroupSchedulePanel({
           </div>
         </form>
       </FormModalFrame>
+
+      <ConfirmModal
+        isOpen={Boolean(confirmIntent)}
+        onClose={() => {
+          if (busy) return
+          setConfirmIntent(null)
+        }}
+        onConfirm={() => {
+          if (!confirmIntent || busy) return
+          if (confirmIntent.type === "delete") {
+            void executeRemoveMeeting(confirmIntent.meeting)
+            return
+          }
+          void executeCompleteMeeting(confirmIntent.meeting)
+        }}
+        title={
+          confirmIntent?.type === "complete" ? "회차 완료" : "회차 삭제"
+        }
+        message={
+          confirmIntent?.type === "complete"
+            ? `${confirmIntent.meeting.sequence}회차를 완료할까요?\n예정 날짜 전이라도 실제 오프라인 모임이 끝났다면 완료할 수 있으며, 배정 책도 완료 상태로 확정됩니다.`
+            : confirmIntent
+              ? `${confirmIntent.meeting.sequence}회차와 연결된 책 과제를 삭제할까요?`
+              : ""
+        }
+        confirmText={
+          busy
+            ? "처리 중…"
+            : confirmIntent?.type === "complete"
+              ? "완료하기"
+              : "삭제"
+        }
+        cancelText="취소"
+        icon={confirmIntent?.type === "complete" ? CheckCircle2 : Trash2}
+        iconColor={
+          confirmIntent?.type === "complete"
+            ? "text-accent-theme"
+            : "text-red-500"
+        }
+        iconBgColor={
+          confirmIntent?.type === "complete"
+            ? "bg-accent-theme/15"
+            : "bg-red-100 dark:bg-red-900/20"
+        }
+        confirmButtonColor={
+          confirmIntent?.type === "complete" ? "bg-accent-theme" : "bg-red-500"
+        }
+        confirmButtonHoverColor={
+          confirmIntent?.type === "complete"
+            ? "hover:bg-accent-theme-secondary"
+            : "hover:bg-red-600"
+        }
+        showSubtitle={confirmIntent?.type !== "complete"}
+      />
     </div>
   )
 }

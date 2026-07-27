@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus, Trash2 } from "lucide-react"
+import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
 import Select, { type SelectOption } from "@/components/Select"
 import { queryKeys } from "@/lib/queryKeys"
@@ -73,6 +74,9 @@ export default function GroupRecordSharesPanel({
   const [note, setNote] = useState("")
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<GroupRecordShare | null>(
+    null,
+  )
 
   const sharesQuery = useQuery({
     queryKey: queryKeys.readingGroups.recordShares(groupId),
@@ -224,15 +228,20 @@ export default function GroupRecordSharesPanel({
     }
   }
 
-  const remove = async (shareItem: GroupRecordShare) => {
-    if (!window.confirm("이 공유 기록을 그룹에서 삭제할까요?")) return
+  const remove = (shareItem: GroupRecordShare) => {
+    setPendingDelete(shareItem)
+  }
+
+  const executeRemove = async (shareItem: GroupRecordShare) => {
     setBusy(true)
     setError("")
     try {
       await ReadingGroupService.deleteRecordShare(shareItem.id)
       await refresh()
+      setPendingDelete(null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "공유 기록을 삭제하지 못했습니다.")
+      setPendingDelete(null)
     } finally {
       setBusy(false)
     }
@@ -411,6 +420,23 @@ export default function GroupRecordSharesPanel({
           </div>
         </form>
       </FormModalFrame>
+
+      <ConfirmModal
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (busy) return
+          setPendingDelete(null)
+        }}
+        onConfirm={() => {
+          if (!pendingDelete || busy) return
+          void executeRemove(pendingDelete)
+        }}
+        title="공유 기록 삭제"
+        message="이 공유 기록을 그룹에서 삭제할까요?"
+        confirmText={busy ? "삭제 중…" : "삭제"}
+        cancelText="취소"
+        icon={Trash2}
+      />
     </div>
   )
 }

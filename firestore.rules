@@ -610,6 +610,41 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/readingGroupMeetings/$(resource.data.meeting_id)).data.status != "completed";
     }
 
+    match /readingGroupMeetingBookRecommendations/{recommendationId} {
+      allow read: if isActiveGroupMember(resource.data.group_id);
+      allow create: if isActiveGroupMember(request.resource.data.group_id)
+        && request.resource.data.recommended_by_user_id == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          "group_id",
+          "meeting_id",
+          "canonical_book_id",
+          "title",
+          "recommended_by_user_id",
+          "recommended_by_display_name",
+        ])
+        && exists(/databases/$(database)/documents/readingGroupMeetings/$(request.resource.data.meeting_id))
+        && get(/databases/$(database)/documents/readingGroupMeetings/$(request.resource.data.meeting_id)).data.group_id
+          == request.resource.data.group_id
+        && get(/databases/$(database)/documents/readingGroupMeetings/$(request.resource.data.meeting_id)).data.status
+          != "completed";
+      allow update: if isActiveGroupMember(resource.data.group_id)
+        && resource.data.recommended_by_user_id == request.auth.uid
+        && request.resource.data.group_id == resource.data.group_id
+        && request.resource.data.meeting_id == resource.data.meeting_id
+        && request.resource.data.canonical_book_id == resource.data.canonical_book_id
+        && request.resource.data.recommended_by_user_id == resource.data.recommended_by_user_id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "note",
+          "updated_at"
+        ]);
+      allow delete: if isActiveGroupMember(resource.data.group_id)
+        && (
+          // 본인 추천 삭제, 또는 owner가 모임 책 승격 시 같은 회차 동일 판본 정리
+          resource.data.recommended_by_user_id == request.auth.uid
+          || isGroupOwner(resource.data.group_id)
+        );
+    }
+
     match /readingGroupMeetingRecords/{recordId} {
       allow read: if isActiveGroupMember(resource.data.group_id)
         || (

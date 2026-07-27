@@ -85,6 +85,7 @@ function safeGroup(
   data: FirebaseFirestore.DocumentData,
   activeMemberCount: number,
   isMember: boolean,
+  currentMeeting?: BrowsableReadingGroup["current_meeting"],
 ): BrowsableReadingGroup {
   return {
     id,
@@ -106,7 +107,30 @@ function safeGroup(
       : {}),
     active_member_count: activeMemberCount,
     is_member: isMember,
+    ...(currentMeeting ? { current_meeting: currentMeeting } : {}),
   }
+}
+
+function meetingSummaryFromDoc(
+  data: FirebaseFirestore.DocumentData,
+): BrowsableReadingGroup["current_meeting"] | undefined {
+  const status = optionalString(data.status)
+  if (
+    !status ||
+    status === "completed" ||
+    status === "cancelled" ||
+    status === "draft"
+  ) {
+    return undefined
+  }
+  const sequence =
+    typeof data.sequence === "number" && Number.isFinite(data.sequence)
+      ? data.sequence
+      : null
+  const title = optionalString(data.title)
+  const endsAt = isoString(data.ended_at) ?? isoString(data.scheduled_at)
+  if (sequence === null || !title || !endsAt) return undefined
+  return { sequence, title, ends_at: endsAt }
 }
 
 function safeBook(
@@ -255,9 +279,33 @@ export async function GET(request: Request) {
         .where("status", "in", ["active", "paused"])
         .get()
       const groupIds = groupSnapshot.docs.map((document) => document.id)
-      const { activeCounts, memberGroupIds } = groupIds.length
-        ? await getMembershipSummary(groupIds, verified.uid)
-        : { activeCounts: new Map<string, number>(), memberGroupIds: new Set<string>() }
+      const [{ activeCounts, memberGroupIds }, openMeetingsSnapshot] =
+        await Promise.all([
+          groupIds.length
+            ? getMembershipSummary(groupIds, verified.uid)
+            : Promise.resolve({
+                activeCounts: new Map<string, number>(),
+                memberGroupIds: new Set<string>(),
+              }),
+          db
+            .collection("readingGroupMeetings")
+            .where("status", "in", ["scheduled", "in_progress"])
+            .get(),
+        ])
+      const currentMeetingByGroup = new Map<
+        string,
+        NonNullable<BrowsableReadingGroup["current_meeting"]>
+      >()
+      openMeetingsSnapshot.docs.forEach((document) => {
+        const data = document.data()
+        const meetingGroupId = optionalString(data.group_id)
+        const summary = meetingSummaryFromDoc(data)
+        if (!meetingGroupId || !summary) return
+        const existing = currentMeetingByGroup.get(meetingGroupId)
+        if (!existing || summary.sequence < existing.sequence) {
+          currentMeetingByGroup.set(meetingGroupId, summary)
+        }
+      })
       const groups = groupSnapshot.docs
         .map((document) =>
           safeGroup(
@@ -265,6 +313,7 @@ export async function GET(request: Request) {
             document.data(),
             activeCounts.get(document.id) ?? 0,
             memberGroupIds.has(document.id),
+            currentMeetingByGroup.get(document.id),
           ),
         )
         .sort(

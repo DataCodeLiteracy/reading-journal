@@ -193,8 +193,17 @@ export function FormDatePicker({
             </button>
           </div>
           <div className="grid grid-cols-7 text-center">
-            {WEEKDAYS.map((weekday) => (
-              <span key={weekday} className="py-1 text-xs font-medium text-theme-secondary">
+            {WEEKDAYS.map((weekday, weekdayIndex) => (
+              <span
+                key={weekday}
+                className={`py-1 text-xs font-medium ${
+                  weekdayIndex === 0
+                    ? "text-red-500/80"
+                    : weekdayIndex === 6
+                      ? "text-blue-500/80"
+                      : "text-theme-secondary"
+                }`}
+              >
                 {weekday}
               </span>
             ))}
@@ -207,6 +216,11 @@ export function FormDatePicker({
               ].join("-")
               const selected = dateKey === value
               const isToday = dateKey === localDateKey(today)
+              const weekday = new Date(
+                visibleMonth.year,
+                visibleMonth.month,
+                day,
+              ).getDay()
               return (
                 <button
                   key={dateKey}
@@ -219,7 +233,11 @@ export function FormDatePicker({
                       ? "bg-accent-theme font-semibold text-white"
                       : isToday
                         ? "border border-theme-secondary font-semibold text-accent-theme"
-                        : "text-theme-primary hover:bg-theme-tertiary"
+                        : weekday === 0
+                          ? "text-red-500 hover:bg-theme-tertiary"
+                          : weekday === 6
+                            ? "text-blue-500 hover:bg-theme-tertiary"
+                            : "text-theme-primary hover:bg-theme-tertiary"
                   }`}
                 >
                   {day}

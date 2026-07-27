@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Pencil, Trash2, UserMinus, UserPlus } from "lucide-react"
+import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
@@ -99,6 +100,11 @@ export default function GroupInfoPanel({
   const [userDisplayNames, setUserDisplayNames] = useState<Record<string, string>>({})
   const [memberActionError, setMemberActionError] = useState("")
   const [busyMemberId, setBusyMemberId] = useState<string | null>(null)
+  const [confirmIntent, setConfirmIntent] = useState<
+    | { type: "transfer"; member: GroupMember }
+    | { type: "remove-member"; member: GroupMember }
+    | null
+  >(null)
 
   useEffect(() => {
     if (!settingsOpen) setGroupForm(groupToForm(group))
@@ -260,24 +266,24 @@ export default function GroupInfoPanel({
       })),
   ]
 
-  const transferOwnership = async (member: GroupMember) => {
+  const transferOwnership = (member: GroupMember) => {
     if (!member.user_id || member.user_id === group.owner_user_id) return
-    if (
-      !window.confirm(
-        `${memberLabel(member)}님에게 모임장 역할을 넘길까요?\n넘기면 지금부터 그분이 모임장을 맡게 됩니다.`,
-      )
-    ) {
-      return
-    }
+    setConfirmIntent({ type: "transfer", member })
+  }
+
+  const executeTransferOwnership = async (member: GroupMember) => {
+    if (!member.user_id) return
     setBusyMemberId(member.id)
     setMemberActionError("")
     try {
       await ReadingGroupService.transferOwnership(group.id, member.user_id)
       await refreshGroupQueries()
+      setConfirmIntent(null)
     } catch (error) {
       setMemberActionError(
         errorMessage(error, "모임장 역할을 넘기지 못했습니다."),
       )
+      setConfirmIntent(null)
     } finally {
       setBusyMemberId(null)
     }
@@ -341,8 +347,7 @@ export default function GroupInfoPanel({
 
   const removeMember = (member: GroupMember) => {
     if (member.user_id === group.owner_user_id || member.user_id === currentUserId) return
-    if (!window.confirm(`${memberLabel(member)} 멤버를 모임에서 제거할까요?`)) return
-    removeMemberMutation.mutate(member.id)
+    setConfirmIntent({ type: "remove-member", member })
   }
 
   const settingsError =
@@ -851,6 +856,62 @@ export default function GroupInfoPanel({
           </div>
         </div>
       </FormModalFrame>
+
+      <ConfirmModal
+        isOpen={Boolean(confirmIntent)}
+        onClose={() => {
+          if (busyMemberId || removeMemberMutation.isPending) return
+          setConfirmIntent(null)
+        }}
+        onConfirm={() => {
+          if (!confirmIntent) return
+          if (confirmIntent.type === "transfer") {
+            void executeTransferOwnership(confirmIntent.member)
+            return
+          }
+          removeMemberMutation.mutate(confirmIntent.member.id, {
+            onSettled: () => setConfirmIntent(null),
+          })
+        }}
+        title={
+          confirmIntent?.type === "transfer" ? "모임장 넘기기" : "멤버 제거"
+        }
+        message={
+          confirmIntent?.type === "transfer"
+            ? `${memberLabel(confirmIntent.member)}님에게 모임장 역할을 넘길까요?\n넘기면 지금부터 그분이 모임장을 맡게 됩니다.`
+            : confirmIntent
+              ? `${memberLabel(confirmIntent.member)} 멤버를 모임에서 제거할까요?`
+              : ""
+        }
+        confirmText={
+          busyMemberId || removeMemberMutation.isPending
+            ? "처리 중…"
+            : confirmIntent?.type === "transfer"
+              ? "넘기기"
+              : "제거"
+        }
+        cancelText="취소"
+        icon={confirmIntent?.type === "transfer" ? UserPlus : UserMinus}
+        iconColor={
+          confirmIntent?.type === "transfer"
+            ? "text-accent-theme"
+            : "text-red-500"
+        }
+        iconBgColor={
+          confirmIntent?.type === "transfer"
+            ? "bg-accent-theme/15"
+            : "bg-red-100 dark:bg-red-900/20"
+        }
+        confirmButtonColor={
+          confirmIntent?.type === "transfer" ? "bg-accent-theme" : "bg-red-500"
+        }
+        confirmButtonHoverColor={
+          confirmIntent?.type === "transfer"
+            ? "hover:bg-accent-theme-secondary"
+            : "hover:bg-red-600"
+        }
+        showSubtitle
+      />
     </div>
   )
 }

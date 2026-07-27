@@ -129,6 +129,8 @@ export const queryKeys = {
     },
     mine: (uid: string | null | undefined) =>
       ["readingGroups", "mine", uid] as const,
+    currentMeeting: (groupId: string) =>
+      ["readingGroups", groupId, "currentMeeting"] as const,
     detail: (groupId: string) =>
       ["readingGroups", "detail", groupId] as const,
     /** 독서 노트 페이지용 (모임 상세와 queryFn 결과가 달라 키를 분리) */
@@ -142,6 +144,8 @@ export const queryKeys = {
       ["readingGroups", groupId, "meetings"] as const,
     assignments: (meetingId: string) =>
       ["readingGroups", "meetings", meetingId, "assignments"] as const,
+    recommendations: (groupId: string) =>
+      ["readingGroups", groupId, "recommendations"] as const,
     meetingRecord: (meetingId: string) =>
       ["readingGroups", "meetings", meetingId, "record"] as const,
     meetingRecords: (groupId: string) =>

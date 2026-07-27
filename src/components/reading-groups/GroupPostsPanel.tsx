@@ -11,6 +11,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react"
+import ConfirmModal from "@/components/ConfirmModal"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
@@ -118,6 +119,9 @@ function CommentsSection({
   const [editing, setEditing] = useState<GroupPostComment | null>(null)
   const [editingContent, setEditingContent] = useState("")
   const [error, setError] = useState("")
+  const [pendingDelete, setPendingDelete] = useState<GroupPostComment | null>(
+    null,
+  )
   const commentsQuery = useQuery({
     queryKey: queryKeys.readingGroups.comments(postId),
     queryFn: () => ReadingGroupService.getPostComments(groupId, postId),
@@ -181,13 +185,18 @@ function CommentsSection({
     }
   }
 
-  const removeComment = async (comment: GroupPostComment) => {
-    if (!window.confirm("댓글을 삭제할까요?")) return
+  const removeComment = (comment: GroupPostComment) => {
+    setPendingDelete(comment)
+  }
+
+  const executeRemoveComment = async (comment: GroupPostComment) => {
     setError("")
     try {
       await deleteMutation.mutateAsync(comment.id)
+      setPendingDelete(null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "댓글을 삭제하지 못했습니다.")
+      setPendingDelete(null)
     }
   }
 
@@ -322,6 +331,22 @@ function CommentsSection({
           {error}
         </p>
       )}
+      <ConfirmModal
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (deleteMutation.isPending) return
+          setPendingDelete(null)
+        }}
+        onConfirm={() => {
+          if (!pendingDelete || deleteMutation.isPending) return
+          void executeRemoveComment(pendingDelete)
+        }}
+        title="댓글 삭제"
+        message="댓글을 삭제할까요?"
+        confirmText={deleteMutation.isPending ? "삭제 중…" : "삭제"}
+        cancelText="취소"
+        icon={Trash2}
+      />
     </section>
   )
 }
@@ -342,6 +367,9 @@ export default function GroupPostsPanel({
   const [draft, setDraft] = useState<PostDraft>(() => newDraft(isOwner))
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
+  const [pendingDeletePost, setPendingDeletePost] = useState<GroupPost | null>(
+    null,
+  )
 
   const postsQuery = useQuery({
     queryKey: queryKeys.readingGroups.posts(groupId),
@@ -443,8 +471,11 @@ export default function GroupPostsPanel({
     }
   }
 
-  const removePost = async (post: GroupPost) => {
-    if (!window.confirm(`‘${post.title}’ 게시물을 삭제할까요?`)) return
+  const removePost = (post: GroupPost) => {
+    setPendingDeletePost(post)
+  }
+
+  const executeRemovePost = async (post: GroupPost) => {
     setBusy(true)
     setError("")
     try {
@@ -455,8 +486,10 @@ export default function GroupPostsPanel({
         return next
       })
       await refreshPosts()
+      setPendingDeletePost(null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "게시물을 삭제하지 못했습니다.")
+      setPendingDeletePost(null)
     } finally {
       setBusy(false)
     }
@@ -730,6 +763,27 @@ export default function GroupPostsPanel({
           </div>
         </form>
       </FormModalFrame>
+
+      <ConfirmModal
+        isOpen={Boolean(pendingDeletePost)}
+        onClose={() => {
+          if (busy) return
+          setPendingDeletePost(null)
+        }}
+        onConfirm={() => {
+          if (!pendingDeletePost || busy) return
+          void executeRemovePost(pendingDeletePost)
+        }}
+        title="게시물 삭제"
+        message={
+          pendingDeletePost
+            ? `‘${pendingDeletePost.title}’ 게시물을 삭제할까요?`
+            : ""
+        }
+        confirmText={busy ? "삭제 중…" : "삭제"}
+        cancelText="취소"
+        icon={Trash2}
+      />
     </div>
   )
 }

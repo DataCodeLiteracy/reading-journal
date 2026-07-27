@@ -218,6 +218,7 @@ export default function ReadingGroupDetailPage() {
         books,
         meetings,
         assignments,
+        recommendations,
         meetingRecords,
         posts,
         attributions,
@@ -226,6 +227,7 @@ export default function ReadingGroupDetailPage() {
         ReadingGroupService.getGroupBooks(groupId),
         ReadingGroupService.getGroupMeetings(groupId),
         ReadingGroupService.getGroupMeetingBookAssignments(groupId),
+        ReadingGroupService.getGroupMeetingBookRecommendations(groupId),
         ReadingGroupService.getGroupMeetingRecords(groupId),
         ReadingGroupService.getGroupPosts(groupId),
         ReadingGroupService.getGroupReadingAttributions(groupId),
@@ -237,6 +239,7 @@ export default function ReadingGroupDetailPage() {
         books,
         meetings,
         assignments,
+        recommendations,
         meetingRecords,
         posts,
         attributions,
@@ -313,6 +316,7 @@ export default function ReadingGroupDetailPage() {
     books,
     meetings,
     assignments,
+    recommendations,
     meetingRecords,
     posts,
     attributions,
@@ -461,6 +465,7 @@ export default function ReadingGroupDetailPage() {
                   groupId={groupId}
                   meetings={meetings}
                   assignments={assignments}
+                  recommendations={recommendations}
                   books={books}
                   attributions={attributions}
                   members={members}
@@ -498,9 +503,11 @@ export default function ReadingGroupDetailPage() {
               books={books}
               meetings={meetings}
               assignments={assignments}
+              recommendations={recommendations}
               timeZone={group.time_zone}
               isOwner={isOwner}
               userUid={userUid}
+              displayName={displayName}
               memberKind={membership.member_kind}
               onChangedAction={detailQuery.refetch}
             />
@@ -512,6 +519,7 @@ export default function ReadingGroupDetailPage() {
                 groupId={groupId}
                 meetings={meetings}
                 assignments={assignments}
+                recommendations={recommendations}
                 books={books}
                 attributions={attributions}
                 members={members}

@@ -290,6 +290,7 @@ Firestore Console에서 다음 복합 인덱스를 생성해야 합니다:
 - `readingGroupBooks`: 모임 선정 도서
 - `readingGroupMeetings`: 모임 회차
 - `readingGroupMeetingBookAssignments`: 회차별 읽기 과제
+- `readingGroupMeetingBookRecommendations`: 회차별 «함께 보면 좋은 책»(멤버 추천)
 - `readingGroupMeetingRecords`: 회차 기록
 - `readingGroupPosts`: 운영 문서와 회원 게시물
 - `readingGroupPostComments`: 회원 게시물 댓글
@@ -302,6 +303,7 @@ Firestore Console에서 다음 복합 인덱스를 생성해야 합니다:
 - `readingGroups.owner_user_id`인 owner만 모임 구조, 멤버, 도서, 회차, 과제, 회차 기록과 운영 문서(`announcement`, `group_rule`, `reading_method`, `discussion_rule`)를 생성·수정·삭제할 수 있습니다.
 - `status == "active"`인 membership을 가진 사용자는 해당 모임 데이터를 읽을 수 있습니다.
 - active member는 `member_post`와 댓글을 만들 수 있습니다. 작성자만 자기 글·댓글을 수정할 수 있으며, owner는 moderation 목적으로 삭제만 할 수 있고 다른 회원 글을 수정할 수 없습니다.
+- active member는 완료되지 않은 회차에 «함께 보면 좋은 책»을 추천할 수 있습니다. 추천자 본인은 추천 이유(`note`)를 수정·삭제할 수 있습니다. owner는 다른 멤버 추천을 포함해 모임 책장 공식 책으로 올릴 수 있으며(같은 회차 동일 판본 추천 정리), 추천 단독 삭제는 본인 것만 가능합니다.
 - 기록 공유는 active member가 본인 명의로 만들고 수정·삭제합니다. owner는 moderation 삭제가 가능합니다.
 - 독서 귀속은 본인의 `readingSessions` 문서에 대해서만 만들 수 있습니다. membership이 active여야 하며, 과제·회차·그룹 도서의 `group_id`와 귀속 문서의 `group_id`가 모두 일치해야 합니다. 수정 시 `group_id`, `reading_session_id`, `user_id`, 표시 이름, canonical book ID는 바꿀 수 없습니다. 일반 삭제는 해당 사용자만 가능하고, owner가 모임 문서도 같은 atomic batch에서 삭제하는 cascade에 한해 owner 삭제를 허용합니다.
 - owner membership은 모임 문서와 같은 batch에서 생성할 수 있도록 Rules의 `getAfter()`로 새 모임의 owner를 확인합니다.
@@ -324,4 +326,5 @@ Firestore Console에서 다음 복합 인덱스를 생성해야 합니다:
 - 중단을 실행한 사용자가 해당 판본을 개인 서재에 보유한 경우 본인 소유 세션은 즉시 재동기화합니다. 다른 멤버의 기존 귀속은 권한을 우회해 일괄 수정하지 않으며, 이후 해당 멤버 세션이 수정·재동기화될 때 중단 경계가 반영됩니다.
 - 완료 batch는 회차를 `completed`로 바꾸고 회차에 속한 모든 assignment에 `completed_at`, `book_title_snapshot`, 선택적 `book_author_snapshot`/`book_cover_url_snapshot`을 저장합니다. 정상 진행 책은 `completed`가 되며, 이미 `paused`로 중단된 책은 중단 상태를 보존합니다. 완료된 회차의 assignment는 이후 수정·삭제하지 않습니다.
 - 기존 assignment에 스냅샷이 없으면 화면과 공개 API는 현재 `readingGroupBooks`의 제목·저자·표지를 fallback으로 사용합니다.
+- `readingGroupMeetingBookRecommendations`는 회차 공식 배정과 별개입니다. 멤버가 같은 회차에 참고로 읽으면 좋은 책을 추천하며, 동일 판본을 여러 명이 각각 추천할 수 있습니다. 공식 배정 판본과 같은 책은 추천할 수 없습니다. owner는 추천을 모임 책장 공식 책으로 올릴 수 있으며, 이때 같은 회차의 동일 판본 추천은 함께 정리됩니다. 보호자(`member_kind: guardian`) 관련 진행 UI는 모임에 보호자가 있을 때만 표시합니다.
 
