@@ -118,12 +118,27 @@ export default function GroupReadingProgress({
     { member_kind: memberKind, member_roles: memberRoles },
     "guardian",
   )
+  const isParticipantRole = memberHasRole(
+    { member_kind: memberKind, member_roles: memberRoles },
+    "participant",
+  )
   const preferReadAloud = hasLinkedChildren || (canGuardian && isGuardianRole)
-  const goReadLabel = preferReadAloud ? "자녀 읽어주러 가기" : "타이머 페이지로 이동"
+  const canChooseMode = preferReadAloud && (isParticipantRole || hasLinkedChildren)
+  const goReadLabel = preferReadAloud
+    ? canChooseMode
+      ? "읽기 시작"
+      : "자녀 읽어주러 가기"
+    : "타이머 페이지로 이동"
   const goReadConfirmText = preferReadAloud
-    ? "서재 추가 후 읽어주러 가기"
+    ? canChooseMode
+      ? "서재 추가 후 읽기 시작"
+      : "서재 추가 후 읽어주러 가기"
     : "서재 추가 후 이동"
-  const goReadConfirmReady = preferReadAloud ? "읽어주러 가기" : "이동하기"
+  const goReadConfirmReady = preferReadAloud
+    ? canChooseMode
+      ? "읽기 시작"
+      : "읽어주러 가기"
+    : "이동하기"
   const nowMs = Date.now()
   const [userDisplayNames, setUserDisplayNames] = useState<
     Record<string, string>
@@ -415,6 +430,17 @@ export default function GroupReadingProgress({
       ),
     )
   }
+  /** 읽어주기 세션 귀속만 (혼자 읽기는 보호자 「읽어준 시간」에서 제외) */
+  const isReadAloudAttribution = (item: GroupReadingAttribution) => {
+    if (item.reading_mode === "read_aloud") return true
+    if (item.reading_mode === "self") return false
+    // reading_mode 없는 예전 문서: 같은 세션이 여러 유저에게 귀속되면 읽어주기로 간주
+    return selectedAttributions.some(
+      (other) =>
+        other.reading_session_id === item.reading_session_id &&
+        other.user_id !== item.user_id,
+    )
+  }
   const totalSeconds = (() => {
     // 보호자→자녀 이중 귀속 시 같은 세션이 두 줄로 잡히므로 세션·배정 단위로 한 번만 합산
     const seen = new Set<string>()
@@ -427,13 +453,74 @@ export default function GroupReadingProgress({
     }
     return total
   })()
-  const totalsByUser = new Map<string, number>()
+  const guardianUserIds = new Set(
+    activeMembers
+      .filter((member) => memberHasRole(member, "guardian") && member.user_id)
+      .map((member) => member.user_id!),
+  )
+  /**
+   * 참여자 순위:
+   * - 혼자 읽기(self) → 본인 참여자 집계
+   * - 읽어주기 → 보호자 본인 시간은 제외(보호자 집계로), 자녀에게 귀속된 시간은 포함
+   */
+  const participantTotalsByUser = new Map<string, number>()
   selectedAttributions.forEach((item) => {
-    totalsByUser.set(
+    if (
+      isReadAloudAttribution(item) &&
+      guardianUserIds.has(item.user_id)
+    ) {
+      return
+    }
+    participantTotalsByUser.set(
       item.user_id,
-      (totalsByUser.get(item.user_id) ?? 0) + displayedSeconds(item),
+      (participantTotalsByUser.get(item.user_id) ?? 0) + displayedSeconds(item),
     )
   })
+  const readAloudTotalsByUser = new Map<string, number>()
+  selectedAttributions.forEach((item) => {
+    if (!isReadAloudAttribution(item)) return
+    // 보호자 「읽어준 시간」은 보호자 본인 귀속만
+    if (!guardianUserIds.has(item.user_id)) return
+    readAloudTotalsByUser.set(
+      item.user_id,
+      (readAloudTotalsByUser.get(item.user_id) ?? 0) + displayedSeconds(item),
+    )
+  })
+  const childNamesForGuardian = (guardianUserId: string) => {
+    const names = new Set<string>()
+    const readAloudSessionIds = new Set(
+      selectedAttributions
+        .filter(
+          (item) =>
+            item.user_id === guardianUserId && isReadAloudAttribution(item),
+        )
+        .map((item) => item.reading_session_id),
+    )
+    for (const item of selectedAttributions) {
+      if (
+        readAloudSessionIds.has(item.reading_session_id) &&
+        item.user_id !== guardianUserId
+      ) {
+        names.add(item.user_display_name)
+      }
+    }
+    const guardianMember = activeMembers.find(
+      (member) => member.user_id === guardianUserId,
+    )
+    if (guardianMember?.reads_for_user_id) {
+      const child = activeMembers.find(
+        (member) => member.user_id === guardianMember.reads_for_user_id,
+      )
+      if (child) {
+        names.add(
+          (child.user_id ? userDisplayNames[child.user_id] : "") ||
+            child.display_name,
+        )
+      }
+    }
+    if (names.size === 0) return null
+    return [...names].join(", ")
+  }
   const rankings = activeMembers
     .filter((member) => memberHasRole(member, "participant"))
     .map((member) => ({
@@ -443,7 +530,7 @@ export default function GroupReadingProgress({
         (member.user_id ? userDisplayNames[member.user_id] : "") ||
         member.display_name,
       isOwner: member.role === "owner",
-      seconds: totalsByUser.get(member.user_id!) ?? 0,
+      seconds: participantTotalsByUser.get(member.user_id!) ?? 0,
       rereadCount: memberRereadQuery.data?.[member.user_id!] ?? 0,
       kind: "participant" as const,
       readsForName: null as string | null,
@@ -462,10 +549,10 @@ export default function GroupReadingProgress({
           (member.user_id ? userDisplayNames[member.user_id] : "") ||
           member.display_name,
         isOwner: member.role === "owner",
-        seconds: totalsByUser.get(member.user_id!) ?? 0,
+        seconds: readAloudTotalsByUser.get(member.user_id!) ?? 0,
         rereadCount: 0,
         kind: "guardian" as const,
-        readsForName: null as string | null,
+        readsForName: childNamesForGuardian(member.user_id!),
       }
     })
     .sort(
@@ -572,11 +659,19 @@ export default function GroupReadingProgress({
         : ""
     if (timerTarget.needsLibraryAdd) {
       return `${pre}『${timerTarget.title}』을(를) 내 서재에 추가한 뒤 ${
-        preferReadAloud ? "자녀 읽어주기" : "타이머"
+        preferReadAloud
+          ? canChooseMode
+            ? "읽기"
+            : "자녀 읽어주기"
+          : "타이머"
       } 페이지로 이동할까요?`
     }
     return `${pre}『${timerTarget.title}』 ${
-      preferReadAloud ? "자녀 읽어주기" : "타이머(책 상세)"
+      preferReadAloud
+        ? canChooseMode
+          ? "읽기"
+          : "자녀 읽어주기"
+        : "타이머(책 상세)"
     } 페이지로 이동할까요?`
   })()
   const selectedStoppedDate = periodAssignment.stopped_at
@@ -767,7 +862,11 @@ export default function GroupReadingProgress({
                   disabled={!userUid || timerBusy}
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                 >
-                  {preferReadAloud ? "자녀 읽어주러 가기" : "타이머 시작"}
+                  {preferReadAloud
+                    ? canChooseMode
+                      ? "읽기 시작"
+                      : "자녀 읽어주러 가기"
+                    : "타이머 시작"}
                 </button>
               </div>
             </li>
@@ -882,7 +981,11 @@ export default function GroupReadingProgress({
                       disabled={!userUid || timerBusy}
                       className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                     >
-                      {preferReadAloud ? "자녀 읽어주러 가기" : "타이머 시작"}
+                      {preferReadAloud
+                    ? canChooseMode
+                      ? "읽기 시작"
+                      : "자녀 읽어주러 가기"
+                    : "타이머 시작"}
                     </button>
                   </li>
                 ))}
@@ -897,7 +1000,8 @@ export default function GroupReadingProgress({
       </h3>
       <p className="mt-1 text-xs text-theme-secondary">
         참여자를 누르면 책별 독서 시간을 볼 수 있습니다. 회독은 이 회차 책의
-        완독 횟수 합계입니다. 보호자가 읽어준 시간은 연결된 자녀에게도
+        완독 횟수 합계입니다. 혼자 읽은 시간은 참여자 집계에, 읽어준 시간은
+        보호자 집계에 들어가며, 자녀에게 귀속된 읽어주기 시간은 참여자 순위에
         반영됩니다.
       </p>
       {rankings.length ? (
@@ -1027,11 +1131,25 @@ export default function GroupReadingProgress({
                 const author =
                   assignment.book_author_snapshot ?? book?.author ?? "저자 미상"
                 const bookSeconds = selectedAttributions
-                  .filter(
-                    (item) =>
-                      item.meeting_book_assignment_id === assignment.id &&
-                      item.user_id === detailRanking.userId,
-                  )
+                  .filter((item) => {
+                    if (
+                      item.meeting_book_assignment_id !== assignment.id ||
+                      item.user_id !== detailRanking.userId
+                    ) {
+                      return false
+                    }
+                    if (detailIsGuardian) {
+                      return isReadAloudAttribution(item)
+                    }
+                    // 참여자 상세: 보호자 본인의 읽어주기 시간은 제외
+                    if (
+                      isReadAloudAttribution(item) &&
+                      guardianUserIds.has(item.user_id)
+                    ) {
+                      return false
+                    }
+                    return true
+                  })
                   .reduce((total, item) => total + displayedSeconds(item), 0)
                 return (
                   <li

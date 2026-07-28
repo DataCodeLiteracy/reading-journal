@@ -109,8 +109,10 @@ export async function POST(request: Request) {
       .where("status", "==", "active")
       .get()
 
+    const readingMode =
+      session.reading_mode === "read_aloud" ? "read_aloud" : "self"
     const segments =
-      session.reading_mode === "read_aloud" &&
+      readingMode === "read_aloud" &&
       Array.isArray(session.read_aloud_segments)
         ? session.read_aloud_segments
         : []
@@ -250,6 +252,7 @@ export async function POST(request: Request) {
               session_start_at: session.startTime,
               session_end_at: session.endTime,
               counted_seconds: credit.seconds,
+              reading_mode: readingMode,
               attributed_at: attributedAt,
               created_at: FieldValue.serverTimestamp(),
               updated_at: FieldValue.serverTimestamp(),

@@ -208,6 +208,8 @@ export interface GroupReadingAttribution extends ReadingGroupDocument {
   session_end_at: string
   counted_seconds: number
   attributed_at: string
+  /** 원본 세션 모드. 없으면 self로 취급(보호자 「읽어준 시간」 집계에서 제외) */
+  reading_mode?: "self" | "read_aloud"
 }
 
 /** 인증된 비회원에게도 노출할 수 있도록 서버에서 허용 필드만 구성한 타입입니다. */

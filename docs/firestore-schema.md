@@ -310,7 +310,7 @@ Firestore Console에서 다음 복합 인덱스를 생성해야 합니다:
 - `readingGroupPosts`: 운영 문서와 회원 게시물
 - `readingGroupPostComments`: 회원 게시물 댓글
 - `readingGroupRecordShares`: 모임에 공유한 개인 기록
-- `readingGroupReadingAttributions`: 개인 독서 세션을 모임 과제에 귀속한 기록
+- `readingGroupReadingAttributions`: 개인 독서 세션을 모임 과제에 귀속한 기록. `reading_mode`(`self`/`read_aloud`)로 원본 세션 모드를 남겨 보호자 「읽어준 시간」과 참여자 누적을 구분합니다.
 
 ### 권한 요약
 
