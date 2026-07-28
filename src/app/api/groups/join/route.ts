@@ -4,6 +4,42 @@ import { getAdminFirestore } from "@/lib/firebaseAdmin"
 import { syncGroupBooksToUser } from "@/lib/groupLibrarySyncAdmin"
 import { verifyFirebaseIdToken } from "@/lib/verifyFirebaseIdToken"
 
+type RoleOption = "participant" | "guardian" | "both"
+
+function rolesFromBody(body: {
+  memberKind?: string
+  memberRoles?: string[]
+  roleOption?: string
+}): { roles: ("participant" | "guardian")[]; legacyKind: "participant" | "guardian" } {
+  const option = (body.roleOption || body.memberKind || "participant") as RoleOption
+  if (Array.isArray(body.memberRoles) && body.memberRoles.length > 0) {
+    const roles = [
+      ...new Set(
+        body.memberRoles.filter(
+          (role): role is "participant" | "guardian" =>
+            role === "participant" || role === "guardian",
+        ),
+      ),
+    ]
+    if (roles.length > 0) {
+      return {
+        roles,
+        legacyKind:
+          roles.includes("guardian") && !roles.includes("participant")
+            ? "guardian"
+            : "participant",
+      }
+    }
+  }
+  if (option === "both") {
+    return { roles: ["participant", "guardian"], legacyKind: "participant" }
+  }
+  if (option === "guardian") {
+    return { roles: ["guardian"], legacyKind: "guardian" }
+  }
+  return { roles: ["participant"], legacyKind: "participant" }
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -11,6 +47,8 @@ export async function POST(request: Request) {
       inviteCode?: string
       displayName?: string
       memberKind?: string
+      memberRoles?: string[]
+      roleOption?: string
       readsForUserId?: string
     }
     const verified = await verifyFirebaseIdToken(body.idToken ?? "")
@@ -20,10 +58,9 @@ export async function POST(request: Request) {
 
     const inviteCode = body.inviteCode?.trim().toUpperCase()
     const displayName = body.displayName?.trim()
-    const memberKind =
-      body.memberKind === "guardian" ? "guardian" : "participant"
+    const { roles, legacyKind } = rolesFromBody(body)
     const readsForUserId =
-      memberKind === "guardian" ? body.readsForUserId?.trim() || null : null
+      legacyKind === "guardian" ? body.readsForUserId?.trim() || null : null
     if (!inviteCode || !displayName) {
       return NextResponse.json(
         { error: "초대 코드와 표시 이름을 입력해주세요." },
@@ -59,7 +96,8 @@ export async function POST(request: Request) {
           user_id: verified.uid,
           display_name: displayName,
           role: "member",
-          member_kind: memberKind,
+          member_kind: legacyKind,
+          member_roles: roles,
           status: "active",
           joined_at: now,
           updated_at: FieldValue.serverTimestamp(),

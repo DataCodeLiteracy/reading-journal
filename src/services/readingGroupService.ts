@@ -139,6 +139,7 @@ export class ReadingGroupService {
       display_name: ownerDisplayName.trim(),
       role: "owner",
       member_kind: "participant",
+      member_roles: ["participant"],
       status: "active",
       joined_at: nowIso,
       created_at: serverTimestamp(),
@@ -218,7 +219,7 @@ export class ReadingGroupService {
     inviteCode: string,
     userId: string,
     displayName: string,
-    memberKind: "participant" | "guardian" = "participant",
+    roleOption: "participant" | "guardian" | "both" = "participant",
     readsForUserId?: string,
   ): Promise<ReadingGroup> {
     if (!userId) throw new ApiError("로그인이 필요합니다.", "AUTH_REQUIRED")
@@ -230,7 +231,8 @@ export class ReadingGroupService {
         idToken,
         inviteCode,
         displayName,
-        memberKind,
+        roleOption,
+        memberKind: roleOption === "both" ? "participant" : roleOption,
         ...(readsForUserId ? { readsForUserId } : {}),
       }),
     })
@@ -352,6 +354,11 @@ export class ReadingGroupService {
       display_name: input.display_name.trim(),
       group_id: groupId,
       member_kind: input.member_kind ?? "participant",
+      member_roles:
+        input.member_roles ??
+        (input.member_kind === "guardian"
+          ? (["guardian"] as const)
+          : (["participant"] as const)),
     }
     if (input.user_id) {
       const id = `${groupId}__${input.user_id}`

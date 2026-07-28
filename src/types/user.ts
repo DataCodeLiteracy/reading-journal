@@ -16,6 +16,11 @@ export interface User {
   bio?: string | null
   /** 거주 지역 (예: 서울, 경기) */
   region?: string | null
+  /**
+   * 자녀로 연결될 때 보호자가 입력하는 코드.
+   * 없으면 프로필/자녀 페이지에서 발급합니다.
+   */
+  child_invite_code?: string | null
   lastLoginAt: Date
   isActive: boolean
   isAdmin?: boolean
@@ -34,6 +39,19 @@ export interface ReadingSession {
   user_id: string
   bookId: string
   source?: "timer" | "manual"
+  /** 기본 self. 읽어주기는 read_aloud */
+  reading_mode?: "self" | "read_aloud"
+  /**
+   * 읽어주기 세션의 자녀 구간 스냅샷.
+   * 구간마다 선택된 자녀가 다를 수 있으며, 자녀별 개인 세션 복제에 사용합니다.
+   */
+  read_aloud_segments?: Array<{
+    child_user_ids: string[]
+    startTime: string
+    endTime: string
+  }>
+  /** 자녀에게 복제된 세션이 가리키는 보호자 원본 세션 */
+  read_aloud_parent_session_id?: string
   startTime: string
   endTime: string
   duration: number

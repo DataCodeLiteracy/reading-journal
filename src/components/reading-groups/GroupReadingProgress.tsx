@@ -26,7 +26,8 @@ import type {
   MeetingBookAssignment,
   MeetingBookRecommendation,
 } from "@/types/readingGroup"
-import { resolveMemberKind } from "@/utils/groupMemberLabels"
+import { memberHasRole } from "@/utils/groupMemberLabels"
+import { canLinkChildren } from "@/utils/koreanAge"
 import {
   groupDateKey,
   inclusiveReadingDateRange,
@@ -48,6 +49,7 @@ interface GroupReadingProgressProps {
   members: GroupMember[]
   timeZone?: string
   memberKind?: "participant" | "guardian"
+  memberRoles?: GroupMember["member_roles"]
   onRefetch?: () => void | Promise<unknown>
   isRefreshing?: boolean
   compact?: boolean
@@ -92,19 +94,36 @@ export default function GroupReadingProgress({
   members,
   timeZone = "Asia/Seoul",
   memberKind,
+  memberRoles,
   onRefetch,
   isRefreshing = false,
   compact = false,
 }: GroupReadingProgressProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { userUid } = useAuth()
-  const isGuardian = resolveMemberKind({ member_kind: memberKind }) === "guardian"
-  const goReadLabel = isGuardian ? "자녀 읽어주러 가기" : "타이머 페이지로 이동"
-  const goReadConfirmText = isGuardian
+  const { userUid, userData } = useAuth()
+  const canGuardian = canLinkChildren(userData?.birthYear)
+  const childrenQuery = useQuery({
+    queryKey: queryKeys.guardian.children(userUid),
+    queryFn: () =>
+      import("@/services/guardianChildService").then(({ GuardianChildService }) =>
+        GuardianChildService.listChildren(userUid!),
+      ),
+    enabled: Boolean(userUid) && canGuardian,
+    staleTime: 60_000,
+  })
+  const hasLinkedChildren =
+    canGuardian && (childrenQuery.data?.length ?? 0) > 0
+  const isGuardianRole = memberHasRole(
+    { member_kind: memberKind, member_roles: memberRoles },
+    "guardian",
+  )
+  const preferReadAloud = hasLinkedChildren || (canGuardian && isGuardianRole)
+  const goReadLabel = preferReadAloud ? "자녀 읽어주러 가기" : "타이머 페이지로 이동"
+  const goReadConfirmText = preferReadAloud
     ? "서재 추가 후 읽어주러 가기"
     : "서재 추가 후 이동"
-  const goReadConfirmReady = isGuardian ? "읽어주러 가기" : "이동하기"
+  const goReadConfirmReady = preferReadAloud ? "읽어주러 가기" : "이동하기"
   const nowMs = Date.now()
   const [userDisplayNames, setUserDisplayNames] = useState<
     Record<string, string>
@@ -416,7 +435,7 @@ export default function GroupReadingProgress({
     )
   })
   const rankings = activeMembers
-    .filter((member) => resolveMemberKind(member) === "participant")
+    .filter((member) => memberHasRole(member, "participant"))
     .map((member) => ({
       id: member.id,
       userId: member.user_id!,
@@ -434,17 +453,10 @@ export default function GroupReadingProgress({
         right.seconds - left.seconds || left.name.localeCompare(right.name, "ko"),
     )
   const guardianRankings = activeMembers
-    .filter((member) => resolveMemberKind(member) === "guardian")
+    .filter((member) => memberHasRole(member, "guardian"))
     .map((member) => {
-      const child = member.reads_for_user_id
-        ? activeMembers.find((m) => m.user_id === member.reads_for_user_id)
-        : undefined
-      const childName = child
-        ? (child.user_id ? userDisplayNames[child.user_id] : "") ||
-          child.display_name
-        : null
       return {
-        id: member.id,
+        id: `${member.id}__guardian`,
         userId: member.user_id!,
         name:
           (member.user_id ? userDisplayNames[member.user_id] : "") ||
@@ -453,7 +465,7 @@ export default function GroupReadingProgress({
         seconds: totalsByUser.get(member.user_id!) ?? 0,
         rereadCount: 0,
         kind: "guardian" as const,
-        readsForName: childName,
+        readsForName: null as string | null,
       }
     })
     .sort(
@@ -560,11 +572,11 @@ export default function GroupReadingProgress({
         : ""
     if (timerTarget.needsLibraryAdd) {
       return `${pre}『${timerTarget.title}』을(를) 내 서재에 추가한 뒤 ${
-        isGuardian ? "자녀 읽어주기" : "타이머"
+        preferReadAloud ? "자녀 읽어주기" : "타이머"
       } 페이지로 이동할까요?`
     }
     return `${pre}『${timerTarget.title}』 ${
-      isGuardian ? "자녀 읽어주기" : "타이머(책 상세)"
+      preferReadAloud ? "자녀 읽어주기" : "타이머(책 상세)"
     } 페이지로 이동할까요?`
   })()
   const selectedStoppedDate = periodAssignment.stopped_at
@@ -755,7 +767,7 @@ export default function GroupReadingProgress({
                   disabled={!userUid || timerBusy}
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                 >
-                  {isGuardian ? "자녀 읽어주러 가기" : "타이머 시작"}
+                  {preferReadAloud ? "자녀 읽어주러 가기" : "타이머 시작"}
                 </button>
               </div>
             </li>
@@ -870,7 +882,7 @@ export default function GroupReadingProgress({
                       disabled={!userUid || timerBusy}
                       className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-accent-theme px-3 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                     >
-                      {isGuardian ? "자녀 읽어주러 가기" : "타이머 시작"}
+                      {preferReadAloud ? "자녀 읽어주러 가기" : "타이머 시작"}
                     </button>
                   </li>
                 ))}

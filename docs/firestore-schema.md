@@ -14,6 +14,17 @@
   - `lastLoginAt`: Timestamp
   - `isActive`: boolean
   - `isAdmin`: boolean (optional)
+  - `child_invite_code`: string (optional) - 나를 자녀로 연결할 때 쓰는 초대 코드
+  - `created_at`: Timestamp
+  - `updated_at`: Timestamp
+
+### guardianChildLinks
+- 문서 ID: `{guardian_user_id}__{child_user_id}`
+- 앱 전역 보호자↔자녀 연결 (모임과 무관)
+- 필드:
+  - `guardian_user_id`: string
+  - `child_user_id`: string
+  - `child_display_name`: string
   - `created_at`: Timestamp
   - `updated_at`: Timestamp
 
@@ -43,6 +54,10 @@
   - `id`: string
   - `user_id`: string
   - `bookId`: string
+  - `source`: "timer" | "manual" (optional)
+  - `reading_mode`: "self" | "read_aloud" (optional, 기본 self)
+  - `read_aloud_segments`: array (optional) - `{ child_user_ids, startTime, endTime }` 구간 스냅샷
+  - `read_aloud_parent_session_id`: string (optional) - 자녀 복제 세션이 가리키는 보호자 원본
   - `startTime`: string (ISO format)
   - `endTime`: string (ISO format)
   - `duration`: number (초 단위)
@@ -286,7 +301,7 @@ Firestore Console에서 다음 복합 인덱스를 생성해야 합니다:
 독서모임 데이터는 모두 루트 컬렉션으로 저장하며, 관련 문서는 `group_id`로 연결합니다.
 
 - `readingGroups`: 모임 기본 정보, owner, 초대코드
-- `readingGroupMembers`: 멤버와 owner membership (`{group_id}__{user_id}` ID 사용). `role`은 권한(`owner`/`member`), `member_kind`는 참여 유형(`participant` 참여자 / `guardian` 보호자)입니다. 없으면 참여자로 취급합니다.
+- `readingGroupMembers`: 멤버와 owner membership (`{group_id}__{user_id}` ID 사용). `role`은 권한(`owner`/`member`), `member_roles`는 참여 역할 배열(`participant` / `guardian`, 복수 가능). `member_kind`·`reads_for_user_id`는 마이그레이션 호환용(deprecated). 역할이 없으면 참여자로 취급합니다.
 - `readingGroupBooks`: 모임 선정 도서
 - `readingGroupMeetings`: 모임 회차
 - `readingGroupMeetingBookAssignments`: 회차별 읽기 과제

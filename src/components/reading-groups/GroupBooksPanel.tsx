@@ -37,7 +37,7 @@ import {
   groupDateKey,
   inclusiveReadingDateRange,
 } from "@/utils/readingGroupDates"
-import { resolveMemberKind } from "@/utils/groupMemberLabels"
+import { memberHasRole } from "@/utils/groupMemberLabels"
 import { groupReadingNotesPath } from "@/utils/groupReadingNotesUrl"
 
 type Props = {
@@ -51,6 +51,7 @@ type Props = {
   userUid: string
   displayName: string
   memberKind?: "participant" | "guardian"
+  memberRoles?: ("participant" | "guardian")[]
   onChangedAction: () => void | Promise<unknown>
 }
 
@@ -128,11 +129,15 @@ export default function GroupBooksPanel({
   userUid,
   displayName,
   memberKind,
+  memberRoles,
   onChangedAction,
 }: Props) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const isGuardian = resolveMemberKind({ member_kind: memberKind }) === "guardian"
+  const isGuardian = memberHasRole(
+    { member_kind: memberKind, member_roles: memberRoles },
+    "guardian",
+  )
   const goReadConfirmText = isGuardian ? "읽어주러 가기" : "책 상세로 이동"
   const [addOpen, setAddOpen] = useState(false)
   const [addMode, setAddMode] = useState<AddBookMode>(

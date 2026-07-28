@@ -310,6 +310,23 @@ service cloud.firestore {
       allow delete: if isSelf(resource.data.user_id);
     }
 
+    match /guardianChildLinks/{linkId} {
+      allow read: if signedIn()
+        && (
+          resource.data.guardian_user_id == request.auth.uid
+          || resource.data.child_user_id == request.auth.uid
+          || isAdmin()
+        );
+      allow create: if false;
+      allow update: if false;
+      allow delete: if signedIn()
+        && (
+          resource.data.guardian_user_id == request.auth.uid
+          || resource.data.child_user_id == request.auth.uid
+          || isAdmin()
+        );
+    }
+
     match /userStatistics/{userId} {
       allow read: if isSelf(userId) || resource.data.isProfilePublic == true;
       allow create, update: if isSelf(userId)

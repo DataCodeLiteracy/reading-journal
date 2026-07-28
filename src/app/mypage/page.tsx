@@ -20,6 +20,7 @@ import {
   Bell,
   Target,
   Check,
+  Users,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
@@ -31,12 +32,14 @@ import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
 import { UserStatisticsService } from "@/services/userStatisticsService"
 import { MyPageHomeSkeleton } from "@/components/skeletons"
+import { canLinkChildren } from "@/utils/koreanAge"
 
 export default function MyPage() {
   const router = useRouter()
   const { user, userData, loading, isLoggedIn, userUid, signOut } = useAuth()
   const { allBooks, userStatistics, isLoading, refreshAllData } = useData()
   const { settings, updateSettings } = useSettings()
+  const showChildrenLink = canLinkChildren(userData?.birthYear)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false)
@@ -314,6 +317,27 @@ export default function MyPage() {
               </div>
             </div>
           </button>
+
+          {showChildrenLink && (
+            <button
+              onClick={() => router.push("/mypage/children")}
+              className='bg-theme-secondary rounded-lg p-4 shadow-sm border-card hover:shadow-md transition-shadow text-left'
+            >
+              <div className='flex items-center gap-3'>
+                <div className='p-2 bg-amber-100 dark:bg-amber-900/20 rounded-lg'>
+                  <Users className='h-5 w-5 text-amber-700 dark:text-amber-400' />
+                </div>
+                <div>
+                  <h3 className='font-semibold text-theme-primary mb-1'>
+                    자녀 연결
+                  </h3>
+                  <p className='text-xs text-theme-secondary'>
+                    읽어주기용 자녀 계정 연결·관리
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
 
           <button
             onClick={() => router.push("/mypage/settings")}

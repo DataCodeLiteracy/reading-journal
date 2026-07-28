@@ -471,6 +471,7 @@ export default function ReadingGroupDetailPage() {
                   members={members}
                   timeZone={group.time_zone}
                   memberKind={membership.member_kind}
+                  memberRoles={membership.member_roles}
                   onRefetch={detailQuery.refetch}
                   isRefreshing={detailQuery.isFetching}
                 />
@@ -509,6 +510,7 @@ export default function ReadingGroupDetailPage() {
               userUid={userUid}
               displayName={displayName}
               memberKind={membership.member_kind}
+              memberRoles={membership.member_roles}
               onChangedAction={detailQuery.refetch}
             />
           )}
@@ -525,6 +527,7 @@ export default function ReadingGroupDetailPage() {
                 members={members}
                 timeZone={group.time_zone}
                 memberKind={membership.member_kind}
+                memberRoles={membership.member_roles}
                 onRefetch={detailQuery.refetch}
                 isRefreshing={detailQuery.isFetching}
                 compact

@@ -185,4 +185,8 @@ export const queryKeys = {
     canonicalTocOutlines: (groupId: string, idsKey: string) =>
       ["readingGroups", groupId, "canonicalTocOutlines", idsKey] as const,
   },
+  guardian: {
+    children: (uid: string | null | undefined) =>
+      ["guardian", "children", uid] as const,
+  },
 } as const

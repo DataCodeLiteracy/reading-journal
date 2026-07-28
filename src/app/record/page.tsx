@@ -27,10 +27,12 @@ import { queryKeys } from "@/lib/queryKeys"
 import { ReadingGroupService } from "@/services/readingGroupService"
 import type {
   GroupCurrentMeetingSummary,
-  GroupMemberKind,
   ReadingGroup,
 } from "@/types/readingGroup"
-import { GROUP_MEMBER_KIND_LABELS } from "@/utils/groupMemberLabels"
+import {
+  GROUP_MEMBER_ROLE_OPTION_LABELS,
+  type GroupMemberRoleOption,
+} from "@/utils/groupMemberLabels"
 
 const RECORD_LINKS = [
   {
@@ -149,8 +151,8 @@ function ActivityHub() {
   const { isLoggedIn, loading, user, userData, userUid } = useAuth()
   const [isJoinOpen, setIsJoinOpen] = useState(false)
   const [inviteCode, setInviteCode] = useState("")
-  const [joinMemberKind, setJoinMemberKind] =
-    useState<GroupMemberKind>("participant")
+  const [joinRoleOption, setJoinRoleOption] =
+    useState<GroupMemberRoleOption>("participant")
   const view = searchParams.get("view") === "groups" ? "groups" : "records"
 
   useEffect(() => {
@@ -198,7 +200,7 @@ function ActivityHub() {
           user?.displayName?.trim() ||
           user?.email?.split("@")[0] ||
           "모임원",
-        joinMemberKind,
+        joinRoleOption,
       ),
     onSuccess: async (group) => {
       await queryClient.invalidateQueries({
@@ -209,7 +211,7 @@ function ActivityHub() {
       })
       setIsJoinOpen(false)
       setInviteCode("")
-      setJoinMemberKind("participant")
+      setJoinRoleOption("participant")
       router.push(`/groups/${group.id}`)
     },
   })
@@ -540,42 +542,44 @@ function ActivityHub() {
               <legend className="mb-2 text-sm font-medium text-theme-primary">
                 참여 유형
               </legend>
-              <label className="flex cursor-pointer gap-3 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3">
-                <input
-                  type="radio"
-                  name="join-member-kind"
-                  value="participant"
-                  checked={joinMemberKind === "participant"}
-                  onChange={() => setJoinMemberKind("participant")}
-                  className="mt-1"
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-theme-primary">
-                    {GROUP_MEMBER_KIND_LABELS.participant}
+              {(
+                [
+                  {
+                    value: "participant" as const,
+                    hint: "직접 책을 읽고 회차 독서에 참여합니다.",
+                  },
+                  {
+                    value: "guardian" as const,
+                    hint: "자녀에게 읽어주며 보호자로 참여합니다.",
+                  },
+                  {
+                    value: "both" as const,
+                    hint: "직접 읽기와 읽어주기를 모두 합니다. 두 순위표에 표시됩니다.",
+                  },
+                ] as const
+              ).map((option) => (
+                <label
+                  key={option.value}
+                  className="flex cursor-pointer gap-3 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3"
+                >
+                  <input
+                    type="radio"
+                    name="join-member-role"
+                    value={option.value}
+                    checked={joinRoleOption === option.value}
+                    onChange={() => setJoinRoleOption(option.value)}
+                    className="mt-1"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-theme-primary">
+                      {GROUP_MEMBER_ROLE_OPTION_LABELS[option.value]}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-theme-secondary">
+                      {option.hint}
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-xs text-theme-secondary">
-                    직접 책을 읽고 회차 독서에 참여합니다.
-                  </span>
-                </span>
-              </label>
-              <label className="flex cursor-pointer gap-3 rounded-lg border border-theme-tertiary bg-theme-tertiary/40 p-3">
-                <input
-                  type="radio"
-                  name="join-member-kind"
-                  value="guardian"
-                  checked={joinMemberKind === "guardian"}
-                  onChange={() => setJoinMemberKind("guardian")}
-                  className="mt-1"
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-theme-primary">
-                    {GROUP_MEMBER_KIND_LABELS.guardian}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-theme-secondary">
-                    학부모 등 함께 보지만, 직접 읽지는 않는 역할입니다.
-                  </span>
-                </span>
-              </label>
+                </label>
+              ))}
             </fieldset>
 
             {joinMutation.isError && (
@@ -588,7 +592,7 @@ function ActivityHub() {
                 type="button"
                 onClick={() => {
                   setIsJoinOpen(false)
-                  setJoinMemberKind("participant")
+                  setJoinRoleOption("participant")
                 }}
                 disabled={joinMutation.isPending}
                 className="rounded-lg bg-theme-tertiary px-4 py-2 text-sm font-medium text-theme-primary disabled:opacity-50"

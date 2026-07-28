@@ -12,6 +12,8 @@ import {
   Save,
   Check,
   Users,
+  Link2,
+  Copy,
 } from "lucide-react"
 import { updateProfile } from "firebase/auth"
 import { auth } from "@/lib/firebase"
@@ -25,6 +27,7 @@ import {
 } from "@/utils/koreanAge"
 import { formatKoreanMobilePhone, formatKoreanMobilePhoneInput } from "@/utils/phoneFormat"
 import { SettingsPageSkeleton } from "@/components/skeletons"
+import { GuardianChildService } from "@/services/guardianChildService"
 
 const GENDER_OPTIONS: SelectOption<UserGender | "">[] = [
   { value: "", label: "선택 안 함" },
@@ -52,6 +55,10 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+  const [inviteCode, setInviteCode] = useState<string | null>(null)
+  const [inviteBusy, setInviteBusy] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteCopied, setInviteCopied] = useState(false)
 
   const birthYearSelectOptions = useMemo<SelectOption<string>[]>(
     () => [
@@ -82,7 +89,37 @@ export default function ProfilePage() {
     setGender(userData.gender ?? "")
     setRegion(userData.region?.trim() ?? "")
     setBio(userData.bio?.trim() ?? "")
+    setInviteCode(userData.child_invite_code?.trim() || null)
   }, [userData])
+
+  const ensureInviteCode = async () => {
+    setInviteBusy(true)
+    setInviteError(null)
+    try {
+      const code = await GuardianChildService.ensureMyInviteCode()
+      setInviteCode(code)
+      await refreshUserData()
+    } catch (caught) {
+      setInviteError(
+        caught instanceof Error
+          ? caught.message
+          : "연결 코드를 발급하지 못했습니다.",
+      )
+    } finally {
+      setInviteBusy(false)
+    }
+  }
+
+  const copyInviteCode = async () => {
+    if (!inviteCode) return
+    try {
+      await navigator.clipboard.writeText(inviteCode)
+      setInviteCopied(true)
+      window.setTimeout(() => setInviteCopied(false), 2000)
+    } catch {
+      setInviteError("클립보드에 복사하지 못했습니다.")
+    }
+  }
 
   const birthYearNumber = birthYear ? Number(birthYear) : null
   const birthYearPreview =
@@ -413,6 +450,65 @@ export default function ProfilePage() {
               </>
             )}
           </button>
+
+          <section className='rounded-lg bg-theme-secondary p-5 shadow-sm border-card'>
+            <div className='mb-4 flex items-center gap-3'>
+              <div className='rounded-lg bg-amber-100 p-2 dark:bg-amber-900/20'>
+                <Link2 className='h-5 w-5 text-amber-700 dark:text-amber-400' />
+              </div>
+              <div>
+                <h2 className='text-lg font-semibold text-theme-primary'>
+                  보호자 연결 코드
+                </h2>
+                <p className='text-xs text-theme-secondary'>
+                  부모·보호자가 마이페이지 「자녀 연결」에 입력하는 코드입니다.
+                </p>
+              </div>
+            </div>
+            {inviteError ? (
+              <p className='mb-3 text-sm text-red-600' role='alert'>
+                {inviteError}
+              </p>
+            ) : null}
+            {inviteCode ? (
+              <div className='flex items-stretch gap-2'>
+                <p className='min-w-0 flex-1 rounded-lg bg-theme-tertiary px-4 py-3 font-mono text-lg tracking-widest text-theme-primary'>
+                  {inviteCode}
+                </p>
+                <button
+                  type='button'
+                  onClick={() => void copyInviteCode()}
+                  className='inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-theme-tertiary px-3 py-2 text-sm font-semibold text-theme-primary transition-colors hover:bg-theme-primary/10'
+                  aria-label={
+                    inviteCopied
+                      ? "보호자 연결 코드 복사됨"
+                      : `보호자 연결 코드 ${inviteCode} 복사`
+                  }
+                >
+                  {inviteCopied ? (
+                    <>
+                      <Check className='h-4 w-4 text-emerald-600' aria-hidden />
+                      복사됨
+                    </>
+                  ) : (
+                    <>
+                      <Copy className='h-4 w-4' aria-hidden />
+                      복사
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <button
+                type='button'
+                onClick={() => void ensureInviteCode()}
+                disabled={inviteBusy}
+                className='rounded-lg bg-accent-theme px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50'
+              >
+                {inviteBusy ? "발급 중..." : "코드 발급하기"}
+              </button>
+            )}
+          </section>
         </div>
       </div>
     </div>

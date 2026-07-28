@@ -34,6 +34,7 @@ import {
 } from "@/utils/timeUtils"
 import { sortBooksByRecentlyRead } from "@/utils/booksSortByLastRead"
 import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
+import DailyReadAloudCard from "@/components/DailyReadAloudCard"
 import WeeklyRecapModal, { DaySummary } from "@/components/WeeklyRecapModal"
 import { HomePageSkeleton } from "@/components/skeletons"
 
@@ -75,7 +76,10 @@ export default function Home() {
     bonusExp: number | null
   } | null>(null)
 
-  const RECENT_BOOKS_LIMIT = 5
+  const RECENT_BOOKS_LIMIT = 4
+  const [homeBooksTab, setHomeBooksTab] = useState<"reading" | "recent">(
+    "reading",
+  )
   /** 같은 주·같은 lastWeekISO에 대해 요약 로드를 한 번만 시도 (의존성 재실행 시 모달 반복 방지) */
   const weeklyRecapLoadRef = useRef<string | null>(null)
 
@@ -198,6 +202,14 @@ export default function Home() {
     )
   }
 
+  const homeBooksList =
+    homeBooksTab === "reading" ? recentReadingBooks : recentAddedBooks
+  const homeBooksEmptyLabel =
+    homeBooksTab === "reading"
+      ? "읽는 중인 책이 없습니다"
+      : "등록한 책이 없습니다"
+  const readingBooksCount = getReadingBooks()
+
   if (loading) {
     return <HomePageSkeleton />
   }
@@ -239,8 +251,9 @@ export default function Home() {
 
         {/* 이번 주 독서 시간 카드 */}
         {userUid && (
-          <div className='mb-6'>
+          <div className='mb-6 flex flex-col gap-6'>
             <WeeklyReadingTimeCard userId={userUid} />
+            <DailyReadAloudCard />
           </div>
         )}
 
@@ -416,118 +429,115 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 최근 읽는 중인 책 */}
+        {/* 최근 책: 읽는 중 / 최근 등록 탭 */}
         <div className='mb-6'>
-          <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-lg font-semibold text-theme-primary'>
-              📖 최근 읽는 중인 책
-            </h2>
+          <div className='mb-3 flex items-center justify-between gap-3'>
+            <h2 className='text-lg font-semibold text-theme-primary'>내 책</h2>
             <button
-              onClick={() => router.push("/books?tab=reading")}
-              className='text-sm text-accent-theme hover:underline'
+              type='button'
+              onClick={() =>
+                router.push(
+                  homeBooksTab === "reading"
+                    ? "/books?tab=reading"
+                    : "/books?tab=want-to-read",
+                )
+              }
+              className='shrink-0 text-sm text-accent-theme hover:underline'
             >
-              전체 보기 →
+              {homeBooksTab === "reading" ? "읽는 중 전체" : "읽을 책 전체"} →
             </button>
           </div>
-          <div className='bg-theme-secondary rounded-lg shadow-sm border-card overflow-hidden'>
-            <div className='max-h-[280px] overflow-y-auto px-4'>
-              {recentReadingBooks.length === 0 ? (
-                <div className='py-4 text-center text-theme-tertiary text-sm'>
-                  읽는 중인 책이 없습니다
-                </div>
-              ) : (
-                <div>
-                  {recentReadingBooks.map((book: Book) => (
-                    <div
-                      key={book.id}
-                      onClick={() => handleBookClick(book.id)}
-                      className='flex items-center gap-3 py-3 px-3 -mx-1 rounded-lg cursor-pointer hover:bg-theme-tertiary/40 active:bg-theme-tertiary/50 transition-colors first:pt-3 last:pb-3 border border-transparent hover:border-theme-tertiary/50'
-                    >
-                      <div className='relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-theme-tertiary'>
-                        {book.coverUrl ? (
-                          <Image
-                            src={book.coverUrl}
-                            alt=''
-                            fill
-                            className='object-cover'
-                            sizes='48px'
-                            unoptimized
-                          />
-                        ) : (
-                          <div className='flex h-full w-full items-center justify-center'>
-                            <BookOpen className='h-6 w-6 text-theme-tertiary' />
-                          </div>
-                        )}
-                      </div>
-                      <div className='flex-1 min-w-0'>
-                        <h3 className='font-medium text-theme-primary truncate'>
-                          {book.title}
-                        </h3>
-                        <p className='text-sm text-theme-secondary truncate'>
-                          {book.author || "저자 미상"}
-                        </p>
-                      </div>
-                      <ChevronRight className='h-5 w-5 text-theme-tertiary shrink-0' />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
 
-        {/* 최근 등록한 책 */}
-        <div className='mb-6'>
-          <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-lg font-semibold text-theme-primary'>
-              📚 최근 등록한 책
-            </h2>
+          <div
+            className='mb-3 grid grid-cols-2 rounded-lg bg-theme-tertiary p-1'
+            role='tablist'
+            aria-label='최근 책 보기'
+          >
             <button
-              onClick={() => router.push("/books?tab=want-to-read")}
-              className='text-sm text-accent-theme hover:underline'
+              id='home-books-reading-tab'
+              type='button'
+              role='tab'
+              aria-selected={homeBooksTab === "reading"}
+              aria-controls='home-books-panel'
+              onClick={() => setHomeBooksTab("reading")}
+              className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                homeBooksTab === "reading"
+                  ? "bg-theme-secondary text-theme-primary shadow-sm"
+                  : "text-theme-secondary"
+              }`}
             >
-              전체 보기 →
+              읽는 중
+              {readingBooksCount > 0 ? (
+                <span className='ml-1 tabular-nums opacity-70'>
+                  {readingBooksCount}
+                </span>
+              ) : null}
+            </button>
+            <button
+              id='home-books-recent-tab'
+              type='button'
+              role='tab'
+              aria-selected={homeBooksTab === "recent"}
+              aria-controls='home-books-panel'
+              onClick={() => setHomeBooksTab("recent")}
+              className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                homeBooksTab === "recent"
+                  ? "bg-theme-secondary text-theme-primary shadow-sm"
+                  : "text-theme-secondary"
+              }`}
+            >
+              최근 등록
             </button>
           </div>
-          <div className='bg-theme-secondary rounded-lg shadow-sm border-card overflow-hidden'>
-            <div className='max-h-[280px] overflow-y-auto px-4'>
-              {recentAddedBooks.length === 0 ? (
-                <div className='py-4 text-center text-theme-tertiary text-sm'>
-                  등록한 책이 없습니다
+
+          <div
+            id='home-books-panel'
+            role='tabpanel'
+            aria-labelledby={
+              homeBooksTab === "reading"
+                ? "home-books-reading-tab"
+                : "home-books-recent-tab"
+            }
+            className='overflow-hidden rounded-lg border-card bg-theme-secondary shadow-sm'
+          >
+            <div className='max-h-[220px] overflow-y-auto px-4'>
+              {homeBooksList.length === 0 ? (
+                <div className='py-6 text-center text-sm text-theme-tertiary'>
+                  {homeBooksEmptyLabel}
                 </div>
               ) : (
                 <div>
-                  {recentAddedBooks.map((book: Book) => (
+                  {homeBooksList.map((book: Book) => (
                     <div
                       key={book.id}
                       onClick={() => handleBookClick(book.id)}
-                      className='flex items-center gap-3 py-3 px-3 -mx-1 rounded-lg cursor-pointer hover:bg-theme-tertiary/40 active:bg-theme-tertiary/50 transition-colors first:pt-3 last:pb-3 border border-transparent hover:border-theme-tertiary/50'
+                      className='-mx-1 flex cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors first:pt-3 last:pb-3 hover:border-theme-tertiary/50 hover:bg-theme-tertiary/40 active:bg-theme-tertiary/50'
                     >
-                      <div className='relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-theme-tertiary'>
+                      <div className='relative h-12 w-10 shrink-0 overflow-hidden rounded-md bg-theme-tertiary'>
                         {book.coverUrl ? (
                           <Image
                             src={book.coverUrl}
                             alt=''
                             fill
                             className='object-cover'
-                            sizes='48px'
+                            sizes='40px'
                             unoptimized
                           />
                         ) : (
                           <div className='flex h-full w-full items-center justify-center'>
-                            <BookOpen className='h-6 w-6 text-theme-tertiary' />
+                            <BookOpen className='h-5 w-5 text-theme-tertiary' />
                           </div>
                         )}
                       </div>
-                      <div className='flex-1 min-w-0'>
-                        <h3 className='font-medium text-theme-primary truncate'>
+                      <div className='min-w-0 flex-1'>
+                        <h3 className='truncate font-medium text-theme-primary'>
                           {book.title}
                         </h3>
-                        <p className='text-sm text-theme-secondary truncate'>
+                        <p className='truncate text-sm text-theme-secondary'>
                           {book.author || "저자 미상"}
                         </p>
                       </div>
-                      <ChevronRight className='h-5 w-5 text-theme-tertiary shrink-0' />
+                      <ChevronRight className='h-5 w-5 shrink-0 text-theme-tertiary' />
                     </div>
                   ))}
                 </div>

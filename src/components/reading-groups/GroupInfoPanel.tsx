@@ -15,15 +15,17 @@ import { UserService } from "@/services/userService"
 import { BOOK_LEVELS, type BookLevel } from "@/types/book"
 import type {
   GroupMember,
-  GroupMemberKind,
   ReadingGroup,
   ReadingGroupStatus,
   UpdateReadingGroupInput,
 } from "@/types/readingGroup"
 import {
-  GROUP_MEMBER_KIND_LABELS,
+  GROUP_MEMBER_ROLE_OPTION_LABELS,
   memberKindLabel,
-  resolveMemberKind,
+  optionFromRoles,
+  resolveMemberRoles,
+  rolesFromOption,
+  type GroupMemberRoleOption,
 } from "@/utils/groupMemberLabels"
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
@@ -39,9 +41,10 @@ const WEEKDAY_OPTIONS: SelectOption[] = [
     label: `${day}요일`,
   })),
 ]
-const MEMBER_KIND_OPTIONS: SelectOption<GroupMemberKind>[] = [
-  { value: "participant", label: GROUP_MEMBER_KIND_LABELS.participant },
-  { value: "guardian", label: GROUP_MEMBER_KIND_LABELS.guardian },
+const MEMBER_ROLE_OPTIONS: SelectOption<GroupMemberRoleOption>[] = [
+  { value: "participant", label: GROUP_MEMBER_ROLE_OPTION_LABELS.participant },
+  { value: "guardian", label: GROUP_MEMBER_ROLE_OPTION_LABELS.guardian },
+  { value: "both", label: GROUP_MEMBER_ROLE_OPTION_LABELS.both },
 ]
 
 type GroupInfoPanelProps = {
@@ -93,8 +96,8 @@ export default function GroupInfoPanel({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [groupForm, setGroupForm] = useState<GroupFormState>(() => groupToForm(group))
   const [offlineName, setOfflineName] = useState("")
-  const [offlineMemberKind, setOfflineMemberKind] =
-    useState<GroupMemberKind>("participant")
+  const [offlineMemberRole, setOfflineMemberRole] =
+    useState<GroupMemberRoleOption>("participant")
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [validationError, setValidationError] = useState("")
   const [userDisplayNames, setUserDisplayNames] = useState<Record<string, string>>({})
@@ -178,22 +181,29 @@ export default function GroupInfoPanel({
   const addMemberMutation = useMutation({
     mutationFn: ({
       displayName,
-      memberKind,
+      roleOption,
     }: {
       displayName: string
-      memberKind: GroupMemberKind
-    }) =>
-      ReadingGroupService.addMember(group.id, {
+      roleOption: GroupMemberRoleOption
+    }) => {
+      const roles = rolesFromOption(roleOption)
+      const legacyKind =
+        roles.includes("guardian") && !roles.includes("participant")
+          ? "guardian"
+          : "participant"
+      return ReadingGroupService.addMember(group.id, {
         user_id: null,
         display_name: displayName,
         role: "member",
-        member_kind: memberKind,
+        member_kind: legacyKind,
+        member_roles: roles,
         status: "active",
         joined_at: new Date().toISOString(),
-      }),
+      })
+    },
     onSuccess: async () => {
       setOfflineName("")
-      setOfflineMemberKind("participant")
+      setOfflineMemberRole("participant")
       setMemberOpen(false)
       setValidationError("")
       await refreshGroupQueries()
@@ -205,17 +215,27 @@ export default function GroupInfoPanel({
     onSuccess: refreshGroupQueries,
   })
 
-  const changeMemberKind = async (
+  const changeMemberRoles = async (
     member: GroupMember,
-    memberKind: GroupMemberKind,
+    roleOption: GroupMemberRoleOption,
   ) => {
-    if (resolveMemberKind(member) === memberKind) return
+    const nextRoles = rolesFromOption(roleOption)
+    const current = resolveMemberRoles(member)
+    const same =
+      nextRoles.length === current.length &&
+      nextRoles.every((role) => current.includes(role))
+    if (same) return
+    const legacyKind =
+      nextRoles.includes("guardian") && !nextRoles.includes("participant")
+        ? "guardian"
+        : "participant"
     setBusyMemberId(member.id)
     setMemberActionError("")
     try {
       await ReadingGroupService.updateMember(member.id, {
-        member_kind: memberKind,
-        ...(memberKind === "participant" ? { reads_for_user_id: null } : {}),
+        member_roles: nextRoles,
+        member_kind: legacyKind,
+        reads_for_user_id: null,
       })
       await refreshGroupQueries()
     } catch (error) {
@@ -226,45 +246,6 @@ export default function GroupInfoPanel({
       setBusyMemberId(null)
     }
   }
-
-  const changeReadsFor = async (
-    member: GroupMember,
-    readsForUserId: string,
-  ) => {
-    const next = readsForUserId || null
-    if ((member.reads_for_user_id ?? null) === next) return
-    setBusyMemberId(member.id)
-    setMemberActionError("")
-    try {
-      await ReadingGroupService.updateMember(member.id, {
-        reads_for_user_id: next,
-      })
-      await refreshGroupQueries()
-    } catch (error) {
-      setMemberActionError(
-        errorMessage(error, "자녀 계정 연결을 변경하지 못했습니다."),
-      )
-    } finally {
-      setBusyMemberId(null)
-    }
-  }
-
-  const participantOptionsForGuardian = (
-    guardian: GroupMember,
-  ): SelectOption<string>[] => [
-    { value: "", label: "자녀 미연결" },
-    ...activeMembers
-      .filter(
-        (member) =>
-          resolveMemberKind(member) === "participant" &&
-          Boolean(member.user_id) &&
-          member.user_id !== guardian.user_id,
-      )
-      .map((member) => ({
-        value: member.user_id as string,
-        label: memberLabel(member),
-      })),
-  ]
 
   const transferOwnership = (member: GroupMember) => {
     if (!member.user_id || member.user_id === group.owner_user_id) return
@@ -341,7 +322,7 @@ export default function GroupInfoPanel({
     setValidationError("")
     addMemberMutation.mutate({
       displayName,
-      memberKind: offlineMemberKind,
+      roleOption: offlineMemberRole,
     })
   }
 
@@ -455,7 +436,7 @@ export default function GroupInfoPanel({
               type="button"
               onClick={() => {
                 setValidationError("")
-                setOfflineMemberKind("participant")
+                setOfflineMemberRole("participant")
                 setMemberOpen(true)
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-accent-theme px-3 py-2 text-sm font-semibold text-white"
@@ -469,7 +450,9 @@ export default function GroupInfoPanel({
           {activeMembers.map((member) => {
             const isOwnerSelf =
               member.user_id === group.owner_user_id || member.role === "owner"
-            const kind = resolveMemberKind(member)
+            const roleOption = optionFromRoles(resolveMemberRoles(member))
+            const canEditRoles =
+              isOwner || member.user_id === currentUserId
             return (
               <li
                 key={member.id}
@@ -485,77 +468,47 @@ export default function GroupInfoPanel({
                     {member.user_id ? "계정 연결" : "오프라인"}
                   </p>
                 </div>
-                {isOwner && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="w-[6.5rem]">
+                <div className="flex flex-wrap items-center gap-2">
+                  {canEditRoles && (
+                    <div className="w-[9.5rem]">
                       <Select
-                        value={kind}
-                        onChangeAction={(nextKind) =>
-                          void changeMemberKind(member, nextKind)
+                        value={roleOption}
+                        onChangeAction={(nextOption) =>
+                          void changeMemberRoles(member, nextOption)
                         }
-                        options={MEMBER_KIND_OPTIONS}
+                        options={MEMBER_ROLE_OPTIONS}
                         variant="compact"
                         disabled={busyMemberId === member.id}
                         aria-label={`${memberLabel(member)} 참여 유형`}
                       />
                     </div>
-                    {kind === "guardian" && member.user_id && (
-                      <div className="min-w-[9rem] flex-1 sm:max-w-[12rem]">
-                        <Select
-                          value={member.reads_for_user_id ?? ""}
-                          onChangeAction={(next) =>
-                            void changeReadsFor(member, next)
-                          }
-                          options={participantOptionsForGuardian(member)}
-                          variant="compact"
-                          disabled={busyMemberId === member.id}
-                          aria-label={`${memberLabel(member)} 자녀 계정`}
-                        />
-                      </div>
-                    )}
-                    {!isOwnerSelf && member.user_id && (
-                      <button
-                        type="button"
-                        onClick={() => void transferOwnership(member)}
-                        disabled={busyMemberId === member.id}
-                        className="inline-flex shrink-0 items-center rounded-md bg-theme-tertiary px-2 py-1.5 text-xs font-medium text-theme-primary disabled:opacity-50"
-                      >
-                        모임장 넘기기
-                      </button>
-                    )}
-                    {!isOwnerSelf && (
-                      <button
-                        type="button"
-                        onClick={() => removeMember(member)}
-                        disabled={
-                          removeMemberMutation.isPending ||
-                          busyMemberId === member.id
-                        }
-                        className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/20"
-                        aria-label={`${memberLabel(member)} 멤버 제거`}
-                      >
-                        <UserMinus className="h-4 w-4" aria-hidden />
-                        제거
-                      </button>
-                    )}
-                  </div>
-                )}
-                {!isOwner &&
-                  kind === "guardian" &&
-                  member.user_id === currentUserId && (
-                    <div className="min-w-[9rem] sm:max-w-[12rem]">
-                      <Select
-                        value={member.reads_for_user_id ?? ""}
-                        onChangeAction={(next) =>
-                          void changeReadsFor(member, next)
-                        }
-                        options={participantOptionsForGuardian(member)}
-                        variant="compact"
-                        disabled={busyMemberId === member.id}
-                        aria-label="읽어줄 자녀 계정"
-                      />
-                    </div>
                   )}
+                  {isOwner && !isOwnerSelf && member.user_id && (
+                    <button
+                      type="button"
+                      onClick={() => void transferOwnership(member)}
+                      disabled={busyMemberId === member.id}
+                      className="inline-flex shrink-0 items-center rounded-md bg-theme-tertiary px-2 py-1.5 text-xs font-medium text-theme-primary disabled:opacity-50"
+                    >
+                      모임장 넘기기
+                    </button>
+                  )}
+                  {isOwner && !isOwnerSelf && (
+                    <button
+                      type="button"
+                      onClick={() => removeMember(member)}
+                      disabled={
+                        removeMemberMutation.isPending ||
+                        busyMemberId === member.id
+                      }
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/20"
+                      aria-label={`${memberLabel(member)} 멤버 제거`}
+                    >
+                      <UserMinus className="h-4 w-4" aria-hidden />
+                      제거
+                    </button>
+                  )}
+                </div>
               </li>
             )
           })}
@@ -781,9 +734,9 @@ export default function GroupInfoPanel({
             </label>
             <Select
               id="offline-member-kind"
-              value={offlineMemberKind}
-              onChangeAction={setOfflineMemberKind}
-              options={MEMBER_KIND_OPTIONS}
+              value={offlineMemberRole}
+              onChangeAction={setOfflineMemberRole}
+              options={MEMBER_ROLE_OPTIONS}
               aria-label="오프라인 멤버 참여 유형"
             />
           </div>

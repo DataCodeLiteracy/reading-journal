@@ -25,3 +25,13 @@ export function setPreReadTimerPromptDismissedToday(bookId: string): void {
     /* ignore */
   }
 }
+
+export function clearPreReadTimerPromptDismissedToday(bookId: string): void {
+  if (typeof window === "undefined") return
+  try {
+    const key = preReadTimerDismissStorageKey(bookId, getKoreaDate(new Date()))
+    window.localStorage.removeItem(key)
+  } catch {
+    /* ignore */
+  }
+}

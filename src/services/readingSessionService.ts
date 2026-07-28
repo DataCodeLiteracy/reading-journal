@@ -93,6 +93,19 @@ export class ReadingSessionService {
         this.warnAttributionSync(sessionId, error)
       }
     }
+    if (sessionData.reading_mode === "read_aloud") {
+      try {
+        const { GuardianChildService } = await import(
+          "@/services/guardianChildService"
+        )
+        await GuardianChildService.replicateReadAloudSession(sessionId)
+      } catch (error) {
+        console.warn(
+          `ReadingSessionService: 읽어주기 자녀 복제 실패 (sessionId: "${sessionId}")`,
+          error,
+        )
+      }
+    }
     try {
       await this.syncFocusLevelSession(sessionId, "upsert")
     } catch (error) {

@@ -3,6 +3,8 @@ import type { BookLevel } from "@/types/book"
 export type GroupMemberRole = "owner" | "member"
 /** 권한(role)과 별개로, 직접 읽는 참여자인지 보호자인지 구분합니다. */
 export type GroupMemberKind = "participant" | "guardian"
+/** 모임에서의 참여 역할. 복수 선택 가능(참여자+보호자). */
+export type GroupMemberParticipationRole = "participant" | "guardian"
 export type GroupMemberStatus = "active" | "invited"
 export type ReadingGroupStatus = "active" | "paused" | "archived"
 export type GroupBookStatus =
@@ -64,11 +66,16 @@ export interface GroupMember extends ReadingGroupDocument {
    * 참여자: 직접 읽는 모임원.
    * 보호자: 학부모 등 함께 보지만 직접 읽지 않는 역할.
    * 없으면 참여자로 취급합니다.
+   * @deprecated member_roles 사용. 마이그레이션 전까지 호환용.
    */
   member_kind?: GroupMemberKind
   /**
+   * 모임 참여 역할(복수 가능). 없으면 member_kind로 추론합니다.
+   */
+  member_roles?: GroupMemberParticipationRole[]
+  /**
    * 보호자가 읽어주는 대상(자녀) 계정 user_id.
-   * 타이머 귀속·서재 동기화 시 보호자와 함께 반영됩니다.
+   * @deprecated 앱 전역 guardianChildLinks 사용. 마이그레이션 전까지 호환용.
    */
   reads_for_user_id?: string | null
   status: GroupMemberStatus
@@ -350,6 +357,7 @@ export type UpdateGroupMemberInput = Partial<
     | "display_name"
     | "role"
     | "member_kind"
+    | "member_roles"
     | "reads_for_user_id"
     | "status"
     | "joined_at"
