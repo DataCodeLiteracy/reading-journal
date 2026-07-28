@@ -129,6 +129,10 @@ export default function BookDetailPageClient({
   const [frozenElapsedLabel, setFrozenElapsedLabel] = useState<string | null>(
     null,
   )
+  const [timerSaveHints, setTimerSaveHints] = useState({
+    includeReadAloud: false,
+    includeGroup: false,
+  })
   const [isRereadModalOpen, setIsRereadModalOpen] = useState(false)
   const [isRereadDetailModalOpen, setIsRereadDetailModalOpen] = useState(false)
   const [rereads, setRereads] = useState<Reread[]>([])
@@ -656,6 +660,11 @@ export default function BookDetailPageClient({
         setCurrentTime(endTime)
         setIsSavingTimerSession(true)
         setIsTimerProcessing(true)
+        setTimerSaveHints({
+          includeReadAloud: readingMode === "read_aloud",
+          // 공유 판본이 없으면 모임 귀속 자체가 불가. 있으면 추가 조회 없이 확정 불가하므로 문구 유지.
+          includeGroup: Boolean(book.canonicalBookId),
+        })
         const duration = Math.floor(
           (endTime.getTime() - timerStartTime.getTime()) / 1000
         )
@@ -1988,6 +1997,8 @@ export default function BookDetailPageClient({
             <TimerSessionSaveOverlay
               open={isSavingTimerSession}
               elapsedLabel={frozenElapsedLabel ?? undefined}
+              includeReadAloud={timerSaveHints.includeReadAloud}
+              includeGroup={timerSaveHints.includeGroup}
             />
           </>
         )}

@@ -1,27 +1,54 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
-import { Cloud, Link2, Save, Sparkles, Timer } from "lucide-react"
+import { Cloud, Link2, Save, Sparkles, Timer, type LucideIcon } from "lucide-react"
 
-const SAVE_STEPS = [
-  { icon: Save, text: "독서 기록 저장 중" },
-  { icon: Link2, text: "연동 앱에 동기화 중" },
-  { icon: Cloud, text: "모임·자녀 기록 정리 중" },
-] as const
+type SaveStep = { icon: LucideIcon; text: string }
 
 type Props = {
   open: boolean
   elapsedLabel?: string
+  /** 이번 세션이 읽어주기인 경우 */
+  includeReadAloud?: boolean
+  /**
+   * 모임 귀속 가능성이 있는 경우(공유 판본 ID 있음).
+   * 없으면 모임 관련 문구를 숨깁니다. 판본만으로는 확정 불가하므로 있으면 문구를 유지합니다.
+   */
+  includeGroup?: boolean
+}
+
+function buildSaveSteps(includeReadAloud: boolean, includeGroup: boolean): SaveStep[] {
+  const steps: SaveStep[] = [
+    { icon: Save, text: "독서 기록 저장 중" },
+    { icon: Link2, text: "연동 앱에 동기화 중" },
+  ]
+  if (includeGroup && includeReadAloud) {
+    steps.push({ icon: Cloud, text: "모임·자녀 기록 정리 중" })
+  } else if (includeGroup) {
+    steps.push({ icon: Cloud, text: "모임 기록 정리 중" })
+  } else if (includeReadAloud) {
+    steps.push({ icon: Cloud, text: "자녀 기록 정리 중" })
+  }
+  return steps
 }
 
 /**
  * 타이머 종료 직후~저장 완료까지 화면 중앙에 보여주는 저장 오버레이.
  * 클릭 시점의 시간은 이미 고정된 상태이며, 저장 대기 중 지루함을 줄이기 위한 UI입니다.
  */
-export default function TimerSessionSaveOverlay({ open, elapsedLabel }: Props) {
+export default function TimerSessionSaveOverlay({
+  open,
+  elapsedLabel,
+  includeReadAloud = false,
+  includeGroup = false,
+}: Props) {
   const [mounted, setMounted] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
+  const steps = useMemo(
+    () => buildSaveSteps(includeReadAloud, includeGroup),
+    [includeReadAloud, includeGroup],
+  )
 
   useEffect(() => setMounted(true), [])
 
@@ -31,14 +58,18 @@ export default function TimerSessionSaveOverlay({ open, elapsedLabel }: Props) {
       return
     }
     const id = window.setInterval(() => {
-      setStepIndex((i) => (i + 1) % SAVE_STEPS.length)
+      setStepIndex((i) => (i + 1) % steps.length)
     }, 1600)
     return () => window.clearInterval(id)
-  }, [open])
+  }, [open, steps.length])
+
+  useEffect(() => {
+    setStepIndex(0)
+  }, [steps])
 
   if (!mounted || !open) return null
 
-  const step = SAVE_STEPS[stepIndex]
+  const step = steps[stepIndex] ?? steps[0]
   const StepIcon = step.icon
 
   return createPortal(
@@ -97,7 +128,7 @@ export default function TimerSessionSaveOverlay({ open, elapsedLabel }: Props) {
           ) : null}
 
           <div
-            key={stepIndex}
+            key={`${stepIndex}-${step.text}`}
             className="mt-5 flex items-center justify-center gap-2 text-sm text-white/80 animate-[recordLoadingIn_0.35s_ease-out_both]"
           >
             <StepIcon className="h-4 w-4 shrink-0 text-amber-200" />
@@ -117,7 +148,7 @@ export default function TimerSessionSaveOverlay({ open, elapsedLabel }: Props) {
           </div>
 
           <div className="mt-3 flex justify-center gap-1.5" aria-hidden>
-            {SAVE_STEPS.map((_, i) => (
+            {steps.map((_, i) => (
               <span
                 key={i}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
