@@ -11,23 +11,14 @@ type Props = {
   elapsedLabel?: string
   /** 이번 세션이 읽어주기인 경우 */
   includeReadAloud?: boolean
-  /**
-   * 모임 귀속 가능성이 있는 경우(공유 판본 ID 있음).
-   * 없으면 모임 관련 문구를 숨깁니다. 판본만으로는 확정 불가하므로 있으면 문구를 유지합니다.
-   */
-  includeGroup?: boolean
 }
 
-function buildSaveSteps(includeReadAloud: boolean, includeGroup: boolean): SaveStep[] {
+function buildSaveSteps(includeReadAloud: boolean): SaveStep[] {
   const steps: SaveStep[] = [
     { icon: Save, text: "독서 기록 저장 중" },
     { icon: Link2, text: "연동 앱에 동기화 중" },
   ]
-  if (includeGroup && includeReadAloud) {
-    steps.push({ icon: Cloud, text: "모임·자녀 기록 정리 중" })
-  } else if (includeGroup) {
-    steps.push({ icon: Cloud, text: "모임 기록 정리 중" })
-  } else if (includeReadAloud) {
+  if (includeReadAloud) {
     steps.push({ icon: Cloud, text: "자녀 기록 정리 중" })
   }
   return steps
@@ -41,13 +32,12 @@ export default function TimerSessionSaveOverlay({
   open,
   elapsedLabel,
   includeReadAloud = false,
-  includeGroup = false,
 }: Props) {
   const [mounted, setMounted] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
   const steps = useMemo(
-    () => buildSaveSteps(includeReadAloud, includeGroup),
-    [includeReadAloud, includeGroup],
+    () => buildSaveSteps(includeReadAloud),
+    [includeReadAloud],
   )
 
   useEffect(() => setMounted(true), [])
