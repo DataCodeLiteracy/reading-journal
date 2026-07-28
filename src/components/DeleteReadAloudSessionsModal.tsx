@@ -135,7 +135,8 @@ export default function DeleteReadAloudSessionsModal({
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-theme-primary">
-                          {target.displayName}
+                          {target.displayName?.trim() ||
+                            (target.role === "guardian" ? "나(보호자)" : "자녀")}
                         </span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -148,7 +149,7 @@ export default function DeleteReadAloudSessionsModal({
                         </span>
                       </span>
                       <span className="mt-0.5 block text-xs text-theme-secondary">
-                        {target.date ? `${target.date} · ` : ""}
+                        {target.date?.trim() ? `${target.date.trim()} · ` : ""}
                         {formatDuration(target.duration)}
                       </span>
                     </span>

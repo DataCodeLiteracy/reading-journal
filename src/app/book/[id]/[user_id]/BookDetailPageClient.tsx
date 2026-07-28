@@ -138,6 +138,7 @@ export default function BookDetailPageClient({
   const [isDeleteSessionModalOpen, setIsDeleteSessionModalOpen] =
     useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
+  const [sessionDeleteLabel, setSessionDeleteLabel] = useState("")
   const [isDeletingSession, setIsDeletingSession] = useState(false)
   const isDeletingSessionRef = useRef(false)
   const [readAloudDeleteOpen, setReadAloudDeleteOpen] = useState(false)
@@ -1202,6 +1203,7 @@ export default function BookDetailPageClient({
     }
 
     setSessionToDelete(sessionId)
+    setSessionDeleteLabel(session?.date?.trim() || "선택한")
     setIsDeleteSessionModalOpen(true)
   }
 
@@ -1270,6 +1272,7 @@ export default function BookDetailPageClient({
       // 통계 업데이트는 removeReadingSession에서 자동으로 처리됨
       setIsDeleteSessionModalOpen(false)
       setSessionToDelete(null)
+      setSessionDeleteLabel("")
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -2188,12 +2191,11 @@ export default function BookDetailPageClient({
               if (isDeletingSession) return
               setIsDeleteSessionModalOpen(false)
               setSessionToDelete(null)
+              setSessionDeleteLabel("")
             }}
             onConfirm={() => void confirmDeleteReadingSession()}
             title='독서 기록 삭제'
-            message={`"${
-              readingSessions.find((s) => s.id === sessionToDelete)?.date
-            }" 독서 기록을 삭제하시겠습니까?`}
+            message={`"${sessionDeleteLabel || "선택한"}" 독서 기록을 삭제하시겠습니까?`}
             confirmText={isDeletingSession ? "삭제 중…" : "삭제"}
             cancelText='취소'
             icon={Trash2}

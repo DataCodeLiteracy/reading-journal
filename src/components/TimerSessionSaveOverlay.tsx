@@ -84,8 +84,10 @@ export default function TimerSessionSaveOverlay({ open, elapsedLabel }: Props) {
           <p className="text-base font-semibold text-white">
             독서 기록을 저장하고 있어요
           </p>
-          <p className="mt-1.5 max-w-[16rem] text-sm leading-relaxed text-white/75">
-            이 앱과 연동된 앱에도 함께 저장 중이에요. 잠시만 기다려 주세요.
+          <p className="mt-1.5 max-w-[16rem] text-center text-sm leading-relaxed text-white/75">
+            연동된 앱에도 함께 저장중이에요.
+            <br />
+            잠시만..
           </p>
 
           {elapsedLabel ? (
