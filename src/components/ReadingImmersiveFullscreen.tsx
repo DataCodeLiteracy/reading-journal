@@ -21,6 +21,8 @@ export type ReadingImmersiveFullscreenProps = {
   onCosmosError: () => void
   getElapsedTime: () => number
   isTimerProcessing: boolean
+  /** 종료 클릭 후 저장 중 — 표시 시간·글로우 고정 */
+  isTimerFrozen?: boolean
   isSettingsOpen: boolean
   onToggleSettings: () => void
   isCompleted: boolean
@@ -41,6 +43,7 @@ export default function ReadingImmersiveFullscreen({
   onCosmosError,
   getElapsedTime,
   isTimerProcessing,
+  isTimerFrozen = false,
   isSettingsOpen,
   onToggleSettings,
   isCompleted,
@@ -146,7 +149,11 @@ export default function ReadingImmersiveFullscreen({
           </div>
 
           <div className='absolute left-1/2 top-1/2 w-full max-w-sm -translate-x-1/2 translate-y-[92px] sm:translate-y-[136px]'>
-            <div className='reading-timer-glow flex items-baseline justify-center gap-0.5 tabular-nums select-none drop-shadow-[0_2px_16px_rgba(0,0,0,0.55)] sm:gap-1.5'>
+            <div
+              className={`flex items-baseline justify-center gap-0.5 tabular-nums select-none drop-shadow-[0_2px_16px_rgba(0,0,0,0.55)] sm:gap-1.5 ${
+                isTimerFrozen ? "" : "reading-timer-glow"
+              }`}
+            >
             <span className='text-6xl font-extralight leading-none text-white sm:text-7xl'>
               {Math.floor(t / 3600)
                 .toString()

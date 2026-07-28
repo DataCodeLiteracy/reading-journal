@@ -140,3 +140,59 @@ export async function syncFocusLevelSessionForUserAdmin(
   }
   return { ok: true }
 }
+
+/**
+ * Admin: 특정 유저의 독서 세션에 대응하는 focus-level 기록을 삭제합니다.
+ * 세션 문서가 이미 없어도 sourceRecordId로 삭제를 시도합니다.
+ */
+export async function deleteFocusLevelSessionForUserAdmin(
+  db: Firestore,
+  journalUserId: string,
+  sessionId: string,
+): Promise<{ ok: boolean; skipped?: boolean; reason?: string }> {
+  const ingestUrl = process.env.FOCUS_LEVEL_INGEST_URL?.trim()
+  const ingestSecret = process.env.FOCUS_LEVEL_INGEST_SECRET?.trim()
+  if (!ingestUrl || !ingestSecret) {
+    return { ok: true, skipped: true, reason: "env" }
+  }
+
+  const linkSnap = await db
+    .collection(FOCUS_LEVEL_LINK_COLLECTION)
+    .doc(journalUserId)
+    .get()
+  if (!linkSnap.exists) {
+    return { ok: true, skipped: true, reason: "not_linked" }
+  }
+  const link = linkSnap.data() as FocusLevelLink
+  if (!link.focusUserId || !link.activityId) {
+    return { ok: true, skipped: true, reason: "incomplete_link" }
+  }
+
+  const upstream = await fetch(ingestUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-ingest-secret": ingestSecret,
+    },
+    body: JSON.stringify({
+      op: "delete",
+      userId: link.focusUserId,
+      activityId: link.activityId,
+      sourceApp: FOCUS_LEVEL_SOURCE_APP,
+      sourceRecordId: sessionId,
+    }),
+  })
+  if (!upstream.ok) {
+    const result = (await upstream.json().catch(() => ({}))) as {
+      error?: string
+    }
+    console.error(
+      "[focus-level admin sync] delete failed",
+      sessionId,
+      journalUserId,
+      result,
+    )
+    return { ok: false, reason: result.error ?? "upstream_error" }
+  }
+  return { ok: true }
+}

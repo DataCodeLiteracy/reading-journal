@@ -36,10 +36,14 @@ import RereadDetailModal from "@/components/RereadDetailModal"
 import EditBookModal from "@/components/EditBookModal"
 import CompleteBookModal from "@/components/CompleteBookModal"
 import ConfirmModal from "@/components/ConfirmModal"
+import DeleteReadAloudSessionsModal, {
+  type ReadAloudDeleteTargetItem,
+} from "@/components/DeleteReadAloudSessionsModal"
 import ChecklistModal from "@/components/ChecklistModal"
 import SuccessModal from "@/components/SuccessModal"
 import EditReadingSessionModal from "@/components/EditReadingSessionModal"
 import AddReadingSessionModal from "@/components/AddReadingSessionModal"
+import TimerSessionSaveOverlay from "@/components/TimerSessionSaveOverlay"
 import ReadingStartModal, {
   type ReadingStartModalVariant,
 } from "@/components/ReadingStartModal"
@@ -121,6 +125,10 @@ export default function BookDetailPageClient({
   const [timerStartTime, setTimerStartTime] = useState<Date | null>(null)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const [isTimerProcessing, setIsTimerProcessing] = useState(false)
+  const [isSavingTimerSession, setIsSavingTimerSession] = useState(false)
+  const [frozenElapsedLabel, setFrozenElapsedLabel] = useState<string | null>(
+    null,
+  )
   const [isRereadModalOpen, setIsRereadModalOpen] = useState(false)
   const [isRereadDetailModalOpen, setIsRereadDetailModalOpen] = useState(false)
   const [rereads, setRereads] = useState<Reread[]>([])
@@ -132,6 +140,17 @@ export default function BookDetailPageClient({
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
   const [isDeletingSession, setIsDeletingSession] = useState(false)
   const isDeletingSessionRef = useRef(false)
+  const [readAloudDeleteOpen, setReadAloudDeleteOpen] = useState(false)
+  const [readAloudDeleteParentId, setReadAloudDeleteParentId] = useState<
+    string | null
+  >(null)
+  const [readAloudDeleteTargets, setReadAloudDeleteTargets] = useState<
+    ReadAloudDeleteTargetItem[]
+  >([])
+  const [readAloudDeleteLoading, setReadAloudDeleteLoading] = useState(false)
+  const [readAloudDeleteError, setReadAloudDeleteError] = useState<string | null>(
+    null,
+  )
   const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false)
   const [sessionToEdit, setSessionToEdit] = useState<ReadingSession | null>(null)
   const [isAddSessionModalOpen, setIsAddSessionModalOpen] = useState(false)
@@ -175,12 +194,13 @@ export default function BookDetailPageClient({
     intent: "start" | "edit"
   } | null>(null)
   const [isEnsuringChildBooks, setIsEnsuringChildBooks] = useState(false)
+  const isEnsuringChildBooksRef = useRef(false)
   const openSegmentStartRef = useRef<string | null>(null)
 
   const timerBgSrc = getTimerBgSrc(timerBgId)
 
   const { primeAmbientPlaybackFromGesture } = useReadingTimerAmbient(
-    isTimerRunning,
+    isTimerRunning && !isSavingTimerSession,
     ambientTrackId,
   )
 
@@ -378,15 +398,15 @@ export default function BookDetailPageClient({
     bookBundleQuery.isPending ||
     (bookBundleQuery.isSuccess && book === null && error === null)
 
-  // 타이머 업데이트
+  // 타이머 업데이트 (종료·저장 중에는 클릭 시점 시각으로 고정)
   useEffect(() => {
-    if (isTimerRunning && timerStartTime) {
+    if (isTimerRunning && timerStartTime && !isSavingTimerSession) {
       const interval = setInterval(() => {
         setCurrentTime(new Date())
       }, 1000)
       return () => clearInterval(interval)
     }
-  }, [isTimerRunning, timerStartTime])
+  }, [isTimerRunning, timerStartTime, isSavingTimerSession])
 
   const beginTimerSession = async (
     mode: "self" | "read_aloud" = "self",
@@ -456,15 +476,16 @@ export default function BookDetailPageClient({
     childIds: string[],
     intent: "start" | "edit",
   ) => {
-    if (!book || childIds.length === 0 || isEnsuringChildBooks) return
+    if (!book || childIds.length === 0 || isEnsuringChildBooksRef.current) return
     if (!book.canonicalBookId) {
       setError(
         "공유 판본이 없는 책은 자녀에게 읽어주기 기록을 남길 수 없습니다. 알라딘 등으로 등록된 책을 이용해 주세요.",
       )
       return
     }
+    isEnsuringChildBooksRef.current = true
+    setIsEnsuringChildBooks(true)
     try {
-      setIsEnsuringChildBooks(true)
       setError(null)
       const { missing } = await GuardianChildService.ensureChildrenHaveBook({
         canonicalBookId: book.canonicalBookId,
@@ -493,6 +514,7 @@ export default function BookDetailPageClient({
           : "자녀 서재를 확인하지 못했습니다.",
       )
     } finally {
+      isEnsuringChildBooksRef.current = false
       setIsEnsuringChildBooks(false)
     }
   }
@@ -502,22 +524,25 @@ export default function BookDetailPageClient({
     missingNames: string[]
     intent: "start" | "edit"
   } | null = missingChildrenConfirm) => {
-    if (!pending || !book?.canonicalBookId || isEnsuringChildBooks) return
+    if (!pending || !book?.canonicalBookId || isEnsuringChildBooksRef.current) {
+      return
+    }
+    isEnsuringChildBooksRef.current = true
+    setIsEnsuringChildBooks(true)
     try {
-      setIsEnsuringChildBooks(true)
       setError(null)
       await GuardianChildService.ensureChildrenHaveBook({
         canonicalBookId: book.canonicalBookId,
         childUserIds: pending.childIds,
         register: true,
       })
-      setMissingChildrenConfirm(null)
       if (pending.intent === "start") {
         await beginTimerSession("read_aloud", pending.childIds)
       } else {
         applyChildSelectionDuringSession(pending.childIds)
         setIsChildSelectModalOpen(false)
       }
+      setMissingChildrenConfirm(null)
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -525,6 +550,7 @@ export default function BookDetailPageClient({
           : "자녀 서재에 책을 등록하지 못했습니다.",
       )
     } finally {
+      isEnsuringChildBooksRef.current = false
       setIsEnsuringChildBooks(false)
     }
   }
@@ -619,15 +645,24 @@ export default function BookDetailPageClient({
   }
 
   const stopTimer = async () => {
-    if (isTimerProcessing) return // 이미 처리 중이면 무시
+    if (isTimerProcessing || isSavingTimerSession) return // 이미 처리 중이면 무시
 
     if (timerStartTime && book) {
       try {
-        setIsTimerProcessing(true)
         const endTime = new Date()
         const endIso = endTime.toISOString()
+        // 클릭 시점에 화면 타이머를 멈추고, 저장이 끝날 때까지 오버레이를 띄웁니다.
+        setCurrentTime(endTime)
+        setIsSavingTimerSession(true)
+        setIsTimerProcessing(true)
         const duration = Math.floor(
           (endTime.getTime() - timerStartTime.getTime()) / 1000
+        )
+        const hours = Math.floor(duration / 3600)
+        const minutes = Math.floor((duration % 3600) / 60)
+        const seconds = duration % 60
+        setFrozenElapsedLabel(
+          `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
         )
 
         let finalSegments = readAloudSegments
@@ -696,7 +731,9 @@ export default function BookDetailPageClient({
       } catch (error) {
         setError("타이머를 정지하는 중 오류가 발생했습니다.")
       } finally {
+        setIsSavingTimerSession(false)
         setIsTimerProcessing(false)
+        setFrozenElapsedLabel(null)
       }
     }
   }
@@ -1137,8 +1174,78 @@ export default function BookDetailPageClient({
   }
 
   const handleDeleteReadingSession = async (sessionId: string) => {
+    const session = readingSessions.find((s) => s.id === sessionId)
+    if (
+      session &&
+      GuardianChildService.isReadAloudSession(session) &&
+      !session.read_aloud_parent_session_id
+    ) {
+      setReadAloudDeleteParentId(sessionId)
+      setReadAloudDeleteTargets([])
+      setReadAloudDeleteError(null)
+      setReadAloudDeleteOpen(true)
+      setReadAloudDeleteLoading(true)
+      try {
+        const targets =
+          await GuardianChildService.listReadAloudLinkedSessions(sessionId)
+        setReadAloudDeleteTargets(targets)
+      } catch (caught) {
+        setReadAloudDeleteError(
+          caught instanceof Error
+            ? caught.message
+            : "연계 기록을 불러오지 못했습니다.",
+        )
+      } finally {
+        setReadAloudDeleteLoading(false)
+      }
+      return
+    }
+
     setSessionToDelete(sessionId)
     setIsDeleteSessionModalOpen(true)
+  }
+
+  const confirmDeleteReadAloudSessions = async (sessionIds: string[]) => {
+    if (
+      !readAloudDeleteParentId ||
+      sessionIds.length === 0 ||
+      isDeletingSessionRef.current
+    ) {
+      return
+    }
+
+    isDeletingSessionRef.current = true
+    setIsDeletingSession(true)
+    try {
+      setError(null)
+      await GuardianChildService.deleteReadAloudSessions({
+        parentSessionId: readAloudDeleteParentId,
+        sessionIds,
+      })
+
+      const updatedSessions =
+        await ReadingSessionService.getBookReadingSessions(
+          resolvedParams?.id || "",
+        )
+      setReadingSessions(updatedSessions)
+
+      if (sessionIds.includes(readAloudDeleteParentId)) {
+        await removeReadingSession(readAloudDeleteParentId)
+      }
+
+      setReadAloudDeleteOpen(false)
+      setReadAloudDeleteParentId(null)
+      setReadAloudDeleteTargets([])
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setError(caught.message)
+      } else {
+        setError("읽어주기 기록을 삭제하는 중 오류가 발생했습니다.")
+      }
+    } finally {
+      isDeletingSessionRef.current = false
+      setIsDeletingSession(false)
+    }
   }
 
   const confirmDeleteReadingSession = async () => {
@@ -1671,6 +1778,11 @@ export default function BookDetailPageClient({
                           <div className='text-xs font-medium text-theme-primary'>
                             {Math.floor(session.duration / 60)}분{" "}
                             {session.duration % 60}초
+                            {session.reading_mode === "read_aloud" ? (
+                              <span className="ml-1.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                                읽어주기
+                              </span>
+                            ) : null}
                           </div>
                           <div className='flex items-center gap-1'>
                             <button
@@ -1845,6 +1957,7 @@ export default function BookDetailPageClient({
               onCosmosError={() => setCosmosOverlay("fail")}
               getElapsedTime={getElapsedTime}
               isTimerProcessing={isTimerProcessing}
+              isTimerFrozen={isSavingTimerSession}
               isSettingsOpen={isTimerSettingsOpen}
               onToggleSettings={() => setIsTimerSettingsOpen((o) => !o)}
               isCompleted={isCompleted}
@@ -1853,7 +1966,9 @@ export default function BookDetailPageClient({
               onRereadModal={() => setIsRereadModalOpen(true)}
               onReread={handleResumeFromHold}
             />
-            {isTimerRunning && readingMode === "read_aloud" && (
+            {isTimerRunning &&
+              readingMode === "read_aloud" &&
+              !isSavingTimerSession && (
               <button
                 type="button"
                 onClick={() => {
@@ -1867,6 +1982,10 @@ export default function BookDetailPageClient({
                 읽어주는 자녀 ({selectedChildIds.length})
               </button>
             )}
+            <TimerSessionSaveOverlay
+              open={isSavingTimerSession}
+              elapsedLabel={frozenElapsedLabel ?? undefined}
+            />
           </>
         )}
 
@@ -1981,7 +2100,7 @@ export default function BookDetailPageClient({
               ? `다음 자녀의 서재에 『${book?.title ?? "이 책"}』이(가) 없습니다.\n\n${missingChildrenConfirm.missingNames.map((name) => `· ${name}`).join("\n")}\n\n확인하면 해당 자녀 서재에 책을 등록한 뒤 읽어주기를 진행합니다. 끝나면 보호자와 선택한 자녀 모두에게 독서 시간이 기록됩니다.`
               : ""
           }
-          confirmText={isEnsuringChildBooks ? "등록 중..." : "등록하고 진행"}
+          confirmText={isEnsuringChildBooks ? "등록·진행 중…" : "등록하고 진행"}
           cancelText="취소"
           icon={BookOpen}
           iconColor="text-emerald-600 dark:text-emerald-400"
@@ -1989,6 +2108,8 @@ export default function BookDetailPageClient({
           confirmButtonColor="bg-emerald-600"
           confirmButtonHoverColor="hover:bg-emerald-700"
           showSubtitle={false}
+          isLoading={isEnsuringChildBooks}
+          closeOnConfirm={false}
         />
 
         <RereadModal
@@ -2080,6 +2201,24 @@ export default function BookDetailPageClient({
             closeOnConfirm={false}
           />
         )}
+
+        <DeleteReadAloudSessionsModal
+          isOpen={readAloudDeleteOpen}
+          targets={readAloudDeleteTargets}
+          isLoading={readAloudDeleteLoading}
+          isDeleting={isDeletingSession}
+          loadError={readAloudDeleteError}
+          onClose={() => {
+            if (isDeletingSession || readAloudDeleteLoading) return
+            setReadAloudDeleteOpen(false)
+            setReadAloudDeleteParentId(null)
+            setReadAloudDeleteTargets([])
+            setReadAloudDeleteError(null)
+          }}
+          onConfirm={(sessionIds) => {
+            void confirmDeleteReadAloudSessions(sessionIds)
+          }}
+        />
 
         {/* 체크리스트 모달 - 현재 서비스에서는 사용하지 않음 */}
         {/* 나중에 사용할 수 있도록 코드는 유지하되 주석 처리 */}

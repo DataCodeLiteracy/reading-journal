@@ -128,6 +128,74 @@ export class GuardianChildService {
     }
   }
 
+  static async listReadAloudLinkedSessions(parentSessionId: string): Promise<
+    Array<{
+      sessionId: string
+      userId: string
+      displayName: string
+      role: "guardian" | "child"
+      duration: number
+      date: string
+    }>
+  > {
+    const idToken = await getClientIdToken()
+    const response = await fetch(
+      "/api/guardian/list-read-aloud-linked-sessions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, parentSessionId }),
+      },
+    )
+    const result = (await response.json()) as {
+      targets?: Array<{
+        sessionId: string
+        userId: string
+        displayName: string
+        role: "guardian" | "child"
+        duration: number
+        date: string
+      }>
+      error?: string
+    }
+    if (!response.ok) {
+      throw new ApiError(
+        result.error ?? "연계 세션을 불러오지 못했습니다.",
+        "LIST_READ_ALOUD_LINKED_ERROR",
+        response.status,
+      )
+    }
+    return result.targets ?? []
+  }
+
+  static async deleteReadAloudSessions(input: {
+    parentSessionId: string
+    sessionIds: string[]
+  }): Promise<number> {
+    const idToken = await getClientIdToken()
+    const response = await fetch("/api/guardian/delete-read-aloud-sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idToken,
+        parentSessionId: input.parentSessionId,
+        sessionIds: input.sessionIds,
+      }),
+    })
+    const result = (await response.json()) as {
+      deleted?: number
+      error?: string
+    }
+    if (!response.ok) {
+      throw new ApiError(
+        result.error ?? "읽어주기 기록 삭제에 실패했습니다.",
+        "DELETE_READ_ALOUD_SESSIONS_ERROR",
+        response.status,
+      )
+    }
+    return result.deleted ?? 0
+  }
+
   static childSecondsFromSegments(
     segments: ReadAloudSegment[],
     childUserId: string,
