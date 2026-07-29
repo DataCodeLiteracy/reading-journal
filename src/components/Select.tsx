@@ -1,6 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useId, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
+import { createPortal } from "react-dom"
 import { ChevronDown } from "lucide-react"
 
 export type SelectOption<T extends string = string> = {
@@ -36,7 +44,7 @@ type SelectProps<T extends string> = {
   className?: string
   triggerClassName?: string
   emptyValue?: string
-  menuPlacement?: "top" | "bottom"
+  menuPlacement?: "top" | "bottom" | "auto"
   /**
    * 기본값은 `truncate`(한 줄 줄임표)입니다.
    * 모달 등에서 긴 라벨이 박스를 넘치지 않게 하려면 `false`로 두세요.
@@ -44,6 +52,18 @@ type SelectProps<T extends string> = {
   truncate?: boolean
   "aria-label"?: string
 }
+
+type MenuCoords = {
+  left: number
+  width: number
+  maxHeight: number
+  placement: "top" | "bottom"
+  /** bottom placement: top edge. top placement: distance from viewport bottom */
+  anchor: number
+}
+
+const MENU_MAX = 240 // max-h-60
+const MENU_GAP = 4
 
 export default function Select<T extends string>({
   value,
@@ -57,14 +77,17 @@ export default function Select<T extends string>({
   className = "",
   triggerClassName = "",
   emptyValue,
-  menuPlacement = "bottom",
+  menuPlacement = "auto",
   truncate = true,
   "aria-label": ariaLabel,
 }: SelectProps<T>) {
   const reactId = useId()
   const listboxId = `${reactId}-listbox`
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [menuCoords, setMenuCoords] = useState<MenuCoords | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLUListElement>(null)
 
   const selected = options.find((o) => o.value === value)
   const display =
@@ -75,12 +98,56 @@ export default function Select<T extends string>({
       ? value === (emptyValue as T)
       : !selected && (value === ("" as T) || value === undefined)
 
+  useEffect(() => setMounted(true), [])
+
+  const updateMenuPosition = useCallback(() => {
+    const trigger = rootRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom - MENU_GAP
+    const spaceAbove = rect.top - MENU_GAP
+    let placement: "top" | "bottom" =
+      menuPlacement === "top" || menuPlacement === "bottom"
+        ? menuPlacement
+        : spaceBelow < Math.min(MENU_MAX, 160) && spaceAbove > spaceBelow
+          ? "top"
+          : "bottom"
+    const available = placement === "bottom" ? spaceBelow : spaceAbove
+    const maxHeight = Math.max(120, Math.min(MENU_MAX, available))
+    setMenuCoords({
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+      placement,
+      anchor:
+        placement === "bottom"
+          ? rect.bottom + MENU_GAP
+          : window.innerHeight - rect.top + MENU_GAP,
+    })
+  }, [menuPlacement])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuCoords(null)
+      return
+    }
+    updateMenuPosition()
+    const onReposition = () => updateMenuPosition()
+    window.addEventListener("resize", onReposition)
+    window.addEventListener("scroll", onReposition, true)
+    return () => {
+      window.removeEventListener("resize", onReposition)
+      window.removeEventListener("scroll", onReposition, true)
+    }
+  }, [open, updateMenuPosition])
+
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as Node
+      if (rootRef.current?.contains(target)) return
+      if (menuRef.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener("mousedown", onDoc)
     return () => document.removeEventListener("mousedown", onDoc)
@@ -107,6 +174,64 @@ export default function Select<T extends string>({
   const multilineBtnCls = truncate
     ? ""
     : "h-auto min-h-[2.75rem] py-2 leading-normal"
+
+  const menu =
+    open && mounted && menuCoords
+      ? createPortal(
+          <ul
+            ref={menuRef}
+            id={listboxId}
+            role="listbox"
+            style={{
+              position: "fixed",
+              left: menuCoords.left,
+              width: menuCoords.width,
+              maxHeight: menuCoords.maxHeight,
+              ...(menuCoords.placement === "bottom"
+                ? { top: menuCoords.anchor }
+                : { bottom: menuCoords.anchor }),
+            }}
+            className={`z-[200] overflow-auto rounded-md border border-card bg-theme-primary py-1 shadow-lg ${
+              variant === "compact" ? "min-w-[7rem]" : ""
+            }`}
+          >
+            {options.map((opt) => {
+              const isActive = opt.value === value
+              return (
+                <li key={String(opt.value)} role="presentation">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    disabled={opt.disabled}
+                    className={`flex w-full items-center text-left ${
+                      variant === "compact"
+                        ? "px-2 py-1.5 text-xs"
+                        : "px-3 py-2.5 text-sm sm:py-2"
+                    } ${
+                      opt.disabled
+                        ? "cursor-not-allowed text-theme-tertiary"
+                        : `cursor-pointer hover:bg-theme-tertiary ${
+                            isActive
+                              ? "bg-accent-theme-tertiary font-medium accent-theme-primary"
+                              : opt.optionClassName ?? "text-theme-primary"
+                          }`
+                    }`}
+                    onClick={() => {
+                      if (opt.disabled) return
+                      onChangeAction(opt.value)
+                      setOpen(false)
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>,
+          document.body,
+        )
+      : null
 
   return (
     <div
@@ -139,52 +264,7 @@ export default function Select<T extends string>({
           aria-hidden
         />
       </button>
-
-      {open && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          className={`absolute left-0 z-[110] max-h-60 overflow-auto rounded-md border border-card bg-theme-primary py-1 shadow-lg ${
-            variant === "compact" ? "min-w-[7rem]" : "right-0"
-          } ${
-            menuPlacement === "top" ? "bottom-full mb-1" : "top-full mt-1"
-          }`}
-        >
-          {options.map((opt) => {
-            const isActive = opt.value === value
-            return (
-              <li key={String(opt.value)} role="presentation">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={isActive}
-                  disabled={opt.disabled}
-                  className={`flex w-full items-center text-left ${
-                    variant === "compact"
-                      ? "px-2 py-1.5 text-xs"
-                      : "px-3 py-2.5 text-sm sm:py-2"
-                  } ${
-                    opt.disabled
-                      ? "cursor-not-allowed text-theme-tertiary"
-                      : `cursor-pointer hover:bg-theme-tertiary ${
-                          isActive
-                            ? "bg-accent-theme-tertiary font-medium accent-theme-primary"
-                            : opt.optionClassName ?? "text-theme-primary"
-                        }`
-                  }`}
-                  onClick={() => {
-                    if (opt.disabled) return
-                    onChangeAction(opt.value)
-                    setOpen(false)
-                  }}
-                >
-                  {opt.label}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      {menu}
     </div>
   )
 }

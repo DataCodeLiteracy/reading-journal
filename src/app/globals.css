@@ -300,6 +300,26 @@ body {
   max-width: 42rem;
 }
 
+/**
+ * 폼 모달 본문 스크롤 영역 공통 max-height (책 추가 모달 기준: 32rem + 35px).
+ */
+.modal-form-scroll-max {
+  max-height: min(70vh, calc(32rem + 35px));
+}
+
+/**
+ * FormModalFrame 셸: 본문 기준 + 헤더/패딩 여유.
+ */
+.modal-form-panel-max {
+  max-height: min(85dvh, calc(32rem + 35px + 5.5rem));
+}
+
+@media (min-width: 640px) {
+  .modal-form-panel-max {
+    max-height: min(90vh, calc(32rem + 35px + 5.5rem));
+  }
+}
+
 /* 네이티브 date/time: 좁은 모달에서 intrinsic min-width 넘침 방지 */
 input[type="date"],
 input[type="time"],

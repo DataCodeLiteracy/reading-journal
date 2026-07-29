@@ -48,7 +48,7 @@ export default function FormModalFrame({
         onClick={interactionLocked ? undefined : onClose}
       />
       <div
-        className={`${shellClass} modal-dialog-surface relative z-10 flex min-h-0 min-w-0 max-h-[calc(82dvh-50px)] flex-col overflow-hidden rounded-xl p-0 sm:max-h-[calc(90vh-50px)]`}
+        className={`${shellClass} modal-dialog-surface modal-form-panel-max relative z-10 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl p-0`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"
