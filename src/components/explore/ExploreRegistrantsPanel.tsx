@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import type { Book } from "@/types/book"
 import { queryKeys } from "@/lib/queryKeys"
 import { fetchExploreRegistrantsForBooks } from "@/services/exploreRegistrantsService"
+import { fetchPublicBooksForCanonicalId } from "@/services/exploreCanonicalPaginatedService"
 import { formatReadingTimeFromSeconds } from "@/utils/timeUtils"
 
 const STATUS_LABELS: Record<Book["status"], string> = {
@@ -19,30 +20,37 @@ const STATUS_LABELS: Record<Book["status"], string> = {
 
 type ExploreRegistrantsPanelProps = {
   books: readonly Book[]
+  /** 있으면 이 id로 공개 books만 조회 (목록 단계 seed 대신) */
+  canonicalBookId?: string
   currentUserUid?: string | null
   adminActions?: ReactNode
 }
 
 export default function ExploreRegistrantsPanel({
   books,
+  canonicalBookId,
   currentUserUid,
   adminActions,
 }: ExploreRegistrantsPanelProps) {
   const router = useRouter()
 
-  const bookIdsKey = useMemo(
-    () =>
-      [...books]
-        .map((b) => b.id)
-        .sort()
-        .join("|"),
-    [books],
-  )
+  const registrantsKey = useMemo(() => {
+    if (canonicalBookId) return `canonical:${canonicalBookId}`
+    return [...books]
+      .map((b) => b.id)
+      .sort()
+      .join("|")
+  }, [books, canonicalBookId])
 
   const registrantsQuery = useQuery({
-    queryKey: queryKeys.explore.registrants(bookIdsKey),
-    queryFn: () => fetchExploreRegistrantsForBooks(books),
-    enabled: books.length > 0,
+    queryKey: queryKeys.explore.registrants(registrantsKey),
+    queryFn: async () => {
+      const list = canonicalBookId
+        ? await fetchPublicBooksForCanonicalId(canonicalBookId)
+        : [...books]
+      return fetchExploreRegistrantsForBooks(list)
+    },
+    enabled: Boolean(canonicalBookId) || books.length > 0,
     staleTime: 5 * 60_000,
   })
 
@@ -68,7 +76,7 @@ export default function ExploreRegistrantsPanel({
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           불러오는 중…
         </div>
-      ) : rows ? (
+      ) : rows && rows.length > 0 ? (
         <ul className="space-y-2">
           {rows.map(({ book, displayName, totalReadingSeconds }) => {
             const rereadCount = book.rereadCount ?? 0
@@ -119,6 +127,10 @@ export default function ExploreRegistrantsPanel({
             )
           })}
         </ul>
+      ) : rows ? (
+        <p className="py-2 text-xs text-theme-tertiary">
+          공개된 등록 유저가 없습니다.
+        </p>
       ) : null}
     </div>
   )

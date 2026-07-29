@@ -12,4 +12,6 @@ export type ExploreTitleGroup = {
   avgRating: number
   statuses: Set<Book["status"]>
   coverUrl?: string
+  /** canonicalBooks 문서 id — 있으면 펼침 시 이 판본 등록분만 조회 */
+  canonicalBookId?: string
 }

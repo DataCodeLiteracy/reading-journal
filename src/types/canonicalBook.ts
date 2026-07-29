@@ -19,6 +19,8 @@ export interface CanonicalBook {
   level?: BookLevel
   tocOutline?: BookTocEntry[]
   user_ids: string[]
+  /** user_ids.length — 탐색 «등록 유저 순» 정렬용 */
+  registrantCount?: number
   created_at?: Date
   updated_at?: Date
 }

@@ -14,7 +14,12 @@ export class BookService {
    */
   static async createBook(bookData: Omit<Book, "id">): Promise<Book> {
     try {
-      const bookId = await ApiClient.createDocumentWithAutoId("books", bookData)
+      // 탐색·공유 목록은 isBookPublic==true만 조회한다. 미지정 시 공개가 기본.
+      const payload: Omit<Book, "id"> = {
+        ...bookData,
+        isBookPublic: bookData.isBookPublic ?? true,
+      }
+      const bookId = await ApiClient.createDocumentWithAutoId("books", payload)
       const book = await this.getBook(bookId)
       if (!book) {
         throw new ApiError(

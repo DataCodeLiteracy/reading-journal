@@ -312,6 +312,7 @@ export default function ExploreEditionGroupCard({
       {isExpanded && (
         <ExploreRegistrantsPanel
           books={group.books}
+          canonicalBookId={group.canonicalBookId}
           currentUserUid={userUid}
           adminActions={adminActions}
         />

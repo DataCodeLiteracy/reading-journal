@@ -169,6 +169,7 @@ export class CanonicalBookService {
       editionKey,
       ...pickSharedBibliographic(book),
       user_ids: [userId],
+      registrantCount: 1,
     }
     await ApiClient.createDocument(COLLECTION, id, payload)
     this.invalidateSearchCache()
@@ -198,6 +199,7 @@ export class CanonicalBookService {
       editionKey,
       ...pickSharedBibliographic(seed),
       user_ids: userIds,
+      registrantCount: userIds.length,
       ...(tocOutline?.length ? { tocOutline } : {}),
     }
     await ApiClient.createDocument(COLLECTION, id, payload)
@@ -226,6 +228,7 @@ export class CanonicalBookService {
       editionKey,
       ...pickSharedBibliographic(book),
       user_ids: [userId],
+      registrantCount: 1,
     }
     const id = await ApiClient.createDocumentWithAutoId(COLLECTION, payload)
     this.invalidateSearchCache()
@@ -246,9 +249,14 @@ export class CanonicalBookService {
       existing,
       pickSharedBibliographic(book),
     )
+    const already = existing.user_ids.includes(userId)
+    const nextCount = already
+      ? (existing.registrantCount ?? existing.user_ids.length)
+      : (existing.registrantCount ?? existing.user_ids.length) + 1
     await ApiClient.updateDocument(COLLECTION, canonicalId, {
       ...patch,
       user_ids: arrayUnion(userId),
+      registrantCount: nextCount,
     })
 
     const updated = await this.getById(canonicalId)

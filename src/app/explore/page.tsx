@@ -28,11 +28,10 @@ import {
   registerExploreEditionBook,
 } from "@/services/bookRegistrationService"
 import {
-  countExploreBooksForExplore,
-  enrichExploreBooksCoverUrls,
-  fetchExploreBooksForExplore,
-  type ExploreBooksListParams,
-} from "@/services/explorePaginatedService"
+  countExploreCanonicalGroups,
+  fetchExploreCanonicalGroupsPage,
+  type ExploreCanonicalListParams,
+} from "@/services/exploreCanonicalPaginatedService"
 import { fetchExploreHighlightsForGroups } from "@/services/exploreEditionHighlightsService"
 import ExploreEditionGroupCard from "@/components/explore/ExploreEditionGroupCard"
 import ExploreAddBookLoadingOverlay from "@/components/explore/ExploreAddBookLoadingOverlay"
@@ -45,8 +44,6 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { ExploreListSkeleton, MinimalShellFallback } from "@/components/skeletons"
 import { normalizeBookDuplicateKey } from "@/utils/bookTitleKey"
-import { pickExploreGroupCoverUrl } from "@/utils/exploreGroupCover"
-import { sortExploreTitleGroups } from "@/utils/sortExploreTitleGroups"
 import ReadingExamUploadModal from "@/components/ReadingExamUploadModal"
 import ReadingExcerptUploadModal from "@/components/ReadingExcerptUploadModal"
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock"
@@ -130,7 +127,7 @@ function ExplorePageContent() {
   const EXPLORE_PAGE_SIZE = 10
 
   const exploreListParams = useMemo(
-    (): ExploreBooksListParams => ({
+    (): ExploreCanonicalListParams => ({
       statusFilter,
       levelFilter,
       categoryFilter,
@@ -163,7 +160,7 @@ function ExplorePageContent() {
 
   const exploreCountQuery = useQuery({
     queryKey: queryKeys.explore.booksFlatCount(exploreListFiltersKey),
-    queryFn: () => countExploreBooksForExplore(exploreListParams),
+    queryFn: () => countExploreCanonicalGroups(exploreListParams),
     enabled: isLoggedIn,
     staleTime: 30_000,
   })
@@ -175,26 +172,30 @@ function ExplorePageContent() {
     ),
     queryFn: async () => {
       let cursor: QueryDocumentSnapshot<DocumentData> | null = null
+      const skipGroupKeys = new Set<string>()
       for (let p = 1; p < currentPage; p++) {
-        const batch = await fetchExploreBooksForExplore({
+        const prev = await fetchExploreCanonicalGroupsPage({
           ...exploreListParams,
           pageSize: EXPLORE_PAGE_SIZE,
           startAfterSnapshot: cursor,
+          skipGroupKeys,
         })
-        if (!batch.hasMore) {
-          return { items: [] as Book[], hasMore: false }
+        for (const key of prev.pageGroupKeys) skipGroupKeys.add(key)
+        cursor = prev.lastVisible
+        if (!prev.hasMore) {
+          return {
+            groups: [] as ExploreTitleGroup[],
+            hasMore: false,
+            pageGroupKeys: [] as string[],
+          }
         }
-        cursor = batch.lastVisible
       }
-      const page = await fetchExploreBooksForExplore({
+      return fetchExploreCanonicalGroupsPage({
         ...exploreListParams,
         pageSize: EXPLORE_PAGE_SIZE,
         startAfterSnapshot: cursor,
+        skipGroupKeys,
       })
-      return {
-        ...page,
-        items: await enrichExploreBooksCoverUrls(page.items),
-      }
     },
     enabled: isLoggedIn,
     staleTime: 30_000,
@@ -230,43 +231,16 @@ function ExplorePageContent() {
     }
   }, [currentPage, exploreTotalPages])
 
-  const catalogForGrouping = useMemo(
-    () => explorePageQuery.data?.items ?? [],
+  /** 서버에서 판본(제목+출판사) 카드 10개 단위로 채운 결과 */
+  const grouped = useMemo(
+    () => explorePageQuery.data?.groups ?? [],
     [explorePageQuery.data],
   )
 
-  const grouped = useMemo(() => {
-    const byEdition = new Map<string, Book[]>()
-    for (const book of catalogForGrouping) {
-      const t = (book.title || "").trim()
-      if (!t) continue
-      const key = normalizeBookDuplicateKey(t, book.publisher)
-      if (!byEdition.has(key)) byEdition.set(key, [])
-      byEdition.get(key)!.push(book)
-    }
-    const list: ExploreTitleGroup[] = []
-    byEdition.forEach((books, groupKey) => {
-      const title = books[0]?.title?.trim() || ""
-      const publisher = books[0]?.publisher?.trim() || ""
-      const author = books[0]?.author || "저자 미상"
-      const userCount = new Set(books.map((b) => b.user_id)).size
-      const avgRating =
-        books.reduce((s, b) => s + (b.rating ?? 0), 0) / books.length
-      const statuses = new Set(books.map((b) => b.status))
-      list.push({
-        groupKey,
-        title,
-        publisher,
-        books,
-        author,
-        userCount,
-        avgRating,
-        statuses,
-        coverUrl: pickExploreGroupCoverUrl(books),
-      })
-    })
-    return sortExploreTitleGroups(list, sortBy)
-  }, [catalogForGrouping, sortBy])
+  const catalogRegistrantCount = useMemo(
+    () => grouped.reduce((n, g) => n + g.userCount, 0),
+    [grouped],
+  )
 
   const uniqueAuthors = useMemo(() => {
     const set = new Set<string>()
@@ -435,8 +409,8 @@ function ExplorePageContent() {
             📚 전체 책 탐색
           </h1>
           <p className='text-sm text-theme-secondary'>
-            같은 제목·출판사로 등록된 책은 한 줄로 묶어 보여 줍니다. 출판사가
-            다르면 별도 항목으로 표시됩니다.
+            같은 제목·출판사 판본은 카드 하나로 보여 주고, 펼치면 등록한 유저를 확인할 수
+            있습니다. 출판사가 다르면 별도 항목입니다.
           </p>
         </header>
 
@@ -478,7 +452,7 @@ function ExplorePageContent() {
               필터 / 정렬
               {!filterOpen && (
                 <span className='text-xs font-normal text-theme-secondary'>
-                  {` · 이 페이지 ${catalogForGrouping.length}권 · 제목 그룹 ${paginated.length}개`}
+                  {` · 이 페이지 판본 ${paginated.length}개 · 등록 ${catalogRegistrantCount}명`}
                 </span>
               )}
             </span>
@@ -598,9 +572,9 @@ function ExplorePageContent() {
                 )}
               </div>
               <p className='text-xs text-theme-tertiary'>
-                검색·상태·저자·평점·문해력 수준·분야·유저·정렬·내 책 제외는 모두 서버에서 적용된 뒤, 10권 단위로
-                불러옵니다. 같은 제목·출판사는 한 줄로 묶어 보여 줍니다. «등록 유저 많은/적은 순»은 등록 시각
-                기준으로 정렬합니다.
+                기본·검색·저자·문해력·분야·유저·정렬은 판본 문서를 10개 단위로 조회합니다.
+                상태·평점 필터(또는 평점순)를 쓰면 책 문서 기준으로 조회합니다. 카드를 펼치면
+                그 판본을 등록한 유저를 불러옵니다.
               </p>
             </div>
           )}
@@ -643,8 +617,9 @@ function ExplorePageContent() {
                           onClick={() => {
                             setExploreAdminTitle(g.title)
                             setExploreAdminCanonicalId(
-                              g.books.find((b) => b.canonicalBookId)
-                                ?.canonicalBookId,
+                              g.canonicalBookId ||
+                                g.books.find((b) => b.canonicalBookId)
+                                  ?.canonicalBookId,
                             )
                             setExploreAdminPublisher(g.publisher || undefined)
                             setExploreExamModalOpen(true)
@@ -658,8 +633,9 @@ function ExplorePageContent() {
                           onClick={() => {
                             setExploreAdminTitle(g.title)
                             setExploreAdminCanonicalId(
-                              g.books.find((b) => b.canonicalBookId)
-                                ?.canonicalBookId,
+                              g.canonicalBookId ||
+                                g.books.find((b) => b.canonicalBookId)
+                                  ?.canonicalBookId,
                             )
                             setExploreAdminPublisher(g.publisher || undefined)
                             setExploreExcerptModalOpen(true)

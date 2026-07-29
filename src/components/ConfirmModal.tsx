@@ -71,26 +71,26 @@ export default function ConfirmModal({
         </button>
 
         <div className="pr-8">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <div
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBgColor}`}
             >
               <Icon className={`h-6 w-6 ${iconColor}`} />
             </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-lg font-semibold leading-snug text-theme-primary">
-                {title}
-              </h3>
-              {showSubtitle && (
-                <p className="mt-0.5 text-sm text-theme-secondary">
-                  이 작업은 되돌릴 수 없습니다.
-                </p>
-              )}
-            </div>
+            <h3 className="min-w-0 flex-1 text-lg font-semibold leading-snug text-theme-primary">
+              {title}
+            </h3>
           </div>
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-theme-secondary">
-            {message}
-          </p>
+          <div className="mt-3 space-y-1.5">
+            {showSubtitle && (
+              <p className="text-sm text-theme-secondary">
+                이 작업은 되돌릴 수 없습니다.
+              </p>
+            )}
+            <p className="whitespace-pre-line text-sm leading-relaxed text-theme-secondary">
+              {message}
+            </p>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-2">

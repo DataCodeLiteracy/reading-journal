@@ -51,13 +51,15 @@ export async function fetchExploreHighlightsForGroups(
   groups: readonly {
     groupKey: string
     title: string
+    canonicalBookId?: string
     books: readonly { canonicalBookId?: string }[]
   }[],
 ): Promise<Record<string, ExploreEditionHighlights>> {
   const entries = await Promise.all(
     groups.map(async (g) => {
-      const canonicalBookId = g.books.find((b) => b.canonicalBookId)
-        ?.canonicalBookId
+      const canonicalBookId =
+        g.canonicalBookId ||
+        g.books.find((b) => b.canonicalBookId)?.canonicalBookId
       const highlights = await fetchExploreEditionHighlights(
         g.title,
         canonicalBookId,

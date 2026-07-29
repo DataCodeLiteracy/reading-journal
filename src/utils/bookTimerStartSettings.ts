@@ -7,8 +7,9 @@ export function isBookTimerPreReadPromptEnabled(
   return book?.timerPreReadPromptEnabled !== false
 }
 
+/** 자녀 읽어주기: 미설정이면 off (읽어주는 책만 명시적으로 on) */
 export function isBookTimerReadAloudEnabled(
   book: Pick<Book, "timerReadAloudEnabled"> | null | undefined,
 ): boolean {
-  return book?.timerReadAloudEnabled !== false
+  return book?.timerReadAloudEnabled === true
 }

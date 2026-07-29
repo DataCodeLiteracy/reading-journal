@@ -91,7 +91,7 @@ export interface Book {
   timerPreReadPromptEnabled?: boolean
   /**
    * 이 책에서 자녀 읽어주기 선택을 쓸지.
-   * undefined/true = on, false = off (타이머만).
+   * true = on, undefined/false = off (타이머만). 읽어주는 책만 켠다.
    */
   timerReadAloudEnabled?: boolean
   /** 목차(최대 4 depth, path는 `1.1.1.1` 형식). 발췌 JSON 등과 동일 스키마로 연동 */

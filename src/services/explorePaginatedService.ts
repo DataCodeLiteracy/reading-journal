@@ -51,6 +51,7 @@ function buildGroup(books: Book[]): ExploreTitleGroup {
     userCount,
     avgRating,
     statuses,
+    canonicalBookId: books.find((b) => b.canonicalBookId)?.canonicalBookId,
   }
 }
 
@@ -285,12 +286,7 @@ export function getExploreBooksOrderByChain(params: {
   firestoreExcludeMine: boolean
 }): ReadonlyArray<{ field: string; direction: "asc" | "desc" }> {
   if (!params.firestoreExcludeMine) {
-    if (params.sortBy === "recent-title" && !params.hasSearchPrefix) {
-      return [
-        { field: "created_at", direction: "desc" },
-        { field: "title", direction: "asc" },
-      ]
-    }
+    // recent-title은 created_at 단일 정렬 — isBookPublic+created_at 복합 인덱스와 일치
     const { field, dir } = exploreBooksFlatSortParams(
       params.sortBy,
       params.hasSearchPrefix,
@@ -308,7 +304,6 @@ export function getExploreBooksOrderByChain(params: {
       return [
         { field: "user_id", direction: "asc" },
         { field: "created_at", direction: "desc" },
-        { field: "title", direction: "asc" },
       ]
     case "title-desc":
       return [
@@ -518,4 +513,171 @@ export async function fetchExploreBooksForExplore(
     pageSize: params.pageSize,
     startAfterSnapshot: params.startAfterSnapshot,
   })
+}
+
+const EDITION_PAGE_READ = 50
+const EDITION_PAGE_MAX_ROUNDS = 80
+const EDITION_COUNT_READ = 100
+const EDITION_COUNT_MAX_ROUNDS = 100
+
+function editionKeyOfBook(book: Book): string | null {
+  const t = (book.title || "").trim()
+  if (!t) return null
+  return normalizeBookDuplicateKey(t, book.publisher)
+}
+
+/** 같은 판본의 공개 등록분을 모두 모아 등록 유저 목록이 카드에 맞게 채워지게 합니다. */
+async function loadPublicBooksForEdition(
+  title: string,
+  publisher?: string,
+): Promise<Book[]> {
+  const trimmed = title.trim()
+  if (!trimmed) return []
+  const key = normalizeBookDuplicateKey(trimmed, publisher)
+  const candidates = await ApiClient.queryDocuments<Book>(
+    "books",
+    [
+      ["isBookPublic", "==", true],
+      ["title", ">=", trimmed],
+      ["title", "<=", `${trimmed}\uf8ff`],
+    ],
+    "title",
+    "asc",
+    200,
+  )
+  return candidates.filter(
+    (b) => normalizeBookDuplicateKey(b.title, b.publisher) === key,
+  )
+}
+
+async function enrichEditionGroupsWithAllRegistrants(
+  groups: ExploreTitleGroup[],
+): Promise<ExploreTitleGroup[]> {
+  if (groups.length === 0) return groups
+  return Promise.all(
+    groups.map(async (group) => {
+      try {
+        const all = await loadPublicBooksForEdition(
+          group.title,
+          group.publisher || undefined,
+        )
+        if (all.length <= group.books.length) return group
+        return buildGroup(all)
+      } catch {
+        return group
+      }
+    }),
+  )
+}
+
+/**
+ * 탐색 목록 — 판본(제목+출판사) 카드를 `groupsTarget`개 채울 때까지 books를 순회합니다.
+ * 같은 판본은 카드 1장으로 묶고, 등록 유저는 카드 펼침에서 확인합니다.
+ */
+export async function fetchExploreEditionGroupsForExplore(
+  params: ExploreBooksListParams & {
+    groupsTarget: number
+    startAfterSnapshot: QueryDocumentSnapshot<DocumentData> | null
+    /** 이전 페이지에서 이미 보여 준 판본 키 */
+    skipGroupKeys: ReadonlySet<string>
+  },
+): Promise<{
+  groups: ExploreTitleGroup[]
+  lastVisible: QueryDocumentSnapshot<DocumentData> | null
+  hasMore: boolean
+  pageGroupKeys: string[]
+}> {
+  const target = Math.max(1, params.groupsTarget)
+  const byEdition = new Map<string, Book[]>()
+  const orderKeys: string[] = []
+  let firestoreCursor: QueryDocumentSnapshot<DocumentData> | null =
+    params.startAfterSnapshot
+  let lastAccepted: QueryDocumentSnapshot<DocumentData> | null = null
+  let rounds = 0
+
+  const finish = async (hasMore: boolean) => {
+    const raw = orderKeys.map((k) => buildGroup(byEdition.get(k)!))
+    const groups = await enrichEditionGroupsWithAllRegistrants(raw)
+    return {
+      groups,
+      lastVisible: lastAccepted,
+      hasMore,
+      pageGroupKeys: orderKeys,
+    }
+  }
+
+  while (rounds < EDITION_PAGE_MAX_ROUNDS) {
+    rounds += 1
+    const batch = await fetchExploreBooksForExplore({
+      ...params,
+      pageSize: EDITION_PAGE_READ,
+      startAfterSnapshot: firestoreCursor,
+    })
+
+    if (batch.items.length === 0) {
+      break
+    }
+
+    for (let i = 0; i < batch.items.length; i++) {
+      const book = batch.items[i]!
+      const snap = batch.snapshots[i]!
+      const key = editionKeyOfBook(book)
+
+      if (!key || params.skipGroupKeys.has(key)) {
+        lastAccepted = snap
+        continue
+      }
+
+      if (byEdition.has(key)) {
+        byEdition.get(key)!.push(book)
+        lastAccepted = snap
+        continue
+      }
+
+      if (orderKeys.length >= target) {
+        return finish(true)
+      }
+
+      byEdition.set(key, [book])
+      orderKeys.push(key)
+      lastAccepted = snap
+    }
+
+    firestoreCursor = batch.lastVisible
+    if (!batch.hasMore) {
+      break
+    }
+    if (orderKeys.length >= target) {
+      return finish(true)
+    }
+  }
+
+  return finish(false)
+}
+
+/** 조건에 맞는 고유 판본(제목+출판사) 개수 — 페이지 수 계산용 */
+export async function countExploreEditionGroupsForExplore(
+  params: ExploreBooksListParams,
+): Promise<number> {
+  const keys = new Set<string>()
+  let cursor: QueryDocumentSnapshot<DocumentData> | null = null
+  let rounds = 0
+
+  while (rounds < EDITION_COUNT_MAX_ROUNDS) {
+    rounds += 1
+    const batch = await fetchExploreBooksForExplore({
+      ...params,
+      pageSize: EDITION_COUNT_READ,
+      startAfterSnapshot: cursor,
+    })
+    if (batch.items.length === 0) break
+    for (const book of batch.items) {
+      const key = editionKeyOfBook(book)
+      if (key) keys.add(key)
+    }
+    cursor = batch.lastVisible
+    if (!batch.hasMore) break
+  }
+
+  return keys.size
 }
