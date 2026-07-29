@@ -208,7 +208,7 @@ export default function QuoteModal({
         <form
           id="quote-modal-form"
           onSubmit={handleSubmit}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6"
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-4 sm:p-6"
         >
           <div className="space-y-4">
             {showMemorableLineGuide && !existingQuote ? (

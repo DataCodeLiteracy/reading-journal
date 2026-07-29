@@ -122,7 +122,7 @@ function TocViewSheetBody({
         </div>
       </header>
 
-      <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1rem,calc(12px+env(safe-area-inset-bottom,0px)))]'>
+      <div className='min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-3 pb-[max(1rem,calc(12px+env(safe-area-inset-bottom,0px)))]'>
         {!hasTree && !hasOrphans ? (
           <p className='py-6 text-center text-sm text-theme-secondary'>
             표시할 목차가 없습니다. 편집 화면에서 항목을 추가한 뒤 다시 열어 주세요.

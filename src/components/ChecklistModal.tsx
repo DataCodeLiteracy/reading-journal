@@ -70,7 +70,7 @@ export default function ChecklistModal({
         </div>
 
         {/* 체크리스트 내용 - 스크롤 가능 */}
-        <div className='flex-1 overflow-y-auto p-4 sm:p-6 min-h-0'>
+        <div className='flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 min-h-0'>
           <div className='space-y-3 sm:space-y-4'>
             {checklist.map((item, index) => (
               <div

@@ -126,7 +126,7 @@ export default function CritiqueModal({
         <form
           id='critique-modal-form'
           onSubmit={handleSubmit}
-          className='flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 min-h-0'
+          className='flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-4 sm:p-6 min-h-0'
         >
           <div className='space-y-4'>
             {/* 제목 (선택사항) */}

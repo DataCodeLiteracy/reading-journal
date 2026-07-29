@@ -75,7 +75,7 @@ export default function FormModalFrame({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-6 sm:py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-3 sm:px-6 sm:py-4">
           {children}
         </div>
         {interactionLocked && lockOverlay}

@@ -193,7 +193,7 @@ export default function GoldenBellUploadModal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
-      <div className='modal-dialog-surface w-full max-w-lg rounded-xl p-6 mx-4 max-h-[90vh] overflow-y-auto'>
+      <div className='modal-dialog-surface w-full max-w-lg rounded-xl p-6 mx-4 max-h-[90vh] overflow-y-auto overflow-x-hidden'>
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-lg font-semibold text-theme-primary'>
             {isReregister ? "🔔 독서 골든벨 재등록" : "🔔 독서 골든벨 등록"}

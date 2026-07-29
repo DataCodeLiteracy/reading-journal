@@ -223,7 +223,7 @@ export default function JsonUploadModal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none bg-theme-backdrop'>
-      <div className='modal-dialog-surface w-full max-w-2xl rounded-xl p-6 mx-4 max-h-[90vh] overflow-y-auto'>
+      <div className='modal-dialog-surface w-full max-w-2xl rounded-xl p-6 mx-4 max-h-[90vh] overflow-y-auto overflow-x-hidden'>
         <div className='flex items-center justify-between mb-4'>
           <div className='flex items-center gap-3'>
             <div className='p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full'>

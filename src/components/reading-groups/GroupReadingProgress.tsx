@@ -1119,7 +1119,7 @@ export default function GroupReadingProgress({
               </p>
             </div>
 
-            <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-0.5">
+            <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5">
               {selectedAssignments.map((assignment) => {
                 const book = booksById.get(assignment.group_book_id)
                 const coverUrl =

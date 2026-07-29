@@ -74,7 +74,7 @@ export function KeywordsBottomSheet({
       <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
         <KeywordsSheetHeader total={total} onClose={onClose} />
 
-        <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,calc(8px+env(safe-area-inset-bottom,0px)))] pt-0 sm:px-5'>
+        <div className='min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-[max(1rem,calc(8px+env(safe-area-inset-bottom,0px)))] pt-0 sm:px-5'>
         <div className='space-y-6 pt-4'>
         {blocks.map((b) => (
           <section

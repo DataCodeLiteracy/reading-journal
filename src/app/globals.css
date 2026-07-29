@@ -302,13 +302,14 @@ body {
 
 /**
  * 폼 모달 본문 스크롤 영역 공통 max-height (책 추가 모달 기준: 32rem + 35px).
+ * FormModalFrame 셸에 쓰는 패널 max와 맞춰 둡니다.
  */
 .modal-form-scroll-max {
   max-height: min(70vh, calc(32rem + 35px));
 }
 
 /**
- * FormModalFrame 셸: 본문 기준 + 헤더/패딩 여유.
+ * FormModalFrame 셸: 본문 기준 + 헤더/패딩 여유. 가로 흔들림 방지용 overflow-x는 컴포넌트에서 처리.
  */
 .modal-form-panel-max {
   max-height: min(85dvh, calc(32rem + 35px + 5.5rem));

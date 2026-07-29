@@ -344,7 +344,7 @@ export default function AddBookModal({
       >
         <form
           onSubmit={handleSubmit}
-          className="form-modal-fieldset modal-form-scroll-max relative overflow-y-auto"
+          className="form-modal-fieldset"
         >
           <fieldset
             disabled={aladinBusy || isSubmitting}

@@ -80,7 +80,7 @@ export default function WeeklyRecapModal({
           )}
         </div>
 
-        <div className='flex-1 overflow-y-auto p-3'>
+        <div className='flex-1 overflow-y-auto overflow-x-hidden p-3'>
           {daySummaries.length === 0 ? (
             <p className='text-sm text-theme-tertiary py-3'>
               이번 주 기록된 독서가 없습니다.

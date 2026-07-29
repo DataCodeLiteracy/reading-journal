@@ -143,7 +143,7 @@ export default function ReadingTimerSettingsModal({
             </button>
           </div>
 
-          <div className='mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-1'>
+          <div className='mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden overscroll-contain pr-1'>
             <section>
               <h3 className='mb-2 text-xs font-semibold text-theme-secondary'>배경</h3>
               <ul className='space-y-1'>

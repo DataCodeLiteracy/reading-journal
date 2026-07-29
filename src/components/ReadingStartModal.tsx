@@ -159,7 +159,7 @@ export default function ReadingStartModal({
             </button>
           </div>
 
-          <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="mt-3 min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
             {showPreRead ? (
               <p className="text-sm leading-relaxed text-theme-secondary">
                 {hasTocOutline
