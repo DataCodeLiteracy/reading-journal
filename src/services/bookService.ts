@@ -18,6 +18,9 @@ export class BookService {
       const payload: Omit<Book, "id"> = {
         ...bookData,
         isBookPublic: bookData.isBookPublic ?? true,
+        ...(bookData.status === "reading" && !bookData.last_read_at
+          ? { last_read_at: new Date() }
+          : {}),
       }
       const bookId = await ApiClient.createDocumentWithAutoId("books", payload)
       const book = await this.getBook(bookId)
@@ -126,11 +129,15 @@ export class BookService {
       status,
     }
 
+    const book = await this.getBook(bookId)
+
     if (status === "reading") {
       updateData.hasStartedReading = true
+      if (!book?.last_read_at) {
+        updateData.last_read_at = new Date()
+      }
     } else if (status === "completed") {
       // 완독 처리 시 회독 수 증가
-      const book = await this.getBook(bookId)
       const currentRereadCount = book?.rereadCount ?? 0
       updateData.completedDate = new Date().toISOString().split("T")[0]
       updateData.rereadCount = currentRereadCount + 1
@@ -287,9 +294,8 @@ export class BookService {
     }
     if (sort === "recently_added") return { field: "created_at", dir: "desc" }
     if (sort === "recently_updated") return { field: "updated_at", dir: "desc" }
-    // `last_read_at` 없는 책은 Firestore orderBy에서 결과에서 빠져 목록이 비는 문제가 있어,
-    // 항상 채워지는 `updated_at`으로 정렬(독서 세션 시에도 갱신됨).
-    return { field: "updated_at", dir: "desc" }
+    // 실제 마지막 독서 시각. 없는 문서는 orderBy에서 빠지므로 백필·세션 저장 시 항상 채운다.
+    return { field: "last_read_at", dir: "desc" }
   }
 
   /** 서재·탐색 등 Firestore 커서 페이지 (복합 인덱스 필요할 수 있음) */

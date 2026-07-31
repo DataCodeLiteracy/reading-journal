@@ -21,15 +21,14 @@ export function buildSessionLatestByBookId(
 }
 
 /**
- * 서재 «최근 읽은 순»과 동일하게 `updated_at`을 우선하고,
- * 세션 endTime·`last_read_at`과 합쳐 더 최근 시각으로 비교합니다.
+ * «최근 읽은 순» — 세션 종료 시각과 `last_read_at`만 사용합니다.
+ * `updated_at`(메타 수정)은 반영하지 않습니다.
  */
 export function getRecentlyReadSortTimeMs(
   book: Book,
   sessionLatestByBookId: Map<string, number>,
 ): number {
   return Math.max(
-    toReadTimeMs(book.updated_at),
     toReadTimeMs(book.last_read_at),
     sessionLatestByBookId.get(book.id) ?? 0,
   )

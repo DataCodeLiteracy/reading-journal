@@ -48,6 +48,7 @@ import {
   normalizeBookDuplicateKey,
   normalizeBookTitleKey,
 } from "@/utils/bookTitleKey"
+import { sortBooksByRecentlyRead } from "@/utils/booksSortByLastRead"
 import {
   formatBookCategoryLine,
   formatBookPublishedLabel,
@@ -104,6 +105,7 @@ function BooksPageContent() {
   const { user, loading, isLoggedIn, userUid } = useAuth()
   const {
     allBooks,
+    allReadingSessions,
     addBook,
     removeBook,
   } = useData()
@@ -329,19 +331,23 @@ function BooksPageContent() {
       if (toReadThisYearFilter === "yes" && b.toReadThisYear !== true) return false
       return normalizeBookTitleKey(b.title).includes(normalizedSearchKey)
     })
-    const sorted = [...byFilters].sort((a, b) => {
-      const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0
-      const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0
-      const aUpdated = a.updated_at ? new Date(a.updated_at).getTime() : 0
-      const bUpdated = b.updated_at ? new Date(b.updated_at).getTime() : 0
-      if (sortOrder === "recently_added") return bCreated - aCreated
-      return bUpdated - aUpdated
-    })
+    const sorted =
+      sortOrder === "recently_read"
+        ? sortBooksByRecentlyRead(byFilters, allReadingSessions)
+        : [...byFilters].sort((a, b) => {
+            const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0
+            const aUpdated = a.updated_at ? new Date(a.updated_at).getTime() : 0
+            const bUpdated = b.updated_at ? new Date(b.updated_at).getTime() : 0
+            if (sortOrder === "recently_added") return bCreated - aCreated
+            return bUpdated - aUpdated
+          })
     const start = (currentPage - 1) * PAGE_SIZE
     return { items: sorted.slice(start, start + PAGE_SIZE), total: sorted.length }
   }, [
     isLocalSearchMode,
     allBooks,
+    allReadingSessions,
     activeTab,
     levelFilter,
     categoryFilter,
