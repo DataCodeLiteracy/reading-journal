@@ -145,6 +145,7 @@ export default function GroupBooksPanel({
   )
   const [recommendMeetingId, setRecommendMeetingId] = useState("")
   const [newBookOpen, setNewBookOpen] = useState(false)
+  const [newBookInitialTitle, setNewBookInitialTitle] = useState("")
   const [searchText, setSearchText] = useState("")
   const [searchResults, setSearchResults] = useState<CanonicalBook[]>([])
   const [hasSearched, setHasSearched] = useState(false)
@@ -315,10 +316,24 @@ export default function GroupBooksPanel({
     [meetings],
   )
 
+  const clearAddSearch = () => {
+    setSearchText("")
+    setSearchResults([])
+    setHasSearched(false)
+  }
+
+  const closeAddModal = () => {
+    setAddOpen(false)
+    clearAddSearch()
+    setSelectedCanonicals([])
+    setPanelError(null)
+  }
+
   const openAddModal = (mode: AddBookMode) => {
     setAddMode(mode)
     setSelectedCanonicals([])
     setPanelError(null)
+    clearAddSearch()
     setRecommendMeetingId(meetingOptions[0]?.value ?? "")
     setAddOpen(true)
   }
@@ -377,9 +392,7 @@ export default function GroupBooksPanel({
       setAddOpen(false)
       setSelectedCanonicals([])
       setDraft(EMPTY_DRAFT)
-      setSearchText("")
-      setSearchResults([])
-      setHasSearched(false)
+      clearAddSearch()
     } catch (error) {
       await refresh()
       setPanelError(
@@ -451,7 +464,9 @@ export default function GroupBooksPanel({
       await createGroupBook(canonical, draft)
     }
     setNewBookOpen(false)
+    setNewBookInitialTitle("")
     setDraft(EMPTY_DRAFT)
+    clearAddSearch()
   }
 
   const startTimerForBook = async (book: GroupBook) => {
@@ -1110,7 +1125,7 @@ export default function GroupBooksPanel({
 
       <FormModalFrame
         isOpen={addOpen}
-        onClose={() => setAddOpen(false)}
+        onClose={closeAddModal}
         title={
           addMode === "official" ? "모임 책 추가" : "함께 보면 좋은 책 추천"
         }
@@ -1336,7 +1351,10 @@ export default function GroupBooksPanel({
           <button
             type="button"
             onClick={() => {
+              setNewBookInitialTitle(searchText.trim())
               setAddOpen(false)
+              clearAddSearch()
+              setSelectedCanonicals([])
               setNewBookOpen(true)
               setPanelError(null)
             }}
@@ -1349,9 +1367,12 @@ export default function GroupBooksPanel({
 
       <AddBookModal
         isOpen={newBookOpen}
-        onClose={() => setNewBookOpen(false)}
+        onClose={() => {
+          setNewBookOpen(false)
+          setNewBookInitialTitle("")
+        }}
         onAddBook={addNewBookToLibraryAndGroup}
-        initialTitle={searchText.trim()}
+        initialTitle={newBookInitialTitle}
         userBookDuplicateKeys={duplicateKeys}
         enableExploreEditionSuggest={false}
       />
