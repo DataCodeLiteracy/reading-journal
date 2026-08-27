@@ -214,7 +214,8 @@ export default function EditReadingSessionModal({
       </div>
 
       <p className="mt-3 text-xs text-theme-secondary">
-        시작·종료 시간 수정은 시/분/초 단위로 저장됩니다.
+        시작·종료 시간은 직접 입력하거나 시계 아이콘으로 선택할 수 있으며, 시/분/초 단위로
+        저장됩니다.
       </p>
 
       <div className="mt-4 flex justify-end gap-2 sm:mt-6">

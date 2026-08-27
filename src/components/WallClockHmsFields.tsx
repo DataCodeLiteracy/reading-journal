@@ -18,23 +18,35 @@ const CIRCULAR_REPEAT_BLOCKS = 9
 const CIRCULAR_MIDDLE_BLOCK = Math.floor(CIRCULAR_REPEAT_BLOCKS / 2)
 
 function normalizeTimeInputToHms(value: string): string {
-  const parts = value.trim().split(":")
+  const trimmed = value.trim()
+  // 1230 → 12:30:00, 123045 → 12:30:45
+  if (/^\d{3,4}$/.test(trimmed)) {
+    const padded = trimmed.padStart(4, "0")
+    const h = Math.min(23, parseInt(padded.slice(0, 2), 10) || 0)
+    const m = Math.min(59, parseInt(padded.slice(2, 4), 10) || 0)
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`
+  }
+  if (/^\d{5,6}$/.test(trimmed)) {
+    const padded = trimmed.padStart(6, "0")
+    const h = Math.min(23, parseInt(padded.slice(0, 2), 10) || 0)
+    const m = Math.min(59, parseInt(padded.slice(2, 4), 10) || 0)
+    const s = Math.min(59, parseInt(padded.slice(4, 6), 10) || 0)
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+  }
+  const parts = trimmed.split(":")
   const h = Math.min(23, Math.max(0, parseInt(parts[0] ?? "0", 10) || 0))
   const m = Math.min(59, Math.max(0, parseInt(parts[1] ?? "0", 10) || 0))
   const s = Math.min(59, Math.max(0, parseInt(parts[2] ?? "0", 10) || 0))
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
 }
 
-function formatHmsWithKoreanLabel(hms: string): { primary: string; secondary: string } {
+function formatHmsWithKoreanLabel(hms: string): string {
   const [h, m, s] = normalizeTimeInputToHms(hms)
     .split(":")
     .map((x) => parseInt(x, 10) || 0)
   const period = h < 12 ? "오전" : "오후"
   const hour12 = h % 12 === 0 ? 12 : h % 12
-  return {
-    primary: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`,
-    secondary: `(${period} ${hour12}시 ${String(m).padStart(2, "0")}분 ${String(s).padStart(2, "0")}초)`,
-  }
+  return `(${period} ${hour12}시 ${String(m).padStart(2, "0")}분 ${String(s).padStart(2, "0")}초)`
 }
 
 function splitHms(normalized: string): [number, number, number] {
@@ -218,14 +230,21 @@ export default function WallClockHmsFields({
   const reactId = useId()
   const base = idPrefix || `hms-${reactId.replace(/:/g, "")}`
   const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [draftValue, setDraftValue] = useState(() => normalizeTimeInputToHms(value))
-  const displayValue = open ? draftValue : normalizeTimeInputToHms(value)
-  const displayText = formatHmsWithKoreanLabel(displayValue)
+  const [textValue, setTextValue] = useState(() => normalizeTimeInputToHms(value))
 
   useEffect(() => {
     if (disabled) setOpen(false)
   }, [disabled])
+
+  useEffect(() => {
+    if (open) return
+    const normalized = normalizeTimeInputToHms(value)
+    setTextValue(normalized)
+    setDraftValue(normalized)
+  }, [value, open])
 
   useEffect(() => {
     if (!open) return
@@ -256,49 +275,97 @@ export default function WallClockHmsFields({
 
   const openPicker = useCallback(() => {
     if (disabled) return
-    setDraftValue(normalizeTimeInputToHms(value))
+    const normalized = normalizeTimeInputToHms(textValue || value)
+    setDraftValue(normalized)
+    setTextValue(normalized)
     setOpen(true)
-  }, [disabled, value])
+  }, [disabled, textValue, value])
+
+  const commitText = useCallback(() => {
+    const normalized = normalizeTimeInputToHms(textValue)
+    setTextValue(normalized)
+    setDraftValue(normalized)
+    onChangeAction(normalized)
+  }, [textValue, onChangeAction])
 
   const commitAndClose = useCallback(() => {
-    onChangeAction(normalizeTimeInputToHms(draftValue))
+    const normalized = normalizeTimeInputToHms(draftValue)
+    setTextValue(normalized)
+    onChangeAction(normalized)
     setOpen(false)
   }, [draftValue, onChangeAction])
 
+  const koreanHint = formatHmsWithKoreanLabel(open ? draftValue : textValue)
+
   return (
     <div ref={rootRef} className="flex w-full min-w-0 flex-1 flex-col self-stretch">
-      <div
-        className={`flex min-h-0 w-full flex-1 items-center gap-2 ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={(e) => {
-          e.stopPropagation()
-          if (disabled || open) return
-          openPicker()
-        }}
-        onKeyDown={(e) => {
-          if (disabled || open) return
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
+      <div className="flex min-h-0 w-full flex-1 items-center gap-2">
+        <input
+          ref={inputRef}
+          id={`${base}-text`}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={disabled}
+          value={textValue}
+          placeholder="HH:MM:SS"
+          aria-label="시각 직접 입력"
+          className="form-control min-w-0 flex-1 tabular-nums"
+          onChange={(e) => {
+            const next = e.target.value
+            if (next === "" || /^[\d:]*$/.test(next)) {
+              setTextValue(next)
+            }
+          }}
+          onBlur={commitText}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              commitText()
+              inputRef.current?.blur()
+            }
+          }}
+        />
+        <button
+          type="button"
+          disabled={disabled}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label="휠로 시간 선택"
+          title="휠로 선택"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-theme-tertiary text-theme-secondary transition-colors hover:bg-theme-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (open) {
+              setOpen(false)
+              return
+            }
             openPicker()
-          }
-        }}
-        aria-label={`시각 ${displayValue}`}
-      >
-        <span className="form-control pointer-events-none flex min-w-0 flex-1 items-center tabular-nums">
-          <span className="text-theme-primary">{displayText.primary}</span>
-          <span className="ml-1 text-theme-secondary">{displayText.secondary}</span>
-        </span>
-        <Clock className="pointer-events-none h-4 w-4 shrink-0 text-theme-secondary" aria-hidden />
+          }}
+        >
+          <Clock className="h-4 w-4" aria-hidden />
+        </button>
       </div>
+      <p className="mt-1 text-xs text-theme-secondary">{koreanHint}</p>
+      <p className="mt-0.5 text-[11px] text-theme-tertiary">
+        예: 14:30:00 또는 143000 · 시계 아이콘으로 휠 선택
+      </p>
 
       {open && !disabled ? (
-        <div className="mt-2 border-t border-card pt-2" role="dialog" aria-label="시간 선택" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="mt-2 border-t border-card pt-2"
+          role="dialog"
+          aria-label="시간 선택"
+          onClick={(e) => e.stopPropagation()}
+        >
           <HmsWheelPanel
             draftValue={draftValue}
-            onDraftChange={(v) => setDraftValue(normalizeTimeInputToHms(v))}
+            onDraftChange={(v) => {
+              const next = normalizeTimeInputToHms(v)
+              setDraftValue(next)
+              setTextValue(next)
+            }}
             idPrefix={base}
           />
           <div className="mt-2 flex justify-end">
