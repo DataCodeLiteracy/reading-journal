@@ -62,15 +62,25 @@ export interface Book {
   categoryDepth1Label?: string
   categoryDepth2Id?: string
   categoryDepth2Label?: string
+  /** KDC 대분류 코드·명칭 (국립중앙도서관) */
+  kdcMajorCode?: string
+  kdcMajorLabel?: string
+  /** KDC 중분류(강) 코드·명칭 */
+  kdcMiddleCode?: string
+  kdcMiddleLabel?: string
+  /** KDC 세부 번호 (예: 181) */
+  kdcDetailCode?: string
+  /** 주제어 (상세 페이지 표시용) */
+  subjects?: string[]
   /** 대상 연령/학년 (문해력 수준): 유아, 초1~6, 중1~3, 고1~3, 성인 */
   level?: BookLevel
   /** 이번 년도에 읽을 책 여부 */
   toReadThisYear?: boolean
   /** 출판사 */
   publisher?: string
-  /** 표지 이미지 URL (알라딘 등) */
+  /** 표지 이미지 URL */
   coverUrl?: string
-  /** ISBN-13 (알라딘 조회·식별용) */
+  /** ISBN-13 (도서 검색·식별용) */
   isbn13?: string
   /** 비고 (자유 메모) */
   notes?: string

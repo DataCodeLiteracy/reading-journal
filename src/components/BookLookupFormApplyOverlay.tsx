@@ -5,8 +5,8 @@ import { BookOpen, Library, Search, Sparkles, Tag } from "lucide-react"
 
 const APPLY_STEPS = [
   { icon: BookOpen, text: "제목·저자·출판 정보" },
-  { icon: Tag, text: "분야·출판일" },
-  { icon: Library, text: "표지·ISBN·비고" },
+  { icon: Tag, text: "출판일·분야(KDC)" },
+  { icon: Library, text: "표지·ISBN·주제" },
 ] as const
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
   phase?: "search" | "apply"
 }
 
-export default function AladinFormApplyOverlay({
+export default function BookLookupFormApplyOverlay({
   active,
   phase = "apply",
 }: Props) {
@@ -73,7 +73,7 @@ export default function AladinFormApplyOverlay({
       </div>
 
       <p className="text-base font-semibold text-theme-primary">
-        {isSearch ? "알라딘에서 검색 중" : "알라딘 정보 반영 중"}
+        {isSearch ? "도서 정보 검색 중" : "도서 정보 반영 중"}
       </p>
       <p className="max-w-xs text-center text-xs leading-relaxed text-theme-secondary">
         {isSearch

@@ -18,6 +18,7 @@ import {
 import type { Book } from "@/types/book"
 import { withReturnQuery } from "@/utils/navigateBack"
 import { formatBookPublishedFullLabel } from "@/utils/bookLibraryCardMeta"
+import { formatKdcCategoryDisplay } from "@/utils/bookKdcFields"
 import { scrollToElementId } from "@/utils/scrollToElement"
 
 const STATUS_META: Record<
@@ -114,7 +115,12 @@ function BookInfoLabeled({ book }: { book: Book }) {
   const hasDate = !!pubLabel
   const d1 = book.categoryDepth1Label?.trim()
   const d2 = book.categoryDepth2Label?.trim()
-  const hasCategory = !!(d1 || d2)
+  const legacyCategory = !!(d1 || d2)
+  const kdcCategory = formatKdcCategoryDisplay(book)
+  const hasCategory = !!(legacyCategory || kdcCategory)
+  const kdcDetailCode = book.kdcDetailCode?.trim()
+  const subjectTags = (book.subjects ?? []).map((s) => s.trim()).filter(Boolean)
+  const hasTopicTags = !!(kdcDetailCode || subjectTags.length > 0)
   const notesText = book.notes?.trim() ?? ""
 
   return (
@@ -185,22 +191,67 @@ function BookInfoLabeled({ book }: { book: Book }) {
       {hasCategory && (
         <InfoRow label='분야'>
           <p className='flex flex-wrap items-center gap-x-1 gap-y-0.5 leading-4'>
-            {d1 && (
-              <span className='font-medium text-emerald-700 dark:text-emerald-300'>
-                {d1}
-              </span>
-            )}
-            {d1 && d2 && (
-              <span className='text-theme-tertiary/50' aria-hidden>
-                ›
-              </span>
-            )}
-            {d2 && (
-              <span className='font-medium text-teal-700 dark:text-teal-300'>
-                {d2}
-              </span>
+            {kdcCategory ? (
+              <>
+                {book.kdcMajorLabel && (
+                  <span className='font-medium text-emerald-700 dark:text-emerald-300'>
+                    {book.kdcMajorLabel}
+                  </span>
+                )}
+                {book.kdcMajorLabel && book.kdcMiddleLabel && (
+                  <span className='text-theme-tertiary/50' aria-hidden>
+                    ›
+                  </span>
+                )}
+                {book.kdcMiddleLabel && (
+                  <span className='font-medium text-teal-700 dark:text-teal-300'>
+                    {book.kdcMiddleLabel}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                {d1 && (
+                  <span className='font-medium text-emerald-700 dark:text-emerald-300'>
+                    {d1}
+                  </span>
+                )}
+                {d1 && d2 && (
+                  <span className='text-theme-tertiary/50' aria-hidden>
+                    ›
+                  </span>
+                )}
+                {d2 && (
+                  <span className='font-medium text-teal-700 dark:text-teal-300'>
+                    {d2}
+                  </span>
+                )}
+              </>
             )}
           </p>
+        </InfoRow>
+      )}
+
+      {hasTopicTags && (
+        <InfoRow label='주제'>
+          <div className='flex flex-wrap gap-1'>
+            {kdcDetailCode && (
+              <span
+                className='rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300'
+                title='KDC 분류 번호'
+              >
+                {kdcDetailCode}
+              </span>
+            )}
+            {subjectTags.map((subject) => (
+              <span
+                key={subject}
+                className='rounded-full bg-theme-tertiary/50 px-2 py-0.5 text-[11px] font-medium text-theme-secondary'
+              >
+                {subject}
+              </span>
+            ))}
+          </div>
         </InfoRow>
       )}
 

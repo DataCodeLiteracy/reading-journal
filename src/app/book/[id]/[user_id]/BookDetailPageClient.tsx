@@ -483,7 +483,7 @@ export default function BookDetailPageClient({
     if (!book || childIds.length === 0 || isEnsuringChildBooksRef.current) return
     if (!book.canonicalBookId) {
       setError(
-        "공유 판본이 없는 책은 자녀에게 읽어주기 기록을 남길 수 없습니다. 알라딘 등으로 등록된 책을 이용해 주세요.",
+        "공유 판본이 없는 책은 자녀에게 읽어주기 기록을 남길 수 없습니다. 도서 검색으로 등록된 책을 이용해 주세요.",
       )
       return
     }

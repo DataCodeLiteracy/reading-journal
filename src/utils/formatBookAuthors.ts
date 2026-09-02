@@ -1,12 +1,16 @@
 /**
- * 알라딘 API 저자 문자열 → 폼용 저자명
- * - "(지은이)" 앞 이름만 추출
- * - "(그림)" 등 다른 역할 구간은 제외
- * - 여러 명이면 ", "로 연결
- *
- * 예: "최민준 (지은이), 홍길동 (그림), 김철수 (지은이)" → "최민준, 김철수"
+ * 도서 API 저자 필드 → 폼용 저자명
+ * - 카카오: string[]
+ * - 알라딘 등: "(지은이)" 형식 문자열도 처리
  */
-export function parseAladinAuthor(raw: string): string {
+export function formatBookAuthors(authors: string[] | string): string {
+  if (Array.isArray(authors)) {
+    return authors.map((a) => a.trim()).filter(Boolean).join(", ")
+  }
+  return parseLegacyAuthorString(authors)
+}
+
+function parseLegacyAuthorString(raw: string): string {
   const trimmed = raw.trim()
   if (!trimmed) return ""
 

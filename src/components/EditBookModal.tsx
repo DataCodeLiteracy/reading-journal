@@ -2,20 +2,20 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { BookOpen, Star } from "lucide-react"
-import AladinBookLookup from "@/components/AladinBookLookup"
+import BookLookup from "@/components/BookLookup"
 import BookCoverInlineEditor from "@/components/BookCoverInlineEditor"
-import AladinFormApplyOverlay from "@/components/AladinFormApplyOverlay"
-import { useAladinFormApply } from "@/hooks/useAladinFormApply"
-import type { AladinBookFormSetters } from "@/utils/applyAladinBookMetadata"
-import { useAuth } from "@/contexts/AuthContext"
+import BookLookupFormApplyOverlay from "@/components/BookLookupFormApplyOverlay"
+import { useBookLookupFormApply } from "@/hooks/useBookLookupFormApply"
+import type { BookLookupFormSetters } from "@/utils/applyBookLookupMetadata"
 import { Book, BOOK_LEVELS, type BookLevel } from "@/types/book"
 import FormModalFrame from "@/components/FormModalFrame"
 import { FormNativePickerInput } from "@/components/FormNativePickerInput"
 import Select, { type SelectOption } from "@/components/Select"
-import BookCategoryPicker from "@/components/BookCategoryPicker"
-import { useBookCategories } from "@/hooks/useBookCategories"
-import { BookCategoryService } from "@/services/bookCategoryService"
-import { buildBookCategoryFields } from "@/utils/bookCategoryFields"
+import KdcClassificationPicker from "@/components/KdcClassificationPicker"
+import {
+  buildBookKdcFieldsForSave,
+  clearLegacyBookCategoryFields,
+} from "@/utils/bookKdcFields"
 
 interface EditBookModalProps {
   isOpen: boolean
@@ -30,9 +30,6 @@ export default function EditBookModal({
   onSave,
   book,
 }: EditBookModalProps) {
-  const { user } = useAuth()
-  const { data: categoryTree, isLoading: categoryTreeLoading } =
-    useBookCategories()
   const [title, setTitle] = useState(book.title)
   const [author, setAuthor] = useState(book.author || "")
   const [publisher, setPublisher] = useState(book.publisher || "")
@@ -43,58 +40,58 @@ export default function EditBookModal({
   const [level, setLevel] = useState<BookLevel | "">(
     (book.level as BookLevel) || ""
   )
-  const [categoryDepth1Id, setCategoryDepth1Id] = useState(
-    book.categoryDepth1Id || ""
-  )
-  const [categoryDepth2Id, setCategoryDepth2Id] = useState(
-    book.categoryDepth2Id || ""
-  )
   const [coverUrl, setCoverUrl] = useState(book.coverUrl || "")
   const [isbn13, setIsbn13] = useState(book.isbn13 || "")
+  const [kdcMajorCode, setKdcMajorCode] = useState(book.kdcMajorCode || "")
+  const [kdcMajorLabel, setKdcMajorLabel] = useState(book.kdcMajorLabel || "")
+  const [kdcMiddleCode, setKdcMiddleCode] = useState(book.kdcMiddleCode || "")
+  const [kdcMiddleLabel, setKdcMiddleLabel] = useState(book.kdcMiddleLabel || "")
+  const [kdcDetailCode, setKdcDetailCode] = useState(book.kdcDetailCode || "")
+  const [subjects, setSubjects] = useState<string[]>(book.subjects ?? [])
   const [coverUploadHint, setCoverUploadHint] = useState<string | undefined>()
-  const [aladinFetchBusy, setAladinFetchBusy] = useState(false)
+  const [bookLookupFetchBusy, setBookLookupFetchBusy] = useState(false)
 
-  const aladinSetters = useMemo(
-    (): AladinBookFormSetters => ({
+  const bookLookupSetters = useMemo(
+    (): BookLookupFormSetters => ({
       setTitle,
       setAuthor,
       setPublisher,
       setPublishedDate,
-      setCategoryDepth1Id,
-      setCategoryDepth2Id,
-      setCategories: (depth1Id, depth2Id) => {
-        setCategoryDepth1Id(depth1Id)
-        setCategoryDepth2Id(depth2Id)
-      },
       setCoverUrl,
       setIsbn13,
+      setKdcMajorCode,
+      setKdcMajorLabel,
+      setKdcMiddleCode,
+      setKdcMiddleLabel,
+      setKdcDetailCode,
+      setSubjects,
       setNotes,
       getNotes: () => notes,
     }),
     [notes],
   )
 
-  const { isAladinApplying, applyAladinMetadata } = useAladinFormApply({
-    source: "edit-book-modal",
-    bookTitle: title,
-    userId: user?.uid,
-    categoryTree,
-    categoryTreePending: categoryTreeLoading,
-    formState: {
-      title,
-      author,
-      publisher,
-      publishedDate,
-      categoryDepth1Id,
-      categoryDepth2Id,
-      coverUrl,
-      isbn13,
-      notes,
-    },
-    setters: aladinSetters,
-  })
+  const { isApplying: isBookLookupApplying, applyBookMetadata } =
+    useBookLookupFormApply({
+      formState: {
+        title,
+        author,
+        publisher,
+        publishedDate,
+        coverUrl,
+        isbn13,
+        kdcMajorCode,
+        kdcMajorLabel,
+        kdcMiddleCode,
+        kdcMiddleLabel,
+        kdcDetailCode,
+        subjects,
+        notes,
+      },
+      setters: bookLookupSetters,
+    })
 
-  const aladinBusy = isAladinApplying || aladinFetchBusy
+  const bookLookupBusy = isBookLookupApplying || bookLookupFetchBusy
 
   useEffect(() => {
     if (isOpen) {
@@ -106,26 +103,22 @@ export default function EditBookModal({
       setNotes(book.notes || "")
       setToReadThisYear(!!book.toReadThisYear)
       setLevel((book.level as BookLevel) || "")
-      setCategoryDepth1Id(book.categoryDepth1Id || "")
-      setCategoryDepth2Id(book.categoryDepth2Id || "")
       setCoverUrl(book.coverUrl || "")
       setIsbn13(book.isbn13 || "")
+      setKdcMajorCode(book.kdcMajorCode || "")
+      setKdcMajorLabel(book.kdcMajorLabel || "")
+      setKdcMiddleCode(book.kdcMiddleCode || "")
+      setKdcMiddleLabel(book.kdcMiddleLabel || "")
+      setKdcDetailCode(book.kdcDetailCode || "")
+      setSubjects(book.subjects ?? [])
       setCoverUploadHint(undefined)
-      setAladinFetchBusy(false)
+      setBookLookupFetchBusy(false)
     }
   }, [isOpen, book])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || aladinBusy) return
-
-    const d1 = categoryTree
-      ? BookCategoryService.findDepth1(categoryTree, categoryDepth1Id)
-      : undefined
-    const d2 = categoryTree
-      ? BookCategoryService.findDepth2(categoryTree, categoryDepth2Id)
-      : undefined
-    const categoryFields = buildBookCategoryFields(d1, d2)
+    if (!title.trim() || bookLookupBusy) return
 
     const updatedBook: Book = {
       ...book,
@@ -137,7 +130,15 @@ export default function EditBookModal({
       notes: notes.trim() || undefined,
       toReadThisYear: toReadThisYear || undefined,
       ...(level ? { level } : { level: undefined }),
-      ...categoryFields,
+      ...clearLegacyBookCategoryFields(),
+      ...buildBookKdcFieldsForSave({
+        kdcMajorCode,
+        kdcMajorLabel,
+        kdcMiddleCode,
+        kdcMiddleLabel,
+        kdcDetailCode,
+        subjects,
+      }),
       coverUrl: coverUrl.trim() || undefined,
       isbn13: isbn13.trim() || undefined,
     }
@@ -147,7 +148,7 @@ export default function EditBookModal({
   }
 
   const handleClose = () => {
-    if (aladinBusy) return
+    if (bookLookupBusy) return
     onClose()
   }
 
@@ -161,11 +162,11 @@ export default function EditBookModal({
       isOpen={isOpen}
       onClose={handleClose}
       title="책 정보 편집"
-      interactionLocked={aladinBusy}
+      interactionLocked={bookLookupBusy}
       lockOverlay={
-        <AladinFormApplyOverlay
-          active={aladinBusy}
-          phase={isAladinApplying ? "apply" : "search"}
+        <BookLookupFormApplyOverlay
+          active={bookLookupBusy}
+          phase={isBookLookupApplying ? "apply" : "search"}
         />
       }
       headerStart={
@@ -179,7 +180,7 @@ export default function EditBookModal({
         className="form-modal-fieldset"
       >
         <fieldset
-          disabled={aladinBusy}
+          disabled={bookLookupBusy}
           className="m-0 min-w-0 space-y-4 border-0 p-0 sm:space-y-5"
         >
         <div>
@@ -197,23 +198,23 @@ export default function EditBookModal({
         </div>
 
         <div className="space-y-3 sm:space-y-4">
-          <AladinBookLookup
+          <BookLookup
             title={title}
-            disabled={aladinBusy}
-            onBusyChange={setAladinFetchBusy}
+            disabled={bookLookupBusy}
+            onBusyChange={setBookLookupFetchBusy}
             onLookupStart={() => {
               setCoverUploadHint(undefined)
             }}
             onNeedsManualCover={(reason) => {
               setCoverUploadHint(
                 reason === "not_found"
-                  ? "알라딘에서 책을 찾지 못했습니다."
-                  : "알라딘에 표지가 없습니다.",
+                  ? "도서를 찾지 못했습니다."
+                  : "표지 정보가 없습니다.",
               )
             }}
             onApply={async (metadata) => {
-              const enriched = await applyAladinMetadata(metadata)
-              if (enriched.coverUrl?.trim()) {
+              const applied = await applyBookMetadata(metadata)
+              if (applied.coverUrl?.trim()) {
                 setCoverUploadHint(undefined)
               }
             }}
@@ -243,11 +244,22 @@ export default function EditBookModal({
           />
         </div>
 
-        <BookCategoryPicker
-          depth1Id={categoryDepth1Id}
-          depth2Id={categoryDepth2Id}
-          onDepth1Change={setCategoryDepth1Id}
-          onDepth2Change={setCategoryDepth2Id}
+        <KdcClassificationPicker
+          majorCode={kdcMajorCode}
+          middleCode={kdcMiddleCode}
+          onMajorChange={(code, label) => {
+            setKdcMajorCode(code)
+            setKdcMajorLabel(label)
+            setKdcMiddleCode("")
+            setKdcMiddleLabel("")
+            setKdcDetailCode("")
+          }}
+          onMiddleChange={(code, label) => {
+            setKdcMiddleCode(code)
+            setKdcMiddleLabel(label)
+            setKdcDetailCode(code)
+          }}
+          disabled={bookLookupBusy}
         />
 
         <div>
@@ -335,14 +347,14 @@ export default function EditBookModal({
           <button
             type="button"
             onClick={handleClose}
-            disabled={aladinBusy}
+            disabled={bookLookupBusy}
             className="rounded-md bg-theme-secondary px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             취소
           </button>
           <button
             type="submit"
-            disabled={!title.trim() || aladinBusy}
+            disabled={!title.trim() || bookLookupBusy}
             className="rounded-md bg-accent-theme px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             저장하기

@@ -4,58 +4,56 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Loader2, Search, BookOpen } from "lucide-react"
 import {
-  lookupAladinBookMetadata,
-  searchAladinByTitle,
-} from "@/services/aladinClientService"
-import type { AladinBookMetadata, AladinSearchHit } from "@/types/aladin"
+  resolveBookLookup,
+  searchBooksByTitle,
+} from "@/services/bookLookupClientService"
+import type { BookLookupMetadata } from "@/types/bookLookup"
 
-export type AladinFormApplyPayload = AladinBookMetadata
+export type BookLookupApplyPayload = BookLookupMetadata
 
-interface AladinBookLookupProps {
+interface BookLookupProps {
   title: string
   disabled?: boolean
-  onApply: (metadata: AladinFormApplyPayload) => void | Promise<void>
+  onApply: (metadata: BookLookupApplyPayload) => void | Promise<void>
   /** 검색 시작 시 (표지 업로드 안내 초기화) */
   onLookupStart?: () => void
   /**
-   * 알라딘 조회를 시도한 뒤, 표지를 직접 올려야 할 때만 호출
+   * 도서 조회를 시도한 뒤, 표지를 직접 올려야 할 때만 호출
    * (검색 결과 없음 · 메타는 채웠으나 표지 URL 없음)
    */
   onNeedsManualCover?: (reason: "not_found" | "no_cover") => void
-  /** 검색·상세 조회 중 true (폼 잠금용) */
+  /** 검색 중 true (폼 잠금용) */
   onBusyChange?: (busy: boolean) => void
 }
 
-export default function AladinBookLookup({
+export default function BookLookup({
   title,
   disabled,
   onApply,
   onLookupStart,
   onNeedsManualCover,
   onBusyChange,
-}: AladinBookLookupProps) {
+}: BookLookupProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [candidates, setCandidates] = useState<AladinSearchHit[] | null>(null)
+  const [candidates, setCandidates] = useState<BookLookupMetadata[] | null>(null)
 
   useEffect(() => {
     onBusyChange?.(loading)
   }, [loading, onBusyChange])
 
-  const clearCandidates = () => setCandidates(null)
-
-  const applyMetadata = async (hit: AladinSearchHit) => {
+  const applyMetadata = async (hit: BookLookupMetadata) => {
     setLoading(true)
     setError(null)
     try {
-      const metadata = await lookupAladinBookMetadata(hit)
+      const metadata = await resolveBookLookup(hit)
       await onApply(metadata)
       if (!metadata.coverUrl?.trim()) {
         onNeedsManualCover?.("no_cover")
       }
       setCandidates(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "알라딘 조회에 실패했습니다.")
+      setError(e instanceof Error ? e.message : "도서 정보 반영에 실패했습니다.")
     } finally {
       setLoading(false)
     }
@@ -72,9 +70,9 @@ export default function AladinBookLookup({
     setError(null)
     setCandidates(null)
     try {
-      const items = await searchAladinByTitle(q, 25)
+      const items = await searchBooksByTitle(q, 25)
       if (items.length === 0) {
-        setError("알라딘에서 일치하는 도서를 찾지 못했습니다.")
+        setError("일치하는 도서를 찾지 못했습니다.")
         onNeedsManualCover?.("not_found")
         return
       }
@@ -84,7 +82,7 @@ export default function AladinBookLookup({
       }
       setCandidates(items)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "알라딘 검색에 실패했습니다.")
+      setError(e instanceof Error ? e.message : "도서 검색에 실패했습니다.")
     } finally {
       setLoading(false)
     }
@@ -104,10 +102,10 @@ export default function AladinBookLookup({
           ) : (
             <Search className="h-3.5 w-3.5" aria-hidden />
           )}
-          알라딘에서 불러오기
+          도서 정보 불러오기
         </button>
         <span className="text-xs text-theme-tertiary">
-          제목·저자·출판사·출판일·분야·표지
+          제목·저자·출판사·출판일·표지·분야(KDC)·주제
         </span>
       </div>
 

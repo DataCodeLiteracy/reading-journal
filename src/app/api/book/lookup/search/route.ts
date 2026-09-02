@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
+import { searchBooksUnified } from "@/lib/bookLookupSearch"
 import { verifyFirebaseIdToken } from "@/lib/verifyFirebaseIdToken"
-import { aladinSearchByTitle } from "@/lib/aladinOpenApi"
 
 export async function POST(req: Request) {
   try {
@@ -19,12 +19,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "검색어가 필요합니다." }, { status: 400 })
     }
 
-    const items = await aladinSearchByTitle(query, body.maxResults ?? 25)
+    const items = await searchBooksUnified(query, body.maxResults ?? 25)
     return NextResponse.json({ items })
   } catch (e) {
-    console.error("aladin search:", e)
+    console.error("book lookup search:", e)
     const message =
-      e instanceof Error ? e.message : "알라딘 검색 중 오류가 발생했습니다."
+      e instanceof Error ? e.message : "도서 검색 중 오류가 발생했습니다."
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

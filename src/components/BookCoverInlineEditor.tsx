@@ -10,7 +10,7 @@ type Props = {
   bookId?: string
   coverUrl: string
   onCoverUrlChange: (url: string) => void
-  /** 알라딘 조회 실패 등 짧은 안내 (큰 카드 없이) */
+  /** 도서 검색 실패 등 짧은 안내 (큰 카드 없이) */
   hint?: string
 }
 

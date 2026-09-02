@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { BookOpen, Home, ArrowLeft, Cpu, Download, Upload, Tags, ScrollText, Database } from "lucide-react"
+import { BookOpen, Home, ArrowLeft, Cpu, Download, Upload, Tags, Database } from "lucide-react"
 import { adminService } from "@/services/adminService"
 import { useAuth } from "@/contexts/AuthContext"
 import { AdminHubPageSkeleton } from "@/components/skeletons"
@@ -126,23 +126,7 @@ export default function AdminPage() {
               책 분야 분류
             </h3>
             <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
-              알라딘식 대분류·중분류 등록·수정·시드
-            </p>
-          </button>
-          <button
-            onClick={() => router.push("/admin/aladin-category-logs")}
-            className='bg-gradient-to-r from-orange-600 to-rose-700 rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 text-left text-white min-h-[120px] sm:min-h-[140px]'
-          >
-            <div className='flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3'>
-              <div className='p-1.5 sm:p-2 bg-white/20 rounded-lg'>
-                <ScrollText className='h-4 w-4 sm:h-5 sm:w-5' />
-              </div>
-            </div>
-            <h3 className='font-semibold text-base sm:text-lg mb-1 sm:mb-2'>
-              알라딘 분류 로그
-            </h3>
-            <p className='text-xs sm:text-sm text-white/80 leading-relaxed'>
-              알라딘 불러오기 시 대·중분류 매핑 진단 기록
+              대분류·중분류 등록·수정·시드
             </p>
           </button>
           <button

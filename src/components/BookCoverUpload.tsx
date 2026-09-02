@@ -19,7 +19,7 @@ export default function BookCoverUpload({
   coverUrl,
   onCoverUrlChange,
   visible,
-  hint = "알라딘에서 표지를 찾지 못했습니다. 직접 올려 주세요.",
+  hint = "도서 검색에서 표지를 찾지 못했습니다. 직접 올려 주세요.",
 }: BookCoverUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
