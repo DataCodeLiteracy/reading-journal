@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Clock, Calendar } from "lucide-react"
+import { Clock, Calendar } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
+import StatisticsPageShell from "@/components/statistics/StatisticsPageShell"
 import { ReadingSession } from "@/types/user"
 import Pagination from "@/components/Pagination"
 import {
@@ -119,24 +120,10 @@ export default function DailyStatisticsPage() {
   }
 
   return (
-    <div className='min-h-screen bg-theme-gradient'>
-      <div className='container mx-auto px-4 py-6'>
-        <header className='mb-6'>
-          <button
-            onClick={() => router.back()}
-            className='flex items-center gap-2 text-theme-secondary hover:text-theme-primary mb-4 transition-colors'
-          >
-            <ArrowLeft className='h-5 w-5' />
-            뒤로가기
-          </button>
-          <h1 className='text-3xl font-bold text-theme-primary mb-2'>
-            📅 일일 독서 패턴
-          </h1>
-          <p className='text-theme-secondary text-sm'>
-            날짜별 독서 기록을 확인해보세요
-          </p>
-        </header>
-
+    <StatisticsPageShell
+      title="일별 기록"
+      description="날짜별 독서 시간과 세션 목록입니다."
+    >
         {isLoading ? (
           <>
             <span className="sr-only">데이터를 불러오는 중</span>
@@ -226,7 +213,6 @@ export default function DailyStatisticsPage() {
             )}
           </>
         )}
-      </div>
-    </div>
+    </StatisticsPageShell>
   )
 }

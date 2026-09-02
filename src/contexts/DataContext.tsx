@@ -20,7 +20,7 @@ import {
 } from "@/services/timePatternService"
 import { useAuth } from "./AuthContext"
 import { queryKeys } from "@/lib/queryKeys"
-import { syncUserLibraryCaches } from "@/lib/userLibraryCache"
+import { syncUserLibraryCaches, invalidateUserLibraryQueries } from "@/lib/userLibraryCache"
 
 export type UserDashboardData = {
   books: Book[]
@@ -147,16 +147,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const patchDashboardBooks = useCallback(
     (updater: (books: Book[]) => Book[]) => {
       if (!userUid) return
-      const old = queryClient.getQueryData<UserDashboardData>(
-        queryKeys.user.dashboard(userUid),
-      )
-      if (!old) return
-      const books = updater(old.books)
-      queryClient.setQueryData<UserDashboardData>(
-        queryKeys.user.dashboard(userUid),
-        { ...old, books },
-      )
-      syncUserLibraryCaches(queryClient, userUid, { books })
+      const dashboardKey = queryKeys.user.dashboard(userUid)
+      const old = queryClient.getQueryData<UserDashboardData>(dashboardKey)
+
+      if (old) {
+        const books = updater(old.books)
+        queryClient.setQueryData<UserDashboardData>(dashboardKey, {
+          ...old,
+          books,
+        })
+        syncUserLibraryCaches(queryClient, userUid, { books })
+      } else {
+        const cachedBooks = queryClient.getQueryData<Book[]>(
+          queryKeys.user.books(userUid),
+        )
+        if (cachedBooks) {
+          const books = updater(cachedBooks)
+          syncUserLibraryCaches(queryClient, userUid, { books })
+        }
+      }
+
+      invalidateUserLibraryQueries(queryClient, userUid)
     },
     [queryClient, userUid],
   )

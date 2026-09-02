@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft,
   Clock,
   Calendar,
   BarChart3,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
+import StatisticsPageShell from "@/components/statistics/StatisticsPageShell"
 import {
   TimePatternService,
   TimePatternAnalysis,
@@ -78,26 +78,10 @@ export default function TimePatternPage() {
   }
 
   return (
-    <div className='min-h-screen bg-theme-gradient'>
-      <div className='container mx-auto px-4 py-6'>
-        <header className='mb-6'>
-          <button
-            onClick={() => router.push("/mypage/statistics")}
-            className='flex items-center gap-2 text-theme-secondary hover:text-theme-primary mb-4 transition-colors'
-          >
-            <ArrowLeft className='h-5 w-5' />
-            독서 통계 페이지로 이동
-          </button>
-          <div>
-            <h1 className='text-3xl font-bold text-theme-primary mb-2'>
-              🕐 시간대별 독서 패턴
-            </h1>
-            <p className='text-theme-secondary text-sm'>
-              언제 가장 많은 독서가 이루어지는지 확인해보세요
-            </p>
-          </div>
-        </header>
-
+    <StatisticsPageShell
+      title="시간대 패턴"
+      description="요일·시간대별로 언제 독서가 많은지 확인합니다."
+    >
         {isLoading ? (
           <>
             <span className="sr-only">패턴을 분석하는 중</span>
@@ -336,7 +320,6 @@ export default function TimePatternPage() {
             </div>
           </div>
         ) : null}
-      </div>
-    </div>
+    </StatisticsPageShell>
   )
 }

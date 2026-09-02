@@ -318,9 +318,40 @@ function BooksPageContent() {
         startAfterSnapshot: cursor,
       })
     },
-    enabled: Boolean(userUid),
+    enabled: Boolean(userUid) && !isLocalSearchMode && hasServerListFilters,
     staleTime: 15_000,
   })
+
+  /** 필터 없을 때는 dashboard의 allBooks로 즉시 목록 반영 (상세→뒤로가기 동기화) */
+  const clientPagedLibrary = useMemo(() => {
+    if (isLocalSearchMode || hasServerListFilters) return null
+    const byStatus = allBooks.filter((b) => b.status === activeTab)
+    const sorted =
+      sortOrder === "recently_read"
+        ? sortBooksByRecentlyRead(byStatus, allReadingSessions)
+        : [...byStatus].sort((a, b) => {
+            const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0
+            const aUpdated = a.updated_at ? new Date(a.updated_at).getTime() : 0
+            const bUpdated = b.updated_at ? new Date(b.updated_at).getTime() : 0
+            if (sortOrder === "recently_added") return bCreated - aCreated
+            return bUpdated - aUpdated
+          })
+    const start = (currentPage - 1) * PAGE_SIZE
+    return {
+      items: sorted.slice(start, start + PAGE_SIZE),
+      total: sorted.length,
+    }
+  }, [
+    isLocalSearchMode,
+    hasServerListFilters,
+    allBooks,
+    allReadingSessions,
+    activeTab,
+    sortOrder,
+    currentPage,
+    PAGE_SIZE,
+  ])
 
   const localFiltered = useMemo(() => {
     if (!isLocalSearchMode) return { items: [] as Book[], total: 0 }
@@ -360,12 +391,16 @@ function BooksPageContent() {
 
   const visibleBooks = isLocalSearchMode
     ? localFiltered.items
-    : (booksPageQuery.data?.items ?? [])
+    : clientPagedLibrary
+      ? clientPagedLibrary.items
+      : (booksPageQuery.data?.items ?? [])
   const totalFilteredCount = isLocalSearchMode
     ? localFiltered.total
-    : hasServerListFilters
-      ? (tabCountQuery.data ?? 0)
-      : totalCountsByTab[activeTab]
+    : clientPagedLibrary
+      ? clientPagedLibrary.total
+      : hasServerListFilters
+        ? (tabCountQuery.data ?? 0)
+        : totalCountsByTab[activeTab]
   const totalPages = Math.max(1, Math.ceil(totalFilteredCount / PAGE_SIZE))
 
   const librarySortOptions = useMemo((): SelectOption<
@@ -860,13 +895,18 @@ function BooksPageContent() {
           </button>
         </div>
 
-        {!isLocalSearchMode && (booksPageQuery.isError || tabCountQuery.isError) && (
+        {!isLocalSearchMode &&
+          hasServerListFilters &&
+          (booksPageQuery.isError || tabCountQuery.isError) && (
           <div className='mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300'>
             목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
           </div>
         )}
 
-        {!isLocalSearchMode && booksPageQuery.isPending && !booksPageQuery.data ? (
+        {!isLocalSearchMode &&
+        hasServerListFilters &&
+        booksPageQuery.isPending &&
+        !booksPageQuery.data ? (
           <BooksLibraryPageSkeleton rows={4} />
         ) : visibleBooks.length === 0 ? (
           <div className='text-center py-12'>

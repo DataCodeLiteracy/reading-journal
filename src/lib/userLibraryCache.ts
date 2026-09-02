@@ -49,3 +49,13 @@ export function syncUserLibraryCaches(
     queryClient.setQueryData(queryKeys.user.statistics(uid), data.statistics)
   }
 }
+
+/** 상세 페이지 등에서 책 상태가 바뀌면 서재 목록·탭 카운트 쿼리를 다시 불러옵니다. */
+export function invalidateUserLibraryQueries(
+  queryClient: QueryClient,
+  uid: string,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: queryKeys.user.libraryRoot(uid),
+  })
+}

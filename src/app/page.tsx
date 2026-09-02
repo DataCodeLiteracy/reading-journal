@@ -36,6 +36,8 @@ import { sortBooksByRecentlyRead } from "@/utils/booksSortByLastRead"
 import WeeklyReadingTimeCard from "@/components/WeeklyReadingTimeCard"
 import DailyReadAloudCard from "@/components/DailyReadAloudCard"
 import WeeklyRecapModal, { DaySummary } from "@/components/WeeklyRecapModal"
+import BookStatusPeriodModal from "@/components/statistics/BookStatusPeriodModal"
+import type { BookStatModalMetricKey } from "@/types/bookPeriodStatistics"
 import { HomePageSkeleton } from "@/components/skeletons"
 
 const WEEKLY_RECAP_STORAGE_KEY = "weeklyRecapShown_"
@@ -67,6 +69,9 @@ export default function Home() {
   }
 
   const [showRecapModal, setShowRecapModal] = useState(false)
+  const [bookStatModal, setBookStatModal] = useState<BookStatModalMetricKey | null>(
+    null,
+  )
   const [recapData, setRecapData] = useState<{
     weekLabel: string
     daySummaries: DaySummary[]
@@ -344,7 +349,11 @@ export default function Home() {
 
         {/* 책 통계 카드 */}
         <div className='grid grid-cols-2 gap-2 mb-6'>
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
+          <button
+            type='button'
+            onClick={() => setBookStatModal("registered")}
+            className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card text-left transition-colors hover:bg-theme-tertiary/30 active:scale-[0.98]'
+          >
             <div className='flex items-center'>
               <BookOpen className='h-5 w-5 accent-theme-primary' />
               <div className='ml-2'>
@@ -356,9 +365,13 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
+          <button
+            type='button'
+            onClick={() => setBookStatModal("reading")}
+            className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card text-left transition-colors hover:bg-theme-tertiary/30 active:scale-[0.98]'
+          >
             <div className='flex items-center'>
               <Bookmark className='h-5 w-5 text-green-500' />
               <div className='ml-2'>
@@ -370,9 +383,13 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
+          <button
+            type='button'
+            onClick={() => setBookStatModal("completed")}
+            className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card text-left transition-colors hover:bg-theme-tertiary/30 active:scale-[0.98]'
+          >
             <div className='flex items-center'>
               <CheckCircle className='h-5 w-5 text-green-600' />
               <div className='ml-2'>
@@ -384,9 +401,13 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
+          <button
+            type='button'
+            onClick={() => setBookStatModal("wantToRead")}
+            className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card text-left transition-colors hover:bg-theme-tertiary/30 active:scale-[0.98]'
+          >
             <div className='flex items-center'>
               <Calendar className='h-5 w-5 text-purple-500' />
               <div className='ml-2'>
@@ -398,7 +419,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          </div>
+          </button>
 
           <div className='bg-theme-secondary rounded-lg p-3 shadow-sm border-card'>
             <div className='flex items-center'>
@@ -557,6 +578,16 @@ export default function Home() {
           goalHours={recapData.goalHours}
           goalMet={recapData.goalMet}
           bonusExp={recapData.bonusExp}
+        />
+      )}
+
+      {bookStatModal && (
+        <BookStatusPeriodModal
+          isOpen={bookStatModal !== null}
+          onClose={() => setBookStatModal(null)}
+          metric={bookStatModal}
+          books={allBooks}
+          readingSessions={allReadingSessions}
         />
       )}
     </div>

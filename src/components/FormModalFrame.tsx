@@ -18,6 +18,8 @@ type FormModalFrameProps = {
   /** true면 닫기·배경 클릭 차단 + lockOverlay 표시 */
   interactionLocked?: boolean
   lockOverlay?: ReactNode
+  /** 본문 영역 추가 클래스 (기본 패딩 대체 시 전체 className 전달) */
+  contentClassName?: string
 }
 
 /**
@@ -33,6 +35,7 @@ export default function FormModalFrame({
   headerEnd,
   interactionLocked = false,
   lockOverlay,
+  contentClassName,
 }: FormModalFrameProps) {
   useBodyScrollLock(isOpen)
   if (!isOpen) return null
@@ -75,7 +78,12 @@ export default function FormModalFrame({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-3 sm:px-6 sm:py-4">
+        <div
+          className={
+            contentClassName ??
+            "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-3 sm:px-6 sm:py-4"
+          }
+        >
           {children}
         </div>
         {interactionLocked && lockOverlay}
