@@ -801,10 +801,8 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/readingSessions/$(resource.data.reading_session_id))
           && get(/databases/$(database)/documents/readingSessions/$(resource.data.reading_session_id)).data.user_id == request.auth.uid
         )
-        || (
-          isGroupOwner(resource.data.group_id)
-          && !existsAfter(groupPath(resource.data.group_id))
-        );
+        // 모임장: 회차·모임 삭제 시 귀속 정리
+        || isGroupOwner(resource.data.group_id);
     }
   }
 }

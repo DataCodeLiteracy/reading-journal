@@ -810,7 +810,7 @@ export default function GroupSchedulePanel({
           confirmIntent?.type === "complete"
             ? `${confirmIntent.meeting.sequence}회차를 완료할까요?\n예정 날짜 전이라도 실제 오프라인 모임이 끝났다면 완료할 수 있으며, 배정 책도 완료 상태로 확정됩니다.`
             : confirmIntent
-              ? `${confirmIntent.meeting.sequence}회차와 연결된 책 과제를 삭제할까요?`
+              ? `${confirmIntent.meeting.sequence}회차를 삭제할까요?\n연결된 책 배정·추천과 이 회차의 모임 독서 시간 귀속도 함께 삭제됩니다.\n개인 독서 기록·경험치는 그대로 남습니다.`
               : ""
         }
         confirmText={

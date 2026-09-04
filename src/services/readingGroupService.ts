@@ -1002,21 +1002,19 @@ export class ReadingGroupService {
         where("meeting_id", "==", meetingId),
       ),
     )
-    if (!attributions.empty) {
+    // meeting + meetingRecord + cascaded docs (Firestore batch 한도 500)
+    const cascadeCount =
+      assignments.size + recommendations.size + attributions.size + 2
+    if (cascadeCount > 500) {
       throw new ApiError(
-        "누적된 독서 시간이 있는 회차는 삭제할 수 없습니다. 상태를 취소로 변경해 주세요.",
-        "MEETING_HAS_READING_TIME",
-      )
-    }
-    if (assignments.size + recommendations.size > 498) {
-      throw new ApiError(
-        "연결된 과제와 회차 기록이 너무 많아 단일 배치로 삭제할 수 없습니다.",
+        "연결된 과제·추천·독서 귀속이 너무 많아 한 번에 삭제할 수 없습니다.",
         "CASCADE_BATCH_LIMIT",
       )
     }
     const batch = writeBatch(db)
     assignments.docs.forEach((assignment) => batch.delete(assignment.ref))
     recommendations.docs.forEach((item) => batch.delete(item.ref))
+    attributions.docs.forEach((item) => batch.delete(item.ref))
     // MeetingRecord의 문서 ID는 meetingId이므로 조회 없이 함께 지워도 안전합니다.
     batch.delete(doc(db, COLLECTIONS.meetingRecords, meetingId))
     batch.delete(doc(db, COLLECTIONS.meetings, meeting.id))
