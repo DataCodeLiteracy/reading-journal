@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "generate:ambient": "node scripts/generate-ambient-tracks.mjs",
+    "predev": "yarn generate:ambient",
     "dev": "next dev",
+    "prebuild": "yarn generate:ambient",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

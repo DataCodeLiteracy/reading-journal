@@ -1,11 +1,12 @@
+import { GENERATED_AMBIENT_TRACKS } from "@/generated/readingTimerAmbientTracks.generated"
+
 export const READING_TIMER_AMBIENT_STORAGE_KEY = "readingJournal.timerAmbientTrackId"
 export const READING_TIMER_BG_STORAGE_KEY = "readingJournal.timerBgId"
 export const READING_TIMER_DEFAULT_AMBIENT_ID = "staring"
-/** 1번~9번 트랙을 순서대로 재생한 뒤 처음부터 반복 */
+/** 번호순 전곡을 순서대로 재생한 뒤 처음부터 반복 */
 export const READING_TIMER_AMBIENT_PLAYLIST_ID = "playlist-loop"
 /** 재생 가능한 모든 트랙을 랜덤 순서로 재생한 뒤 다시 셔플·반복 */
 export const READING_TIMER_AMBIENT_PLAYLIST_RANDOM_ID = "playlist-random"
-const AMBIENT_UI_MAX_INDEX = 9
 
 export type ReadingTimerAmbientTrack = {
   id: string
@@ -13,92 +14,33 @@ export type ReadingTimerAmbientTrack = {
   src: string | null
 }
 
-const AMBIENT_FILENAME_KO_LABEL: Record<string, string> = {
-  "1.distant-land.mp3": "먼 땅",
-  "2.lingering-gaze.mp3": "머무는 시선",
-  "3.phosphorescence.mp3": "인광",
-  "4.forest.mp3": "숲의",
-  "5.purple-cat.mp3": "보라색 고양이",
-  "6.snowfall.mp3": "눈 내림",
-  "7.early-light.mp3": "이른 빛",
-  "8.blue-wednesday.mp3": "푸른 수요일",
-}
-
-/** `public/audio` 아래 저장한 파일명 그대로(한글·공백 가능) → URL 경로 */
-function ambientSrc(fileName: string): string {
-  return `/audio/${encodeURIComponent(fileName)}`
-}
-
 /**
- * 번호 접두 파일명 `N.*.mp3` (N=1~9). 저장 파일명과 동일해야 재생됨.
- * 6~9는 예시 이름이며 원하는 파일명으로 바꾸면 됩니다.
+ * `public/audio` 스캔 결과(scripts/generate-ambient-tracks.mjs).
+ * 끔 + 생성된 트랙.
  */
 export const READING_TIMER_AMBIENT_TRACKS: ReadingTimerAmbientTrack[] = [
   { id: "off", label: "끔", src: null },
-  {
-    id: "early-light",
-    label: "먼 땅",
-    src: ambientSrc("1.distant-land.mp3"),
-  },
-  {
-    id: "staring",
-    label: "머무는 시선",
-    src: ambientSrc("2.lingering-gaze.mp3"),
-  },
-  {
-    id: "blue-wednesday",
-    label: "인광",
-    src: ambientSrc("3.phosphorescence.mp3"),
-  },
-  {
-    id: "snowfall",
-    label: "숲의",
-    src: ambientSrc("4.forest.mp3"),
-  },
-  {
-    id: "purrple-cat",
-    label: "보라색 고양이",
-    src: ambientSrc("5.purple-cat.mp3"),
-  },
-  {
-    id: "ambient-6",
-    label: "눈 내림",
-    src: ambientSrc("6.snowfall.mp3"),
-  },
-  {
-    id: "ambient-7",
-    label: "이른 빛",
-    src: ambientSrc("7.early-light.mp3"),
-  },
-  {
-    id: "ambient-8",
-    label: "푸른 수요일",
-    src: ambientSrc("8.blue-wednesday.mp3"),
-  },
-  {
-    id: "ambient-9",
-    label: "배경음 9 (준비중)",
-    src: null,
-  },
+  ...GENERATED_AMBIENT_TRACKS.map((t) => ({
+    id: t.id,
+    label: t.label,
+    src: t.src,
+  })),
 ]
 
-function ambientTrackOrderFromSrc(src: string | null): number | null {
-  if (!src) return null
-  // 예: /audio/1.%20Some%20Track.mp3
-  const match = src.match(/\/audio\/(\d+)\./)
-  if (!match) return null
-  const n = Number(match[1])
-  return Number.isInteger(n) ? n : null
+/** UI·플레이리스트: 번호순으로 정렬된 재생 가능 트랙 */
+export function getPlayableAmbientTracksInOrder(): ReadingTimerAmbientTrack[] {
+  return [...GENERATED_AMBIENT_TRACKS]
+    .sort((a, b) => a.order - b.order)
+    .map((t) => ({ id: t.id, label: t.label, src: t.src }))
 }
 
-/** UI: `N.` 번호·확장자는 빼고 파일명의 본문만 표시 (예: `1.이른 빛.mp3` → `이른 빛`) */
+/** UI: 파일명 본문(번호·확장자 제외). 생성 라벨이 있으면 그대로 */
 export function getAmbientTrackDisplayLabel(t: ReadingTimerAmbientTrack): string {
   if (t.id === "off" || !t.src) return t.label
+  if (t.label && t.label !== t.id) return t.label
   try {
     const segment = t.src.split("?")[0]!.split("#")[0]!.split("/").pop()
     if (!segment) return t.label
-    const mapped = AMBIENT_FILENAME_KO_LABEL[segment]
-    if (mapped) return mapped
     const decoded = decodeURIComponent(segment)
     const base = decoded.replace(/\.[^.]+$/i, "").trim()
     const body = base.replace(/^\d+\.\s*/, "").trim()
@@ -110,24 +52,11 @@ export function getAmbientTrackDisplayLabel(t: ReadingTimerAmbientTrack): string
 
 /**
  * 타이머 설정 UI 노출용 배경음 목록.
- * - `1.` ~ `9.` 번 트랙을 항상 순서대로 노출(정의와 동일 9개)
- * - «전곡 순환»·«전곡 랜덤»은 재생 가능한 모든 트랙을 이어 재생
+ * «전곡 순환»·«전곡 랜덤» + public/audio 의 모든 번호 트랙
  */
-function getNumberedAmbientTracksForUi(): ReadingTimerAmbientTrack[] {
-  return READING_TIMER_AMBIENT_TRACKS.filter((t) => t.id !== "off")
-    .map((t) => ({ track: t, order: ambientTrackOrderFromSrc(t.src) }))
-    .filter((x) => x.order !== null && x.order >= 1 && x.order <= AMBIENT_UI_MAX_INDEX)
-    .sort((a, b) => (a.order! - b.order!))
-    .map((x) => x.track)
-}
-
-export function getPlayableAmbientTracksInOrder(): ReadingTimerAmbientTrack[] {
-  return getNumberedAmbientTracksForUi().filter((t) => t.src)
-}
-
 export function getAmbientTracksForUi(): ReadingTimerAmbientTrack[] {
   const off = READING_TIMER_AMBIENT_TRACKS.find((t) => t.id === "off")
-  const numbered = getNumberedAmbientTracksForUi()
+  const numbered = getPlayableAmbientTracksInOrder()
   const playlist: ReadingTimerAmbientTrack = {
     id: READING_TIMER_AMBIENT_PLAYLIST_ID,
     label: "전곡 순환",
@@ -139,7 +68,9 @@ export function getAmbientTracksForUi(): ReadingTimerAmbientTrack[] {
     src: null,
   }
 
-  if (numbered.length === 0) return READING_TIMER_AMBIENT_TRACKS
+  if (numbered.length === 0) {
+    return off ? [off] : READING_TIMER_AMBIENT_TRACKS
+  }
   return off
     ? [off, playlist, playlistRandom, ...numbered]
     : [playlist, playlistRandom, ...numbered]
