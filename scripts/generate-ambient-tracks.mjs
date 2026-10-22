@@ -69,6 +69,30 @@ const files = fs
     return AUDIO_EXT.has(ext) && !name.startsWith(".")
   })
 
+function looksLikePlayableAudio(absPath) {
+  const fd = fs.openSync(absPath, "r")
+  try {
+    const buf = Buffer.alloc(12)
+    const n = fs.readSync(fd, buf, 0, 12, 0)
+    if (n < 3) return false
+    // ID3… / FF Fx MPEG frame / ftyp(M4A/MP4) — not QuickTime-only ftypqt without MPEG
+    if (buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33) return true // ID3
+    if (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0) return true // MPEG ADTS
+    if (buf.toString("ascii", 4, 8) === "ftyp") {
+      const brand = buf.toString("ascii", 8, 12)
+      // qt / QuickTime movie containers often fail in HTMLAudioElement even with .mp3 name
+      if (brand.startsWith("qt")) return false
+      return true
+    }
+    if (buf.toString("ascii", 0, 4) === "OggS") return true
+    if (buf.toString("ascii", 0, 4) === "fLaC") return true
+    if (buf.toString("ascii", 0, 4) === "RIFF") return true
+    return false
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
 const numbered = []
 for (const fileName of files) {
   const order = parseOrder(fileName)
@@ -77,6 +101,12 @@ for (const fileName of files) {
       `[generate-ambient-tracks] skip (번호 접두 없음): ${fileName}`,
     )
     continue
+  }
+  const abs = path.join(audioDir, fileName)
+  if (!looksLikePlayableAudio(abs)) {
+    console.warn(
+      `[generate-ambient-tracks] WARN: ${fileName} 은(는) 브라우저가 재생하기 어려운 포맷일 수 있습니다 (확장자만 .mp3 인 QuickTime 등). 실제 mp3/m4a로 다시보내세요.`,
+    )
   }
   numbered.push({
     order,

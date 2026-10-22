@@ -73,8 +73,8 @@ export const GENERATED_AMBIENT_TRACKS: GeneratedAmbientTrack[] = [
   },
   {
     id: "ambient-11",
-    label: "Gymnopédie No. 1 (With Rain Sounds)",
-    src: "/audio/11.Gymnop%C3%A9die%20No.%201%20(With%20Rain%20Sounds).mp3",
+    label: "Gymnopedie No. 1 (With Rain Sounds)",
+    src: "/audio/11.Gymnopedie%20No.%201%20(With%20Rain%20Sounds).mp3",
     order: 11,
   }
 ]
